@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DentalClinic — Sign In</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#2563eb">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <!-- Favicon - App Icon -->
+    <link rel="icon" type="image/png" href="icon.png">
+    <link rel="apple-touch-icon" href="icon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+        :root{
+            --accent:#2563eb;--accent-dk:#1d4ed8;--accent-lt:#eff6ff;--accent-rng:rgba(37,99,235,.14);
+            --text:#0f172a;--sub:#475569;--muted:#94a3b8;--border:#e2e8f0;--bg:#f1f5f9;--card:#fff;
+            --ok-bg:#f0fdf4;--ok-bd:#86efac;--ok-tx:#166534;
+            --er-bg:#fff1f2;--er-bd:#fda4af;--er-tx:#be123c;
+        }
+        html,body{min-height:100vh;font-family:'Plus Jakarta Sans','Cairo',sans-serif;color:var(--text)}
+        body{
+            background:var(--bg);
+            background-image:radial-gradient(ellipse 65% 50% at 15% 0%,rgba(37,99,235,.08) 0%,transparent 65%),
+                             radial-gradient(ellipse 55% 45% at 88% 105%,rgba(99,102,241,.06) 0%,transparent 60%);
+        }
+        body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+            background-image:radial-gradient(circle,#c7d2e0 1px,transparent 1px);
+            background-size:26px 26px;opacity:.45}
+        .page{position:relative;z-index:1;min-height:100vh;display:flex;flex-direction:column;
+              align-items:center;justify-content:center;padding:24px 16px}
+        .lang-btn{position:fixed;top:16px;right:18px;z-index:50;background:var(--card);
+            border:1.5px solid var(--border);color:var(--sub);border-radius:10px;padding:5px 12px;
+            font-size:12px;font-weight:600;cursor:pointer;transition:all .18s;font-family:inherit;
+            box-shadow:0 1px 4px rgba(0,0,0,.06)}
+        .lang-btn:hover{border-color:var(--accent);color:var(--accent)}
+        [dir=rtl] .lang-btn{right:auto;left:18px}
+        .card{width:100%;max-width:420px;background:var(--card);border:1px solid var(--border);
+              border-radius:24px;padding:36px 32px 28px;
+              box-shadow:0 2px 4px rgba(0,0,0,.04),0 16px 48px rgba(0,0,0,.08);
+              animation:cardIn .45s cubic-bezier(.16,1,.3,1) both}
+        @keyframes cardIn{from{opacity:0;transform:translateY(18px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
+        .logo-wrap{display:flex;flex-direction:column;align-items:center;text-align:center;gap:10px;margin-bottom:24px}
+        /* ─── NEW LOGO STYLES ─── */
+        .logo-img-wrap{
+            animation:iconIn .5s .05s cubic-bezier(.16,1,.3,1) both;
+        }
+        .logo-img-wrap img{
+            height:72px;
+            width:auto;
+            object-fit:contain;
+            display:block;
+        }
+        /* Fallback icon (shown if image fails) */
+        .logo-icon-fallback{
+            display:none;
+            width:52px;height:52px;
+            background:linear-gradient(135deg,#2563eb,#0ea5e9);
+            border-radius:14px;align-items:center;justify-content:center;
+            font-size:22px;color:#fff;
+            box-shadow:0 4px 14px rgba(37,99,235,.35);
+        }
+        @keyframes iconIn{from{opacity:0;transform:scale(.65) rotate(-10deg)}to{opacity:1;transform:scale(1) rotate(0)}}
+        .logo-tag{font-size:11px;color:var(--muted);font-weight:500;letter-spacing:.5px;text-transform:uppercase}
+        hr.sep{border:none;border-top:1px solid var(--border);margin-bottom:22px}
+        .ttl{font-size:20px;font-weight:800;letter-spacing:-.3px;margin-bottom:3px}
+        .sub{font-size:13px;color:var(--sub);margin-bottom:20px}
+        .alert{display:none;align-items:center;gap:8px;padding:10px 12px;border-radius:10px;
+               font-size:12.5px;font-weight:500;margin-bottom:16px}
+        .alert.show{display:flex;animation:pop .2s ease}
+        @keyframes pop{from{opacity:0;transform:translateY(-3px)}to{opacity:1;transform:translateY(0)}}
+        .alert.error{background:var(--er-bg);border:1px solid var(--er-bd);color:var(--er-tx)}
+        .alert.success{background:var(--ok-bg);border:1px solid var(--ok-bd);color:var(--ok-tx)}
+        .field{margin-bottom:14px}
+        .field label{display:block;font-size:12px;font-weight:700;color:var(--text);margin-bottom:5px}
+        .iw{position:relative}
+        .iw .ico{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted);
+                 font-size:12px;pointer-events:none;transition:color .15s}
+        [dir=rtl] .iw .ico{left:auto;right:12px}
+        .iw input{width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:11px;
+                  color:var(--text);font-family:inherit;font-size:13.5px;padding:10px 38px;
+                  outline:none;transition:all .18s}
+        .iw input::placeholder{color:var(--muted)}
+        .iw input:focus{background:var(--card);border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-rng)}
+        .iw:focus-within .ico{color:var(--accent)}
+        .eye-btn{position:absolute;right:10px;top:50%;transform:translateY(-50%);
+                 background:none;border:none;color:var(--muted);cursor:pointer;font-size:12px;
+                 padding:2px;transition:color .15s}
+        [dir=rtl] .eye-btn{right:auto;left:10px}
+        .eye-btn:hover{color:var(--accent)}
+        .opt-row{display:flex;align-items:center;justify-content:flex-start;margin-bottom:18px}
+        .chk{display:flex;align-items:center;gap:7px;cursor:pointer;font-size:12.5px;
+             color:var(--sub);user-select:none}
+        .chk input{width:14px;height:14px;accent-color:var(--accent);cursor:pointer}
+        .btn-go{width:100%;padding:11.5px;background:var(--accent);border:none;border-radius:11px;
+                color:#fff;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;
+                position:relative;overflow:hidden;transition:all .2s;
+                box-shadow:0 4px 12px rgba(37,99,235,.3),0 1px 0 rgba(255,255,255,.12) inset}
+        .btn-go:hover{background:var(--accent-dk);transform:translateY(-1px);box-shadow:0 8px 22px rgba(37,99,235,.38)}
+        .btn-go:active{transform:translateY(0)}
+        .spinner{display:none;width:16px;height:16px;border:2.5px solid rgba(255,255,255,.3);
+                 border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;
+                 position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)}
+        @keyframes spin{to{transform:translate(-50%,-50%) rotate(360deg)}}
+        .btn-go.loading .btn-text{opacity:0}
+        .btn-go.loading .spinner{display:block}
+        .db-badge{display:flex;align-items:center;justify-content:center;gap:6px;
+                  margin-top:14px;padding-top:12px;border-top:1px solid var(--border);
+                  font-size:11px;color:var(--muted)}
+        .db-dot{width:7px;height:7px;border-radius:50%;background:#94a3b8;flex-shrink:0;transition:background .4s}
+        .db-dot.online{background:#22c55e;box-shadow:0 0 0 2px #dcfce7}
+        .db-dot.error{background:#ef4444;box-shadow:0 0 0 2px #fee2e2}
+        .db-dot.connecting{background:#f59e0b;animation:dbpulse .8s infinite alternate}
+        @keyframes dbpulse{from{opacity:.3}to{opacity:1}}
+        .copyright{text-align:center;margin-top:10px;font-size:10.5px;color:var(--muted)}
+        .copyright b{color:var(--accent)}
+        @media(max-width:440px){.card{padding:26px 18px 22px}}
+    </style>
+</head>
+<body>
+<button id="loginLangBtn" class="lang-btn" onclick="toggleLoginLang()">🌐 عربي</button>
+<div class="page">
+    <div class="card">
+        <div class="logo-wrap">
+            <!-- ─── LOGO IMAGE ─── -->
+            <div class="logo-img-wrap">
+                <img 
+                    src="logo.png" 
+                    alt="BitDentra Logo"
+                    onerror="this.parentElement.style.display='none'; document.getElementById('logoFallback').style.display='flex';"
+                >
+            </div>
+            <!-- Fallback if image not found -->
+            <div id="logoFallback" class="logo-icon-fallback" style="display:none;">
+                <i class="fa-solid fa-tooth"></i>
+            </div>
+            <div class="logo-tag" id="logoTagline">Practice Management System</div>
+        </div>
+        <hr class="sep">
+        <div class="ttl" id="formTitle">Welcome back</div>
+        <div class="sub"  id="formSub">Sign in to access your dashboard</div>
+        <div class="alert" id="alertBox"></div>
+        <form id="loginForm" autocomplete="off">
+            <div class="field">
+                <label id="userLabel">Username</label>
+                <div class="iw">
+                    <i class="fa-solid fa-user ico"></i>
+                    <input type="text" id="username" placeholder="Enter your username" autocomplete="off" spellcheck="false">
+                </div>
+            </div>
+            <div class="field">
+                <label id="pwLabel">Password</label>
+                <div class="iw">
+                    <i class="fa-solid fa-lock ico"></i>
+                    <input type="password" id="password" placeholder="Enter your password" autocomplete="off">
+                    <button type="button" class="eye-btn" onclick="togglePw()">
+                        <i class="fa-regular fa-eye" id="eyeIcon"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="opt-row">
+                <label class="chk"><input type="checkbox" id="rememberMe"><span id="rememberLabel">Remember me</span></label>
+            </div>
+            <button type="submit" class="btn-go" id="loginBtn">
+                <span class="btn-text" id="signInLabel">Sign In &nbsp;<i class="fa-solid fa-arrow-right-to-bracket"></i></span>
+                <div class="spinner"></div>
+            </button>
+        </form>
+
+        <div class="db-badge">
+            <div class="db-dot connecting" id="dbDot"></div>
+            <span id="dbStatus">Connecting to database…</span>
+        </div>
+        <div class="copyright">© 2025 <b>BitMaster</b> · All rights reserved</div>
+    </div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://wqlcdjvykoetjfxzimuz.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndxbGNkanZ5a29ldGpmeHppbXV6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI2MDk0OTksImV4cCI6MjA4ODE4NTQ5OX0.s4lvIn2OXuaAt6HlvCrgbbquQZ8hwp-NLNwl8mNrfFI';
+let _sb = null, _dbUsers = [];
+
+function getSB() {
+    if (!_sb && typeof window.supabase !== 'undefined')
+        _sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    return _sb;
+}
+function getUserByRole(r) { return _dbUsers.find(u => u.role === r); }
+
+function setDbStatus(state, msg) {
+    const dot = document.getElementById('dbDot');
+    const txt = document.getElementById('dbStatus');
+    if (dot) dot.className = 'db-dot ' + state;
+    if (txt) txt.textContent = msg;
+}
+
+async function loadUsersFromDB() {
+    setDbStatus('connecting', 'Connecting to database…');
+    const sb = getSB();
+    if (!sb) { setDbStatus('error', 'Cannot reach database'); return; }
+    try {
+        const { data, error } = await sb.from('clinic_users').select('*').eq('is_active', true);
+        if (error) throw error;
+        _dbUsers = data || [];
+        setDbStatus('online', 'Connected — ready to sign in');
+    } catch(e) {
+        setDbStatus('error', 'Database unavailable — cannot sign in');
+        console.warn('[DB]', e.message);
+    }
+}
+
+const LANG={
+    en:{
+        logoTagline:'Dental clinic management system',
+        formTitle:'Welcome back',formSub:'Sign in to access your dashboard',
+        userLabel:'Username',userPh:'Enter your username',
+        pwLabel:'Password',pwPh:'Enter your password',
+        rememberLabel:'Remember me',
+        signInLabel:'Sign In &nbsp;<i class="fa-solid fa-arrow-right-to-bracket"></i>',
+        langBtn:'🌐 عربي',
+        accessGranted:'Access granted — loading...',
+        invalidCreds:'Invalid username or password.',
+        fillAll:'Please fill in all fields.',
+    },
+    ar:{
+        logoTagline:'نظام اداره عيادات الأسنان',
+        formTitle:'أهلاً بعودتك',formSub:'سجّل دخولك للوصول إلى لوحة التحكم',
+        userLabel:'اسم المستخدم',userPh:'أدخل اسم المستخدم',
+        pwLabel:'كلمة المرور',pwPh:'أدخل كلمة المرور',
+        rememberLabel:'تذكرني',
+        signInLabel:'تسجيل الدخول &nbsp;<i class="fa-solid fa-arrow-right-to-bracket"></i>',
+        langBtn:'🌐 EN',
+        accessGranted:'تم تسجيل الدخول — جاري التحميل...',
+        invalidCreds:'اسم المستخدم أو كلمة المرور غير صحيحة.',
+        fillAll:'يرجى ملء جميع الحقول.',
+    }
+};
+
+let loginLang='en';
+
+function applyLang(){
+    const s=LANG[loginLang],isAr=loginLang==='ar';
+    document.documentElement.lang=loginLang;
+    document.documentElement.dir=isAr?'rtl':'ltr';
+    document.body.style.fontFamily=isAr?"'Cairo','Plus Jakarta Sans',sans-serif":"'Plus Jakarta Sans','Cairo',sans-serif";
+    ['logoTagline','formTitle','formSub','userLabel','pwLabel','rememberLabel'].forEach(id=>{
+        const el=document.getElementById(id);if(el&&s[id]!==undefined)el.innerHTML=s[id];
+    });
+    document.getElementById('signInLabel').innerHTML=s.signInLabel;
+    document.getElementById('loginLangBtn').innerText=s.langBtn;
+    document.getElementById('username').placeholder=s.userPh;
+    document.getElementById('password').placeholder=s.pwPh;
+}
+function toggleLoginLang(){loginLang=loginLang==='en'?'ar':'en';localStorage.setItem('clinicLang',loginLang);applyLang();}
+
+function showAlert(id,msg,type){
+    const el=document.getElementById(id);
+    el.innerHTML=`<i class="fa-solid fa-${type==='success'?'circle-check':'circle-exclamation'}"></i><span>${msg}</span>`;
+    el.className=`alert show ${type}`;
+}
+function hideAlert(id){document.getElementById(id).className='alert';}
+
+function togglePw(){
+    const inp=document.getElementById('password'),icon=document.getElementById('eyeIcon');
+    inp.type=inp.type==='password'?'text':'password';
+    icon.className=inp.type==='text'?'fa-regular fa-eye-slash':'fa-regular fa-eye';
+}
+
+document.getElementById('loginForm').addEventListener('submit', async function(e) {
+    e.preventDefault(); hideAlert('alertBox');
+    const username = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value;
+    const remember = document.getElementById('rememberMe').checked;
+    const btn = document.getElementById('loginBtn'); const s = LANG[loginLang];
+    if (!username || !password) { showAlert('alertBox', s.fillAll, 'error'); return; }
+    const sb = getSB();
+    if (!sb || !_dbUsers.length) {
+        showAlert('alertBox', 'Database not available. Check your internet connection.', 'error');
+        return;
+    }
+    btn.classList.add('loading'); btn.disabled = true;
+    try {
+        const { data, error } = await sb
+            .from('clinic_users').select('*')
+            .eq('username', username).eq('password', password).eq('is_active', true)
+            .single();
+        if (error || !data) throw new Error('invalid');
+        if (remember) localStorage.setItem('clinicRemember', JSON.stringify({username}));
+        else localStorage.removeItem('clinicRemember');
+        sessionStorage.setItem('clinicLoggedIn', '1');
+        sessionStorage.setItem('clinicRole',     data.role);
+        sessionStorage.setItem('clinicUserName', loginLang==='ar' ? (data.name_ar||'') : (data.name_en||''));
+        showAlert('alertBox', s.accessGranted, 'success');
+        setTimeout(() => { window.location.href = 'index.html'; }, 700);
+    } catch(e) {
+        showAlert('alertBox', s.invalidCreds, 'error');
+        btn.classList.remove('loading'); btn.disabled = false;
+        document.getElementById('password').value = '';
+        document.getElementById('password').focus();
+    }
+});
+
+window.addEventListener('DOMContentLoaded', async ()=>{
+    loginLang=localStorage.getItem('clinicLang')||'en';
+    applyLang();
+    const r=localStorage.getItem('clinicRemember');
+    if(r){const{username}=JSON.parse(r);document.getElementById('username').value=username||'';document.getElementById('rememberMe').checked=true;}
+    await loadUsersFromDB();
+});
+</script>
+<script>
+if('serviceWorker' in navigator){
+    window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{});});
+}
+</script>
+</body>
+</html>

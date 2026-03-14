@@ -1,0 +1,2052 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BitDentra— Dashboard</title>
+    <script>if (!sessionStorage.getItem('clinicLoggedIn')) { window.location.replace('login.html'); }</script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://unpkg.com/dexie/dist/dexie.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#2563eb">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="ClinicSys">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2966/2966327.png">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Cairo:wght@400;600;700&display=swap');
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'DM Sans', 'Cairo', sans-serif;
+            background-color: #f1f5f9;
+        }
+
+        ::-webkit-scrollbar {
+            width: 5px;
+            height: 5px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 10px;
+        }
+
+        .sidebar-link {
+            display: flex;
+            align-items: center;
+            padding: 0.65rem 1rem;
+            color: #4b5563;
+            border-radius: 0.5rem;
+            transition: all 0.2s;
+            margin-bottom: 0.2rem;
+            font-size: 0.9rem;
+            cursor: pointer;
+            gap: 10px;
+        }
+
+        .sidebar-link:hover {
+            background-color: #eff6ff;
+            color: #2563eb;
+        }
+
+        .sidebar-link.active {
+            background-color: #2563eb;
+            color: white;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
+        }
+
+        .sidebar-link i {
+            width: 18px;
+            text-align: center;
+            font-size: 1rem;
+        }
+
+        .view-section {
+            display: none;
+        }
+
+        .view-section.active {
+            display: block;
+        }
+
+        .cal-day {
+            min-height: 80px;
+            border: 1px solid #f1f5f9;
+            padding: 6px;
+            border-radius: 8px;
+            background: white;
+            transition: background 0.15s;
+        }
+
+        .cal-day:hover {
+            background: #eff6ff;
+        }
+
+        .cal-day.today {
+            border-color: #3b82f6;
+            background: #eff6ff;
+        }
+
+        .cal-day.has-appt {
+            border-color: #10b981;
+        }
+
+        .cal-day-num {
+            font-size: 12px;
+            font-weight: 700;
+            color: #374151;
+            margin-bottom: 3px;
+        }
+
+        .cal-dot {
+            font-size: 10px;
+            background: #3b82f6;
+            color: white;
+            border-radius: 4px;
+            padding: 1px 4px;
+            margin-top: 2px;
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+            max-width: 100%;
+        }
+
+        .modal-base {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.55);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 50;
+            backdrop-filter: blur(4px);
+        }
+
+        .modal-base.open {
+            display: flex;
+        }
+
+        .modal-box {
+            background: white;
+            border-radius: 20px;
+            padding: 28px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.15);
+            animation: popIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes popIn {
+            from {
+                opacity: 0;
+                transform: scale(0.95) translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+
+        input,
+        select,
+        textarea {
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        input:focus,
+        select:focus,
+        textarea:focus {
+            border-color: #3b82f6 !important;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 2px 10px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .badge-waiting {
+            background: #fff7ed;
+            color: #c2410c;
+        }
+
+        .badge-inside {
+            background: #eff6ff;
+            color: #1d4ed8;
+        }
+
+        .badge-examined {
+            background: #f0fdf4;
+            color: #15803d;
+        }
+
+        .badge-cancelled {
+            background: #fef2f2;
+            color: #b91c1c;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 16px;
+            padding: 20px 24px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+            border: 1px solid #f1f5f9;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            transition: box-shadow 0.2s;
+        }
+
+        .stat-card:hover {
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+        }
+
+        .btn-blue {
+            background: #2563eb;
+            color: white;
+        }
+
+        .btn-blue:hover {
+            background: #1d4ed8;
+        }
+
+        .btn-red {
+            background: #ef4444;
+            color: white;
+        }
+
+        .btn-red:hover {
+            background: #dc2626;
+        }
+
+        .btn-green {
+            background: #22c55e;
+            color: white;
+        }
+
+        .btn-green:hover {
+            background: #16a34a;
+        }
+
+        .btn-gray {
+            background: #f1f5f9;
+            color: #374151;
+            border: 1px solid #e2e8f0;
+        }
+
+        .btn-gray:hover {
+            background: #e2e8f0;
+        }
+
+        .btn-outline {
+            background: white;
+            color: #374151;
+            border: 1.5px solid #e2e8f0;
+        }
+
+        .btn-outline:hover {
+            border-color: #3b82f6;
+            color: #3b82f6;
+        }
+
+        .tooth-btn {
+            width: 42px;
+            height: 46px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 11px;
+            border-radius: 8px;
+            border: 2px solid #e2e8f0;
+            background: white;
+            color: #64748b;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+
+        .tooth-btn:hover {
+            border-color: #3b82f6;
+            color: #3b82f6;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(59, 130, 246, 0.15);
+        }
+
+        .tooth-treated {
+            border-color: #ef4444 !important;
+            background-color: #fef2f2 !important;
+            color: #ef4444 !important;
+        }
+
+        .tooth-crown {
+            border-color: #f59e0b !important;
+            background-color: #fffbeb !important;
+            color: #d97706 !important;
+        }
+
+        .tooth-missing {
+            border-color: #94a3b8 !important;
+            background-color: #f1f5f9 !important;
+            color: #94a3b8 !important;
+            text-decoration: line-through;
+        }
+
+        .tooth-root {
+            border-color: #8b5cf6 !important;
+            background-color: #f5f3ff !important;
+            color: #7c3aed !important;
+        }
+
+        #upperTeeth,
+        #lowerTeeth {
+            display: flex;
+            gap: 2px;
+            flex-wrap: nowrap;
+            justify-content: center;
+            overflow-x: auto;
+            padding: 4px 0;
+        }
+
+        .tooth-wrapper {
+            flex-shrink: 0;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: #0f172a;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: 500;
+            z-index: 999;
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .toast.success {
+            background: #166534;
+        }
+
+        .toast.error {
+            background: #991b1b;
+        }
+
+        .search-box {
+            position: relative;
+            width: 100%;
+        }
+
+        .search-box i {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #94a3b8;
+            pointer-events: none;
+        }
+
+        .search-box input {
+            padding-left: 36px;
+            width: 100%;
+        }
+
+        .autocomplete-results {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #d1d5db;
+            border-top: none;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 60;
+            font-size: 13px;
+        }
+
+        .autocomplete-results .item {
+            padding: 8px 12px;
+            cursor: pointer;
+        }
+
+        .autocomplete-results .item:hover {
+            background: #f3f4f6;
+        }
+
+        /* DARK MODE */
+        body.dark {
+            background-color: #0f172a;
+            color: #e2e8f0;
+        }
+
+        body.dark aside {
+            background: #1e293b !important;
+            border-color: #334155 !important;
+        }
+
+        body.dark main {
+            background: #0f172a !important;
+        }
+
+        body.dark header {
+            background: #1e293b !important;
+            border-color: #334155 !important;
+        }
+
+        body.dark .sidebar-link {
+            color: #94a3b8;
+        }
+
+        body.dark .sidebar-link:hover {
+            background: #2d3f55;
+            color: #93c5fd;
+        }
+
+        body.dark .sidebar-link.active {
+            background: #2563eb;
+            color: white;
+        }
+
+        body.dark .bg-white {
+            background-color: #1e293b !important;
+        }
+
+        body.dark .text-gray-800,
+        body.dark .text-gray-700,
+        body.dark .text-gray-600 {
+            color: #e2e8f0 !important;
+        }
+
+        body.dark .text-gray-500,
+        body.dark .text-gray-400 {
+            color: #94a3b8 !important;
+        }
+
+        body.dark .border-gray-100,
+        body.dark .border-gray-200 {
+            border-color: #334155 !important;
+        }
+
+        body.dark .stat-card {
+            background: #1e293b !important;
+            border-color: #334155 !important;
+        }
+
+        body.dark input,
+        body.dark select,
+        body.dark textarea {
+            background: #0f172a !important;
+            border-color: #334155 !important;
+            color: #e2e8f0 !important;
+        }
+
+        body.dark .modal-box {
+            background: #1e293b !important;
+        }
+
+        body.dark .cal-day {
+            background: #1e293b !important;
+            border-color: #334155 !important;
+        }
+
+        body.dark .cal-day:hover {
+            background: #2d3f55 !important;
+        }
+
+        body.dark .btn-outline {
+            background: #1e293b;
+            color: #cbd5e1;
+            border-color: #334155;
+        }
+
+        body.dark .btn-gray {
+            background: #334155;
+            color: #e2e8f0;
+            border-color: #475569;
+        }
+
+        body.dark .bg-slate-50 {
+            background-color: #0f172a !important;
+        }
+
+        body.dark .bg-gray-50 {
+            background-color: #1e293b !important;
+        }
+
+        body.dark .border-b {
+            border-color: #334155 !important;
+        }
+
+        body.dark table tbody tr {
+            border-color: #334155;
+        }
+
+        body.dark .toast {
+            background: #1e293b;
+            border: 1px solid #334155;
+        }
+
+        /* RTL */
+        [dir="rtl"] .toast {
+            right: auto;
+            left: 24px;
+        }
+
+        [dir="rtl"] .search-box i {
+            left: auto;
+            right: 12px;
+        }
+
+        [dir="rtl"] .search-box input {
+            padding-left: 16px;
+            padding-right: 36px;
+        }
+
+        /* INVENTORY */
+        .stock-critical {
+            border-left: 4px solid #ef4444 !important;
+        }
+
+        .stock-low {
+            border-left: 4px solid #f59e0b !important;
+        }
+
+        @keyframes conflictShake {
+            0%, 100% { transform: translateX(0); }
+            20% { transform: translateX(-8px); }
+            40% { transform: translateX(8px); }
+            60% { transform: translateX(-5px); }
+            80% { transform: translateX(5px); }
+        }
+
+        .conflict-shake {
+            animation: conflictShake 0.4s ease;
+        }
+
+        @media print {
+            .no-print {
+                display: none !important;
+            }
+        }
+
+        /* ===== SIDEBAR COLLAPSE (Desktop) ===== */
+        #sidebar {
+            transition: width .25s ease;
+        }
+
+        #sidebar.sidebar-collapsed {
+            width: 56px !important;
+        }
+
+        #sidebar.sidebar-collapsed .sidebar-link span,
+        #sidebar.sidebar-collapsed .nav-label,
+        #sidebar.sidebar-collapsed .sidebar-logo-text,
+        #sidebar.sidebar-collapsed p[data-t],
+        #sidebar.sidebar-collapsed .logout-label {
+            display: none !important;
+        }
+
+        #sidebar.sidebar-collapsed .sidebar-link {
+            justify-content: center;
+            padding-left: 0;
+            padding-right: 0;
+        }
+
+        #sidebar.sidebar-collapsed .sidebar-link i {
+            margin: 0;
+            font-size: 1rem;
+        }
+
+        #sidebar.sidebar-collapsed #sidebarLogoArea {
+            justify-content: center;
+            padding: 0;
+        }
+
+        #mainArea {
+            transition: all .25s ease;
+        }
+
+        /* ===== MOBILE RESPONSIVE PATCH ===== */
+        @media (max-width: 900px) {
+            aside {
+                position: fixed;
+                left: 0;
+                top: 0;
+                height: 100%;
+                z-index: 60;
+                transform: translateX(-100%);
+                transition: transform .3s ease;
+            }
+
+            aside.mobile-open {
+                transform: translateX(0);
+            }
+
+            main {
+                width: 100%;
+            }
+
+            .stat-card {
+                padding: 14px;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .grid-cols-4 {
+                grid-template-columns: repeat(2, 1fr) !important;
+            }
+
+            .grid-cols-2 {
+                grid-template-columns: repeat(1, 1fr) !important;
+            }
+        }
+    </style>
+</head>
+
+<body class="flex h-screen overflow-hidden text-gray-800">
+
+    <!-- ══════════════ SIDEBAR ══════════════ -->
+    <aside class="w-60 bg-white shadow-sm flex flex-col z-20 flex-shrink-0 border-r border-gray-100" id="sidebar">
+        <div class="h-16 flex items-center justify-center border-b border-gray-100" id="sidebarLogoArea">
+            <span class="text-xl font-bold text-blue-900 sidebar-logo-text">Bit<span class="text-blue-500">Dentra</span> <i class="fa-solid fa-tooth text-blue-400 ml-1 text-base"></i></span>
+        </div>
+        <nav class="flex-1 overflow-y-auto py-3 px-2">
+            <p class="px-3 text-[10px] font-semibold text-gray-400 mb-1 mt-1 uppercase tracking-wider" data-t="nav.main">Main</p>
+            <a onclick="switchView('dashboard')" id="nav-dashboard" class="sidebar-link active"><i class="fa-solid fa-border-all"></i> <span data-t="nav.dashboard">Dashboard</span></a>
+            <a onclick="switchView('patients')" id="nav-patients" class="sidebar-link"><i class="fa-solid fa-users"></i> <span data-t="nav.patients">Patients</span></a>
+            <a onclick="switchView('appointments')" id="nav-appointments" class="sidebar-link"><i class="fa-solid fa-clipboard-list"></i> <span data-t="nav.appointments">Appointments</span></a>
+            <a onclick="switchView('calendar')" id="nav-calendar" class="sidebar-link"><i class="fa-solid fa-calendar-days"></i> <span data-t="nav.calendar">Calendar</span></a>
+            <p class="px-3 text-[10px] font-semibold text-gray-400 mb-1 mt-3 uppercase tracking-wider" data-t="nav.clinical">CLINICAL</p>
+            <a onclick="switchView('prescriptions')" id="nav-prescriptions" class="sidebar-link"><i class="fa-solid fa-prescription-bottle-medical"></i> <span data-t="nav.prescriptions">Prescriptions</span></a>
+            <p class="px-3 text-[10px] font-semibold text-gray-400 mb-1 mt-3 uppercase tracking-wider nav-section-finance" data-t="nav.finance">FINANCE</p>
+            <a onclick="switchView('invoices')" id="nav-invoices" class="sidebar-link"><i class="fa-solid fa-file-invoice"></i> <span data-t="nav.invoices">Invoices</span></a>
+            <a onclick="switchView('expenses')" id="nav-expenses" class="sidebar-link"><i class="fa-solid fa-file-invoice-dollar"></i> <span data-t="nav.expenses">Expenses</span></a>
+            <a onclick="switchView('reports')" id="nav-reports" class="sidebar-link"><i class="fa-solid fa-chart-bar"></i> <span data-t="nav.reports">Reports</span></a>
+            <p class="px-3 text-[10px] font-semibold text-gray-400 mb-1 mt-3 uppercase tracking-wider" data-t="nav.system">SYSTEM</p>
+            <a onclick="switchView('inventory')" id="nav-inventory" class="sidebar-link" style="position:relative">
+                <i class="fa-solid fa-boxes-stacked"></i> <span>Inventory</span>
+                <span id="invAlertBadge" class="hidden absolute top-1 right-1 bg-red-500 text-white text-[9px] rounded-full w-4 h-4 flex items-center justify-center font-bold">0</span>
+            </a>
+            <a onclick="switchView('lab')" id="nav-lab" class="sidebar-link"><i class="fa-solid fa-flask"></i> <span>Lab Orders</span></a>
+            <a onclick="switchView('doctors')" id="nav-doctors" class="sidebar-link"><i class="fa-solid fa-user-doctor"></i> <span>Doctors</span></a>
+            <a onclick="switchView('reminders')" id="nav-reminders" class="sidebar-link"><i class="fa-solid fa-bell"></i> <span data-t="nav.reminders">Reminders</span></a>
+            <a onclick="switchView('settings')" id="nav-settings" class="sidebar-link"><i class="fa-solid fa-gear"></i> <span data-t="nav.settings">Settings</span></a>
+        </nav>
+        <div class="p-3 border-t border-gray-100">
+            <button onclick="logout()" class="sidebar-link w-full text-red-500 hover:bg-red-50 hover:text-red-600 mt-0">
+                <i class="fa-solid fa-right-from-bracket"></i> <span data-t="nav.logout">Logout</span>
+            </button>
+        </div>
+    </aside>
+
+    <!-- Mobile sidebar backdrop -->
+    <div id="sidebarBackdrop"
+        onclick="document.getElementById('sidebar').classList.remove('mobile-open');document.getElementById('sidebarBackdrop').classList.remove('active')"
+        style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:50;"></div>
+
+    <!-- ══════════════ MAIN ══════════════ -->
+    <main class="flex-1 flex flex-col h-screen overflow-hidden bg-slate-50" id="mainArea">
+
+        <!-- Header -->
+        <header class="h-14 bg-white border-b border-gray-100 flex items-center justify-between px-5 z-10 flex-shrink-0">
+            <div class="flex items-center gap-3">
+                <button onclick="toggleSidebar()" class="text-gray-400 hover:text-blue-600 text-lg w-8 h-8 flex items-center justify-center rounded-lg hover:bg-blue-50 transition"><i class="fa-solid fa-bars"></i></button>
+                <span class="font-semibold text-gray-700" id="headerTitle">Dashboard</span>
+            </div>
+            <div class="flex items-center gap-3">
+                <div id="syncBadge" class="hidden items-center px-1"></div>
+                <button onclick="toggleLanguage()" id="langToggleBtn" class="btn btn-outline text-xs px-3 py-1.5">🌐 عربي</button>
+                <button onclick="toggleDarkMode()" id="darkModeBtn" class="btn btn-outline text-xs px-2.5 py-1.5" title="Dark Mode"><i class="fa-solid fa-moon"></i></button>
+                <button onclick="switchView('reminders')" id="notifBell" class="relative btn btn-outline text-xs px-2.5 py-1.5" title="Reminders">
+                    <i class="fa-solid fa-bell"></i>
+                    <span id="notifBadge" class="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] rounded-full w-4 h-4 items-center justify-center hidden">0</span>
+                </button>
+                <button onclick="openModal('addPatientModal')" class="btn btn-blue text-xs"><i class="fa-solid fa-user-plus"></i> <span data-t="header.newPatient">New Patient</span></button>
+                <button onclick="openModal('addAppointmentModal')" class="btn btn-outline text-xs"><i class="fa-solid fa-calendar-plus"></i> <span data-t="header.book">Book</span></button>
+                <div class="w-px h-6 bg-gray-200"></div>
+                <div class="flex items-center gap-2 cursor-pointer group" onclick="isDoctor() && switchView('settings')" id="headerUserArea">
+                    <div class="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold text-sm shadow-sm" id="headerAvatar">A</div>
+                    <div class="text-xs hidden sm:block">
+                        <p class="font-semibold text-gray-700 leading-none" id="headerUsername">Admin</p>
+                        <p class="text-gray-400" id="headerRoleLabel">Clinic Admin</p>
+                    </div>
+                </div>
+            </div>
+            <button onclick="toggleSidebar()" class="md:hidden text-gray-500 text-lg">
+                <i class="fa-solid fa-bars"></i>
+            </button>
+        </header>
+
+        <div class="flex-1 overflow-hidden relative">
+
+            <!-- ── DASHBOARD ── -->
+            <div class="view-section active h-full overflow-y-auto p-5" id="dashboardView">
+                <div class="bg-gradient-to-r from-blue-700 to-indigo-600 rounded-2xl p-6 text-white shadow-lg mb-5 relative overflow-hidden">
+                    <i class="fa-solid fa-tooth absolute opacity-10 text-[160px] -right-6 -top-8 transform rotate-12"></i>
+                    <div class="relative z-10">
+                        <p class="text-blue-200 text-sm mb-1" id="dashGreeting">Good morning</p>
+                        <h2 class="text-2xl font-bold mb-1">Welcome back 👋</h2>
+                        <p class="text-blue-100 text-sm opacity-90" id="dashDate"></p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
+                    <div class="stat-card border-l-4 border-l-blue-500">
+                        <div>
+                            <h3 class="text-2xl font-bold text-gray-800" id="totalPatientsCount">0</h3>
+                            <p class="text-gray-400 text-xs mt-1 font-medium" data-t="dash.totalPatients">Total Patients</p>
+                        </div>
+                        <div class="w-10 h-10 bg-blue-50 text-blue-500 rounded-xl flex items-center justify-center"><i class="fa-solid fa-users"></i></div>
+                    </div>
+                    <div class="stat-card border-l-4 border-l-green-500">
+                        <div>
+                            <h3 class="text-2xl font-bold text-gray-800" id="todayRevenue">0</h3>
+                            <p class="text-gray-400 text-xs mt-1 font-medium" data-t="dash.todayRevenue">Today's Revenue</p>
+                        </div>
+                        <div class="w-10 h-10 bg-green-50 text-green-500 rounded-xl flex items-center justify-center"><i class="fa-solid fa-arrow-trend-up"></i></div>
+                    </div>
+                    <div class="stat-card border-l-4 border-l-red-400">
+                        <div>
+                            <h3 class="text-2xl font-bold text-gray-800" id="todayExpenses">0</h3>
+                            <p class="text-gray-400 text-xs mt-1 font-medium" data-t="dash.todayExpenses">Today's Expenses</p>
+                        </div>
+                        <div class="w-10 h-10 bg-red-50 text-red-400 rounded-xl flex items-center justify-center"><i class="fa-solid fa-arrow-trend-down"></i></div>
+                    </div>
+                    <div class="stat-card border-l-4 border-l-indigo-500">
+                        <div>
+                            <h3 class="text-2xl font-bold text-gray-800" id="netProfit">0</h3>
+                            <p class="text-gray-400 text-xs mt-1 font-medium" data-t="dash.netTreasury">Net (Treasury)</p>
+                        </div>
+                        <div class="w-10 h-10 bg-indigo-50 text-indigo-500 rounded-xl flex items-center justify-center"><i class="fa-solid fa-sack-dollar"></i></div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+                    <button onclick="openModal('addPatientModal')" class="bg-white hover:shadow-md transition rounded-xl p-4 border border-gray-100 flex flex-col items-center gap-3 group">
+                        <div class="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center text-xl group-hover:bg-blue-600 group-hover:text-white transition"><i class="fa-solid fa-user-plus"></i></div>
+                        <span class="font-semibold text-gray-600 text-xs" data-t="dash.newPatient">New Patient</span>
+                    </button>
+                    <button onclick="openModal('addAppointmentModal')" class="bg-white hover:shadow-md transition rounded-xl p-4 border border-gray-100 flex flex-col items-center gap-3 group">
+                        <div class="w-12 h-12 bg-green-50 text-green-500 rounded-xl flex items-center justify-center text-xl group-hover:bg-green-500 group-hover:text-white transition"><i class="fa-solid fa-calendar-plus"></i></div>
+                        <span class="font-semibold text-gray-600 text-xs" data-t="dash.bookAppt">Book Appointment</span>
+                    </button>
+                    <button onclick="openModal('addTreatmentModal')" class="bg-white hover:shadow-md transition rounded-xl p-4 border border-gray-100 flex flex-col items-center gap-3 group">
+                        <div class="w-12 h-12 bg-cyan-50 text-cyan-500 rounded-xl flex items-center justify-center text-xl group-hover:bg-cyan-500 group-hover:text-white transition"><i class="fa-solid fa-tooth"></i></div>
+                        <span class="font-semibold text-gray-600 text-xs" data-t="dash.addTreatment">Add Treatment</span>
+                    </button>
+                    <button onclick="openModal('addExpenseModal')" class="bg-white hover:shadow-md transition rounded-xl p-4 border border-gray-100 flex flex-col items-center gap-3 group">
+                        <div class="w-12 h-12 bg-red-50 text-red-400 rounded-xl flex items-center justify-center text-xl group-hover:bg-red-400 group-hover:text-white transition"><i class="fa-solid fa-money-bill-wave"></i></div>
+                        <span class="font-semibold text-gray-600 text-xs" data-t="dash.addExpense">Add Expense</span>
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+                    <div class="lg:col-span-2 bg-white rounded-xl border border-gray-100 overflow-hidden">
+                        <div class="p-4 border-b border-gray-50 flex items-center justify-between">
+                            <h3 class="font-bold text-gray-800 flex items-center gap-2"><i class="fa-regular fa-clock text-blue-500"></i> Today's Appointments</h3>
+                            <button onclick="switchView('appointments')" class="text-xs text-blue-600 font-semibold hover:underline">View All</button>
+                        </div>
+                        <div class="grid grid-cols-4 px-4 py-2 bg-gray-50 text-xs font-semibold text-gray-400 border-b border-gray-100 text-center">
+                            <div>Time</div>
+                            <div>Patient</div>
+                            <div>Doctor</div>
+                            <div>Status</div>
+                        </div>
+                        <div id="appointmentsList" class="max-h-64 overflow-y-auto"></div>
+                    </div>
+                    <div class="bg-white rounded-xl border border-gray-100 flex flex-col">
+                        <div class="p-4 border-b border-gray-50 flex items-center justify-between">
+                            <h3 class="font-bold text-gray-800 flex items-center gap-2"><i class="fa-solid fa-user-injured text-blue-500 text-sm"></i> Recent Patients</h3>
+                            <button onclick="switchView('patients')" class="text-xs text-blue-600 font-semibold hover:underline">All</button>
+                        </div>
+                        <div class="flex-1 overflow-y-auto p-2 max-h-64" id="recentPatientsList"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── PATIENTS ── -->
+            <div class="view-section h-full overflow-y-auto p-5" id="patientsView">
+                <div class="flex flex-wrap justify-between items-center mb-4 gap-3">
+                    <h2 class="text-xl font-bold flex items-center gap-2"><i class="fa-solid fa-users text-blue-500"></i> Patient Directory</h2>
+                    <div class="flex gap-2 items-center">
+                        <div class="search-box">
+                            <i class="fa-solid fa-magnifying-glass text-xs"></i>
+                            <input type="text" id="patientSearch" placeholder="Search patients..." class="border border-gray-200 rounded-xl text-sm py-2 pr-4 pl-8 w-56" oninput="filterPatients()">
+                        </div>
+                        <button onclick="openModal('addPatientModal')" class="btn btn-blue"><i class="fa-solid fa-user-plus"></i> New Patient</button>
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl border border-gray-100 overflow-hidden">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-gray-50 text-gray-500 text-xs border-b border-gray-100 uppercase tracking-wide">
+                                <th class="p-3">#</th>
+                                <th class="p-3">Patient Name</th>
+                                <th class="p-3">Phone</th>
+                                <th class="p-3">Age</th>
+                                <th class="p-3">Registered</th>
+                                <th class="p-3 text-center">Balance</th>
+                                <th class="p-3 text-center">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="allPatientsTableBody"></tbody>
+                    </table>
+                    <div id="patientsEmptyState" class="hidden text-center py-16 text-gray-400">
+                        <i class="fa-solid fa-folder-open text-4xl mb-3 opacity-40"></i>
+                        <p>No patients found</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── PROFILE ── -->
+            <div class="view-section h-full overflow-y-auto p-5" id="profileView">
+                <div class="flex items-center justify-between mb-5">
+                    <div class="flex items-center gap-3">
+                        <div class="w-12 h-12 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center text-xl font-bold" id="profileAvatar">P</div>
+                        <div>
+                            <h2 class="text-xl font-bold text-gray-800" id="profileName">Patient Name</h2>
+                            <p class="text-sm text-gray-500" id="profilePhone"></p>
+                        </div>
+                    </div>
+                    <div class="flex gap-2" id="profileActionButtons">
+                        <a id="btnProfileWhatsapp" target="_blank" style="display:none;" class="btn text-xs bg-green-500 hover:bg-green-600 text-white"><i class="fa-brands fa-whatsapp text-sm"></i> <span data-t="profile.whatsapp">WhatsApp</span></a>
+                        <button onclick="openModal('addTreatmentModal')" class="btn btn-blue text-xs"><i class="fa-solid fa-plus"></i> <span data-t="profile.addTreatment">Add Treatment</span></button>
+                        <button onclick="printPatientSheet()" class="btn btn-outline text-xs"><i class="fa-solid fa-print"></i> <span data-t="profile.printSheet">Print Sheet</span></button>
+                        <button onclick="switchView('patients')" class="btn btn-outline text-xs"><i class="fa-solid fa-arrow-left"></i> <span data-t="profile.back">Back</span></button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5" id="profileInfoCards"></div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-5">
+                    <div class="lg:col-span-2 bg-white rounded-xl border border-gray-100 p-5">
+                        <div class="flex items-center justify-between mb-4 border-b pb-3">
+                            <h3 class="font-bold text-gray-800 flex items-center gap-2"><i class="fa-solid fa-teeth text-blue-500"></i> Dental Chart</h3>
+                            <div class="flex gap-2 text-xs">
+                                <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-sm bg-red-200 border border-red-400 inline-block"></span><span data-t="profile.treated">Treated</span></span>
+                                <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-sm bg-yellow-100 border border-yellow-400 inline-block"></span><span data-t="profile.crown">Crown</span></span>
+                                <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-sm bg-slate-100 border border-slate-400 inline-block"></span><span data-t="profile.missing">Missing</span></span>
+                                <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-sm bg-purple-100 border border-purple-400 inline-block"></span>Root Canal</span>
+                            </div>
+                        </div>
+                        <p class="text-center text-[10px] font-semibold text-gray-400 mb-1">— Upper Jaw —</p>
+                        <div id="upperTeeth" style="overflow-x:auto;"></div>
+                        <div style="border-top:2px dashed #e2e8f0;margin:10px 0 6px;position:relative;">
+                            <span style="position:absolute;left:50%;transform:translateX(-50%);top:-9px;background:white;padding:0 8px;font-size:9px;color:#94a3b8;font-weight:700;"><span data-t="profile.midline">MIDLINE</span></span>
+                        </div>
+                        <p class="text-center text-[10px] font-semibold text-gray-400 mb-1">— Lower Jaw —</p>
+                        <div id="lowerTeeth" style="overflow-x:auto;"></div>
+                    </div>
+
+                    <div class="bg-white rounded-xl border border-gray-100 p-5 flex flex-col">
+                        <h3 class="font-bold text-gray-800 flex items-center gap-2 mb-3 border-b pb-3"><i class="fa-solid fa-clipboard-list text-blue-500"></i> <span data-t="profile.account">Account Statement</span></h3>
+                        <div class="mb-2 text-sm">
+                            <label for="patientHistoryYear" class="mr-2 text-gray-600">Year:</label>
+                            <select id="patientHistoryYear" class="border border-gray-200 rounded-xl px-2 py-1 text-xs" onchange="loadPatientHistory(currentProfilePatientId)">
+                                <option value="">All</option>
+                            </select>
+                        </div>
+                        <div class="flex-1 overflow-y-auto max-h-64" id="patientTreatmentsList"></div>
+                        <div class="mt-3 pt-3 border-t border-gray-100 space-y-1 text-sm">
+                            <div class="flex justify-between font-semibold text-gray-700"><span data-t="profile.totalDue">Total Due</span><span id="profileTotalCost" class="font-bold">0 EGP</span></div>
+                            <div class="flex justify-between text-green-600 font-semibold"><span data-t="profile.totalPaid">Total Paid</span><span id="profileTotalPaid" class="font-bold">0 EGP</span></div>
+                            <div class="flex justify-between text-red-500 font-bold text-base border-t pt-1 mt-1"><span data-t="profile.remaining">Remaining</span><span id="profileTotalDebt">0 EGP</span></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl border border-gray-100 p-5 mb-5">
+                    <h3 class="font-bold text-gray-800 flex items-center gap-2 mb-3 border-b pb-3"><i class="fa-solid fa-note-sticky text-yellow-500"></i> <span data-t="profile.notes">Patient Notes</span></h3>
+                    <textarea id="patientNotes" rows="3" placeholder="Add clinical notes, allergies, medical history..." class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm resize-none"></textarea>
+                    <button onclick="savePatientNotes()" class="btn btn-blue mt-2 text-xs"><i class="fa-solid fa-save"></i> <span data-t="profile.saveNotes">Save Notes</span></button>
+                </div>
+
+                <div class="bg-white rounded-xl border border-gray-100 p-5">
+                    <div class="flex justify-between items-center mb-4 border-b pb-3">
+                        <h3 class="font-bold text-gray-800 flex items-center gap-2"><i class="fa-solid fa-x-ray text-blue-500"></i> <span data-t="profile.xrays">X-Rays & Attachments</span></h3>
+                        <label class="btn btn-outline text-xs cursor-pointer">
+                            <i class="fa-solid fa-upload"></i> <span data-t="profile.upload">Upload</span> <input type="file" class="hidden" accept="image/*" onchange="uploadPatientXray(event)">
+                        </label>
+                    </div>
+                    <div id="patientXraysGrid" class="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-7 gap-3"></div>
+                </div>
+            </div>
+
+            <!-- ── APPOINTMENTS ── -->
+            <div class="view-section h-full overflow-y-auto p-5" id="appointmentsView">
+                <div class="flex flex-wrap justify-between items-center mb-4 gap-3">
+                    <h2 class="text-xl font-bold flex items-center gap-2"><i class="fa-solid fa-clipboard-list text-blue-500"></i> All Appointments</h2>
+                    <div class="flex gap-2 items-center">
+                        <input type="date" id="apptFilterDate" class="border border-gray-200 rounded-xl text-sm py-2 px-3" onchange="loadAppointments()">
+                        <button onclick="document.getElementById('apptFilterDate').value=''; loadAppointments();" class="btn btn-gray text-xs">Clear</button>
+                        <button onclick="openModal('addAppointmentModal')" class="btn btn-green"><i class="fa-solid fa-plus"></i> New Appointment</button>
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl border border-gray-100 overflow-hidden">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-gray-50 text-gray-500 text-xs border-b border-gray-100 uppercase tracking-wide">
+                                <th class="p-3">Date</th>
+                                <th class="p-3">Time</th>
+                                <th class="p-3">Patient</th>
+                                <th class="p-3">Doctor</th>
+                                <th class="p-3 text-center">Status</th>
+                                <th class="p-3 text-center">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="appointmentsTableBody"></tbody>
+                    </table>
+                    <div id="apptEmptyState" class="hidden text-center py-16 text-gray-400">
+                        <i class="fa-solid fa-calendar-xmark text-4xl mb-3 opacity-40"></i>
+                        <p>No appointments found</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── CALENDAR ── -->
+            <div class="view-section h-full overflow-y-auto p-5" id="calendarView">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-xl font-bold flex items-center gap-2"><i class="fa-solid fa-calendar-days text-blue-500"></i> Calendar</h2>
+                    <div class="flex items-center gap-2">
+                        <button onclick="changeMonth(-1)" class="btn btn-gray w-8 h-8 p-0 justify-center"><i class="fa-solid fa-chevron-left text-xs"></i></button>
+                        <span class="font-bold text-gray-800 min-w-[140px] text-center" id="calMonthLabel"></span>
+                        <button onclick="changeMonth(1)" class="btn btn-gray w-8 h-8 p-0 justify-center"><i class="fa-solid fa-chevron-right text-xs"></i></button>
+                        <button onclick="goToToday()" class="btn btn-outline text-xs ml-1">Today</button>
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl border border-gray-100 p-4">
+                    <div class="grid grid-cols-7 gap-1 mb-1">
+                        <div class="text-center text-xs font-semibold text-gray-400 py-2">Sun</div>
+                        <div class="text-center text-xs font-semibold text-gray-400 py-2">Mon</div>
+                        <div class="text-center text-xs font-semibold text-gray-400 py-2">Tue</div>
+                        <div class="text-center text-xs font-semibold text-gray-400 py-2">Wed</div>
+                        <div class="text-center text-xs font-semibold text-gray-400 py-2">Thu</div>
+                        <div class="text-center text-xs font-semibold text-gray-400 py-2">Fri</div>
+                        <div class="text-center text-xs font-semibold text-gray-400 py-2">Sat</div>
+                    </div>
+                    <div class="grid grid-cols-7 gap-1" id="calGrid"></div>
+                </div>
+                <div class="mt-4 bg-white rounded-xl border border-gray-100 p-4" id="calDayDetail" style="display:none;">
+                    <h3 class="font-bold text-gray-800 mb-3" id="calDayTitle"></h3>
+                    <div id="calDayAppts"></div>
+                </div>
+            </div>
+
+            <!-- ── PRESCRIPTIONS ── -->
+            <div class="view-section h-full overflow-y-auto p-5" id="prescriptionsView">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-bold flex items-center gap-2"><i class="fa-solid fa-prescription-bottle-medical text-indigo-500"></i> Prescriptions</h2>
+                    <button onclick="openModal('addPrescriptionModal')" class="btn" style="background:#6366f1;color:white;"><i class="fa-solid fa-plus"></i> New Prescription</button>
+                </div>
+                <div class="bg-white rounded-xl border border-gray-100 overflow-hidden">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-gray-50 text-gray-500 text-xs border-b border-gray-100 uppercase tracking-wide">
+                                <th class="p-3">Patient</th>
+                                <th class="p-3">Medications</th>
+                                <th class="p-3">Date</th>
+                                <th class="p-3 text-center">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="prescriptionsTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- ── EXPENSES ── -->
+            <div class="view-section h-full overflow-y-auto p-5" id="expensesView">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-bold flex items-center gap-2"><i class="fa-solid fa-file-invoice-dollar text-red-500"></i> Expenses</h2>
+                    <button onclick="openModal('addExpenseModal')" class="btn btn-red"><i class="fa-solid fa-plus"></i> New Expense</button>
+                </div>
+                <div class="grid grid-cols-3 gap-4 mb-4">
+                    <div class="stat-card">
+                        <div>
+                            <h3 class="text-xl font-bold text-gray-800" id="expTotalMonth">0</h3>
+                            <p class="text-xs text-gray-400">This Month</p>
+                        </div>
+                        <div class="w-9 h-9 bg-red-50 text-red-400 rounded-xl flex items-center justify-center"><i class="fa-solid fa-calendar"></i></div>
+                    </div>
+                    <div class="stat-card">
+                        <div>
+                            <h3 class="text-xl font-bold text-gray-800" id="expTotalAll">0</h3>
+                            <p class="text-xs text-gray-400">All Time</p>
+                        </div>
+                        <div class="w-9 h-9 bg-orange-50 text-orange-400 rounded-xl flex items-center justify-center"><i class="fa-solid fa-coins"></i></div>
+                    </div>
+                    <div class="stat-card">
+                        <div>
+                            <h3 class="text-xl font-bold text-gray-800" id="expCount">0</h3>
+                            <p class="text-xs text-gray-400">Total Entries</p>
+                        </div>
+                        <div class="w-9 h-9 bg-gray-50 text-gray-400 rounded-xl flex items-center justify-center"><i class="fa-solid fa-list"></i></div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl border border-gray-100 overflow-hidden">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-gray-50 text-gray-500 text-xs border-b border-gray-100 uppercase tracking-wide">
+                                <th class="p-3">Item</th>
+                                <th class="p-3">Category</th>
+                                <th class="p-3">Amount</th>
+                                <th class="p-3">Date</th>
+                                <th class="p-3 text-center">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="expensesTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- ── REPORTS ── -->
+            <div class="view-section h-full overflow-y-auto p-5" id="reportsView">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-bold flex items-center gap-2"><i class="fa-solid fa-chart-bar text-blue-500"></i> Reports & Analytics</h2>
+                    <div class="flex gap-2">
+                        <button onclick="exportExcel()" class="btn btn-green text-xs"><i class="fa-solid fa-file-excel"></i> Export Excel</button>
+                        <button onclick="exportBackup()" class="btn btn-outline text-xs"><i class="fa-solid fa-download"></i> Backup JSON</button>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5" id="reportKpis"></div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
+                    <div class="bg-white rounded-xl border border-gray-100 p-5">
+                        <h3 class="font-bold text-gray-800 mb-3 text-sm flex items-center gap-2"><i class="fa-solid fa-chart-line text-blue-500"></i> Monthly Revenue (Last 6 months)</h3>
+                        <canvas id="revenueChart" height="180"></canvas>
+                    </div>
+                    <div class="bg-white rounded-xl border border-gray-100 p-5">
+                        <h3 class="font-bold text-gray-800 mb-3 text-sm flex items-center gap-2"><i class="fa-solid fa-chart-pie text-indigo-500"></i> Treatment Breakdown</h3>
+                        <canvas id="treatmentChart" height="180"></canvas>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
+                    <div class="bg-white rounded-xl border border-gray-100 p-5">
+                        <h3 class="font-bold text-gray-800 mb-4 border-b pb-2">Financial Summary</h3>
+                        <div id="financialReport" class="space-y-3"></div>
+                    </div>
+                    <div class="bg-white rounded-xl border border-gray-100 p-5">
+                        <h3 class="font-bold text-gray-800 mb-4 border-b pb-2">Patient Statistics</h3>
+                        <div id="patientReport" class="space-y-3"></div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl border border-gray-100 p-5">
+                    <h3 class="font-bold text-gray-800 mb-4 border-b pb-2">Outstanding Debts</h3>
+                    <div id="debtReport"></div>
+                </div>
+            </div>
+
+            <!-- ── SETTINGS ── -->
+            <div class="view-section h-full overflow-y-auto p-5" id="settingsView">
+                <h2 class="text-xl font-bold flex items-center gap-2 mb-5"><i class="fa-solid fa-gear text-gray-500"></i> Settings</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div class="bg-white rounded-xl border border-gray-100 p-5">
+                        <h3 class="font-bold text-gray-800 mb-4 border-b pb-2 flex items-center gap-2">
+                            Clinic Information
+                            <span class="ml-auto text-xs font-normal text-blue-500 bg-blue-50 border border-blue-100 px-2 py-0.5 rounded-full flex items-center gap-1">
+                                <i class="fa-solid fa-lock text-blue-400" style="font-size:9px"></i> BitMaster
+                            </span>
+                        </h3>
+                        <div class="space-y-3">
+                            <div><label class="text-xs font-semibold text-gray-500 mb-1 block">Clinic Name</label>
+                                <div id="settingClinicName" class="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-2.5 text-sm text-gray-700 font-medium min-h-[42px] flex items-center">—</div>
+                            </div>
+                            <div><label class="text-xs font-semibold text-gray-500 mb-1 block">Doctor Name</label>
+                                <div id="settingDoctorName" class="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-2.5 text-sm text-gray-700 font-medium min-h-[42px] flex items-center">—</div>
+                            </div>
+                            <div><label class="text-xs font-semibold text-gray-500 mb-1 block">Phone</label>
+                                <div id="settingPhone" class="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-2.5 text-sm text-gray-500 min-h-[42px] flex items-center">—</div>
+                            </div>
+                            <div><label class="text-xs font-semibold text-gray-500 mb-1 block">Address</label>
+                                <div id="settingAddress" class="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-2.5 text-sm text-gray-500 min-h-[42px] flex items-center">—</div>
+                            </div>
+                            <div><label class="text-xs font-semibold text-gray-500 mb-1 block">Currency</label>
+                                <div id="settingCurrency" class="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-2.5 text-sm text-gray-700 font-medium min-h-[42px] flex items-center">—</div>
+                            </div>
+                            <div class="flex items-start gap-2 text-xs text-gray-400 bg-blue-50 border border-blue-100 rounded-xl px-4 py-3">
+                                <i class="fa-solid fa-circle-info text-blue-400 mt-0.5 flex-shrink-0"></i>
+                                <span>These settings are managed by <strong class="text-blue-500">BitMaster</strong>. Contact your system administrator to make changes.</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="space-y-4">
+                        <div class="bg-white rounded-xl border border-gray-100 p-5">
+                            <h3 class="font-bold text-gray-800 mb-4 border-b pb-2">Appearance</h3>
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm font-semibold text-gray-700">Dark Mode</p>
+                                    <p class="text-xs text-gray-400">Switch to dark interface</p>
+                                </div>
+                                <button onclick="toggleDarkMode()" id="darkModeToggleBtn" class="relative w-11 h-6 rounded-full bg-gray-200 transition-colors duration-200 focus:outline-none">
+                                    <span id="darkModeThumb" class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200"></span>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-xl border border-gray-100 p-5">
+                            <h3 class="font-bold text-gray-800 mb-4 border-b pb-2">Data Management</h3>
+                            <div class="space-y-3">
+                                <button onclick="exportExcel()" class="btn btn-green w-full justify-center"><i class="fa-solid fa-file-excel"></i> Export to Excel</button>
+                                <button onclick="exportBackup()" class="btn btn-outline w-full justify-center"><i class="fa-solid fa-download"></i> Export Backup (JSON)</button>
+                                <label class="btn btn-outline w-full justify-center cursor-pointer"><i class="fa-solid fa-upload"></i> Import Backup<input type="file" class="hidden" accept=".json" onchange="importBackup(event)"></label>
+                                <div class="border-t pt-3 mt-3">
+                                    <p class="text-xs text-gray-400 mb-2">⚠️ Danger Zone</p>
+                                    <button onclick="confirmDeleteAll()" class="btn btn-red w-full justify-center text-xs"><i class="fa-solid fa-trash"></i> Delete All Data</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── INVOICES ── -->
+            <div class="view-section h-full overflow-y-auto p-5" id="invoicesView">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-bold flex items-center gap-2"><i class="fa-solid fa-file-invoice text-blue-500"></i> Invoices</h2>
+                    <button onclick="openModal('createInvoiceModal')" class="btn btn-blue text-xs"><i class="fa-solid fa-plus"></i> New Invoice</button>
+                </div>
+                <div class="bg-white rounded-xl border border-gray-100 overflow-hidden">
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="bg-slate-50 text-gray-500 text-xs uppercase">
+                                <th class="text-left px-4 py-3">#</th>
+                                <th class="text-left px-4 py-3">Patient</th>
+                                <th class="text-left px-4 py-3">Date</th>
+                                <th class="text-right px-4 py-3">Total</th>
+                                <th class="text-right px-4 py-3">Paid</th>
+                                <th class="text-right px-4 py-3">Due</th>
+                                <th class="text-center px-4 py-3">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="invoicesTableBody"></tbody>
+                    </table>
+                    <div id="invoicesEmpty" class="hidden text-center py-12 text-gray-400"><i class="fa-solid fa-file-invoice text-4xl mb-3 opacity-30"></i>
+                        <p class="text-sm">No invoices yet</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── REMINDERS ── -->
+            <div class="view-section h-full overflow-y-auto p-5" id="remindersView">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-bold flex items-center gap-2"><i class="fa-solid fa-bell text-yellow-500"></i> Appointment Reminders</h2>
+                    <button onclick="checkReminders()" class="btn btn-outline text-xs"><i class="fa-solid fa-rotate"></i> Refresh</button>
+                </div>
+                <div class="bg-white rounded-xl border border-gray-100 p-5 mb-4">
+                    <h3 class="font-bold text-gray-800 mb-3 flex items-center gap-2"><span class="w-2 h-2 bg-green-500 rounded-full"></span> Today's Appointments</h3>
+                    <div id="remindersToday"></div>
+                </div>
+                <div class="bg-white rounded-xl border border-gray-100 p-5 mb-4">
+                    <h3 class="font-bold text-gray-800 mb-3 flex items-center gap-2"><span class="w-2 h-2 bg-yellow-500 rounded-full"></span> Tomorrow's Appointments</h3>
+                    <div id="remindersTomorrow"></div>
+                </div>
+                <div class="bg-white rounded-xl border border-gray-100 p-5">
+                    <h3 class="font-bold text-gray-800 mb-3 flex items-center gap-2"><span class="w-2 h-2 bg-red-500 rounded-full"></span> Missed / Overdue</h3>
+                    <div id="remindersOverdue"></div>
+                </div>
+            </div>
+
+            <!-- ── INVENTORY ── -->
+            <div class="view-section h-full overflow-y-auto p-5" id="inventoryView">
+                <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
+                    <h2 class="text-xl font-bold flex items-center gap-2"><i class="fa-solid fa-boxes-stacked text-blue-500"></i> Inventory</h2>
+                    <div class="flex gap-2 items-center">
+                        <select id="invCatFilter" onchange="loadInventory()" class="border border-gray-200 rounded-xl text-sm py-2 px-3">
+                            <option value="">All Categories</option>
+                            <option value="medicine">💊 Medicine</option>
+                            <option value="consumable">🩺 Consumable</option>
+                            <option value="equipment">🔧 Equipment</option>
+                            <option value="lab_material">🔬 Lab Material</option>
+                            <option value="other">📦 Other</option>
+                        </select>
+                        <button onclick="openModal('addInvModal')" class="btn btn-blue text-xs"><i class="fa-solid fa-plus"></i> Add Item</button>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                    <div class="stat-card">
+                        <div>
+                            <p class="text-xs text-gray-400">Total Items</p>
+                            <h3 class="text-xl font-bold text-gray-800" id="invKpiTotal">0</h3>
+                        </div>
+                        <div class="w-9 h-9 bg-blue-50 text-blue-500 rounded-xl flex items-center justify-center"><i class="fa-solid fa-boxes-stacked"></i></div>
+                    </div>
+                    <div class="stat-card">
+                        <div>
+                            <p class="text-xs text-red-400 font-semibold">Low / Out</p>
+                            <h3 class="text-xl font-bold text-red-500" id="invKpiLow">0</h3>
+                        </div>
+                        <div class="w-9 h-9 bg-red-50 text-red-400 rounded-xl flex items-center justify-center"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                    </div>
+                    <div class="stat-card">
+                        <div>
+                            <p class="text-xs text-gray-400">Categories</p>
+                            <h3 class="text-xl font-bold text-gray-800" id="invKpiCats">0</h3>
+                        </div>
+                        <div class="w-9 h-9 bg-purple-50 text-purple-400 rounded-xl flex items-center justify-center"><i class="fa-solid fa-tag"></i></div>
+                    </div>
+                    <div class="stat-card">
+                        <div>
+                            <p class="text-xs text-gray-400">Stock Value</p>
+                            <h3 class="text-lg font-bold text-green-600" id="invKpiValue">0</h3>
+                        </div>
+                        <div class="w-9 h-9 bg-green-50 text-green-400 rounded-xl flex items-center justify-center"><i class="fa-solid fa-coins"></i></div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl border border-gray-100 overflow-hidden">
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="bg-slate-50 text-gray-400 text-xs uppercase border-b">
+                                <th class="text-left px-4 py-3">Item</th>
+                                <th class="text-left px-4 py-3">Category</th>
+                                <th class="text-center px-4 py-3">Qty</th>
+                                <th class="text-center px-4 py-3">Min</th>
+                                <th class="text-left px-4 py-3">Unit</th>
+                                <th class="text-right px-4 py-3">Unit Cost</th>
+                                <th class="text-center px-4 py-3">Expiry</th>
+                                <th class="text-center px-4 py-3">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="inventoryBody"></tbody>
+                    </table>
+                    <div id="inventoryEmpty" class="hidden text-center py-16 text-gray-400">
+                        <i class="fa-solid fa-boxes-stacked text-5xl mb-3 opacity-20"></i>
+                        <p class="font-medium">No inventory items yet</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── LAB ORDERS ── -->
+            <div class="view-section h-full overflow-y-auto p-5" id="labView">
+                <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
+                    <h2 class="text-xl font-bold flex items-center gap-2"><i class="fa-solid fa-flask text-purple-500"></i> Lab Orders & Accounting</h2>
+                    <button onclick="openModal('addLabModal')" class="btn btn-blue text-xs"><i class="fa-solid fa-plus"></i> New Order</button>
+                </div>
+                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-4">
+                    <div class="stat-card">
+                        <div>
+                            <p class="text-xs text-gray-400">Pending</p>
+                            <h3 class="text-xl font-bold text-orange-500" id="labKpiPending">0</h3>
+                        </div>
+                        <div class="w-9 h-9 bg-orange-50 text-orange-400 rounded-xl flex items-center justify-center"><i class="fa-solid fa-clock"></i></div>
+                    </div>
+                    <div class="stat-card">
+                        <div>
+                            <p class="text-xs text-gray-400">In Progress</p>
+                            <h3 class="text-xl font-bold text-blue-500" id="labKpiInProg">0</h3>
+                        </div>
+                        <div class="w-9 h-9 bg-blue-50 text-blue-400 rounded-xl flex items-center justify-center"><i class="fa-solid fa-gears"></i></div>
+                    </div>
+                    <div class="stat-card">
+                        <div>
+                            <p class="text-xs text-green-500 font-semibold">Ready 🔔</p>
+                            <h3 class="text-xl font-bold text-green-500" id="labKpiReady">0</h3>
+                        </div>
+                        <div class="w-9 h-9 bg-green-50 text-green-400 rounded-xl flex items-center justify-center"><i class="fa-solid fa-circle-check"></i></div>
+                    </div>
+                    <div class="stat-card">
+                        <div>
+                            <p class="text-xs text-gray-400">Total Cost</p>
+                            <h3 class="text-sm font-bold text-gray-800" id="labKpiCost">0</h3>
+                        </div>
+                        <div class="w-9 h-9 bg-gray-50 text-gray-400 rounded-xl flex items-center justify-center"><i class="fa-solid fa-coins"></i></div>
+                    </div>
+                    <div class="stat-card">
+                        <div>
+                            <p class="text-xs text-green-500">Total Paid</p>
+                            <h3 class="text-sm font-bold text-green-600" id="labKpiPaid">0</h3>
+                        </div>
+                        <div class="w-9 h-9 bg-green-50 text-green-400 rounded-xl flex items-center justify-center"><i class="fa-solid fa-check-circle"></i></div>
+                    </div>
+                    <div class="stat-card">
+                        <div>
+                            <p class="text-xs text-red-400 font-semibold">Still Owed</p>
+                            <h3 class="text-sm font-bold text-red-500" id="labKpiOwed">0</h3>
+                        </div>
+                        <div class="w-9 h-9 bg-red-50 text-red-400 rounded-xl flex items-center justify-center"><i class="fa-solid fa-file-invoice-dollar"></i></div>
+                    </div>
+                </div>
+                <div class="flex gap-2 mb-4 flex-wrap">
+                    <button onclick="setLabFilter('all')" id="lf-all" class="btn btn-blue text-xs">All</button>
+                    <button onclick="setLabFilter('pending')" id="lf-pending" class="btn btn-gray text-xs">⏳ Pending</button>
+                    <button onclick="setLabFilter('in_progress')" id="lf-in_progress" class="btn btn-gray text-xs">🔧 In Progress</button>
+                    <button onclick="setLabFilter('ready')" id="lf-ready" class="btn btn-gray text-xs">✅ Ready</button>
+                    <button onclick="setLabFilter('delivered')" id="lf-delivered" class="btn btn-gray text-xs">📦 Delivered</button>
+                </div>
+                <div id="labOrdersGrid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3"></div>
+                <div id="labOrdersEmpty" class="hidden text-center py-16 text-gray-400">
+                    <i class="fa-solid fa-flask text-5xl mb-3 opacity-20"></i>
+                    <p class="font-medium">No lab orders yet</p>
+                </div>
+            </div>
+
+            <!-- ── DOCTORS VIEW ── -->
+            <div class="view-section h-full overflow-y-auto p-5" id="doctorsView">
+                <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
+                    <h2 class="text-xl font-bold flex items-center gap-2">
+                        <i class="fa-solid fa-user-doctor text-purple-500"></i> Doctors & Commissions
+                    </h2>
+                    <button onclick="openAddDoctorModal()" class="btn btn-blue text-xs">
+                        <i class="fa-solid fa-plus"></i> Add Doctor
+                    </button>
+                </div>
+                <div class="grid grid-cols-3 gap-3 mb-4">
+                    <div class="stat-card">
+                        <div>
+                            <p class="text-xs text-gray-400">إجمالي الدكاتره</p>
+                            <h3 class="text-xl font-bold text-gray-800" id="docKpiTotal">0</h3>
+                        </div>
+                        <div class="w-9 h-9 bg-purple-50 text-purple-500 rounded-xl flex items-center justify-center"><i class="fa-solid fa-user-doctor"></i></div>
+                    </div>
+                    <div class="stat-card">
+                        <div>
+                            <p class="text-xs text-gray-400">فعّالون</p>
+                            <h3 class="text-xl font-bold text-green-600" id="docKpiActive">0</h3>
+                        </div>
+                        <div class="w-9 h-9 bg-green-50 text-green-500 rounded-xl flex items-center justify-center"><i class="fa-solid fa-circle-check"></i></div>
+                    </div>
+                    <div class="stat-card">
+                        <div>
+                            <p class="text-xs text-gray-400">متوسط العمولة</p>
+                            <h3 class="text-xl font-bold text-blue-600" id="docKpiAvgComm">0%</h3>
+                        </div>
+                        <div class="w-9 h-9 bg-blue-50 text-blue-500 rounded-xl flex items-center justify-center"><i class="fa-solid fa-percent"></i></div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl border border-gray-100 overflow-hidden">
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="bg-slate-50 text-gray-400 text-xs uppercase border-b">
+                                <th class="text-left px-4 py-3">الطبيب</th>
+                                <th class="text-left px-4 py-3">الهاتف</th>
+                                <th class="text-center px-4 py-3">نسبة العمولة</th>
+                                <th class="text-center px-4 py-3">الحالة</th>
+                                <th class="text-center px-4 py-3">إجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="doctorsTableBody"></tbody>
+                    </table>
+                    <div id="doctorsEmpty" class="hidden text-center py-16 text-gray-400">
+                        <i class="fa-solid fa-user-doctor text-5xl mb-3 opacity-20"></i>
+                        <p class="font-medium">لا يوجد دكاتره بعد — أضف أول طبيب</p>
+                    </div>
+                </div>
+            </div>
+
+        </div><!-- end flex-1 relative -->
+    </main>
+
+    <!-- ════════════════ MODALS ════════════════ -->
+
+    <!-- ── DOCTOR FORM MODAL ── -->
+    <div id="doctorFormModal" class="modal-base">
+        <div class="modal-box max-w-md">
+            <div class="flex justify-between items-center mb-4 border-b pb-3">
+                <h3 class="text-lg font-bold flex items-center gap-2" id="dfModalTitle">
+                    <i class="fa-solid fa-user-doctor text-purple-500"></i> إضافة طبيب
+                </h3>
+                <button onclick="document.getElementById('doctorFormModal').classList.remove('open')" class="text-gray-300 hover:text-red-400 text-xl w-7 h-7 flex items-center justify-center">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="space-y-3">
+                <div>
+                    <label class="text-xs font-semibold text-gray-500 block mb-1">الاسم بالعربي <span class="text-red-400">*</span></label>
+                    <input type="text" id="dfNameAr" placeholder="د. محمد أحمد" class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm">
+                </div>
+                <div>
+                    <label class="text-xs font-semibold text-gray-500 block mb-1">الاسم بالإنجليزي <span class="text-gray-300">(اختياري)</span></label>
+                    <input type="text" id="dfNameEn" placeholder="Dr. Mohamed Ahmed" class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="text-xs font-semibold text-gray-500 block mb-1">التخصص</label>
+                        <input type="text" id="dfSpecialty" placeholder="تقويم / زرع / عام..." class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm">
+                    </div>
+                    <div>
+                        <label class="text-xs font-semibold text-gray-500 block mb-1">الهاتف</label>
+                        <input type="tel" id="dfPhone" placeholder="01xxxxxxxxx" class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm">
+                    </div>
+                </div>
+                <div>
+                    <label class="text-xs font-semibold text-gray-500 block mb-1">نسبة العمولة % <span class="text-purple-500 font-bold">(من المبلغ المحصّل)</span></label>
+                    <div class="flex items-center gap-2">
+                        <input type="number" id="dfCommissionPct" min="0" max="100" step="0.5" placeholder="0" oninput="updateDfCommissionPreview()" class="flex-1 border border-gray-200 rounded-xl px-4 py-2.5 text-sm">
+                        <span class="text-lg font-bold text-gray-400">%</span>
+                    </div>
+                    <div id="dfCommissionPreview" class="hidden mt-2 text-xs text-purple-700 bg-purple-50 border border-purple-100 rounded-xl px-3 py-2 font-medium"></div>
+                </div>
+                <div>
+                    <label class="text-xs font-semibold text-gray-500 block mb-1">ملاحظات</label>
+                    <input type="text" id="dfNotes" placeholder="أي ملاحظات..." class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm">
+                </div>
+                <div class="flex items-center gap-2">
+                    <input type="checkbox" id="dfIsActive" checked class="w-4 h-4 accent-purple-600">
+                    <label for="dfIsActive" class="text-sm text-gray-600 cursor-pointer">طبيب فعّال</label>
+                </div>
+            </div>
+            <div class="flex gap-2 mt-4 pt-4 border-t">
+                <button onclick="document.getElementById('doctorFormModal').classList.remove('open')" class="btn btn-gray flex-1">إلغاء</button>
+                <button id="dfSaveBtn" onclick="saveDoctor(null)" class="btn btn-blue flex-1 justify-center">
+                    <i class="fa-solid fa-save mr-1"></i> حفظ الطبيب
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── DOCTOR SALARY MODAL ── -->
+    <div id="doctorSalaryModal" class="modal-base">
+        <div class="modal-box max-w-3xl">
+            <div class="flex justify-between items-center mb-4 border-b pb-3">
+                <div>
+                    <h3 class="text-lg font-bold flex items-center gap-2">
+                        <i class="fa-solid fa-coins text-yellow-500"></i>
+                        كشف عمولة: <span id="salaryDoctorName" class="text-purple-600 mr-1"></span>
+                    </h3>
+                    <p class="text-xs text-gray-400 mt-0.5" id="salaryCommissionRate"></p>
+                </div>
+                <button onclick="closeModal('doctorSalaryModal')" class="text-gray-300 hover:text-red-400 text-xl w-7 h-7 flex items-center justify-center">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <input type="hidden" id="salaryDoctorId">
+            <div class="flex items-center gap-3 mb-4 flex-wrap">
+                <label class="text-xs font-semibold text-gray-500">الفترة:</label>
+                <input type="month" id="salaryMonthFilter" class="border border-gray-200 rounded-xl px-3 py-2 text-sm" onchange="recalcDoctorSalary()">
+                <button onclick="document.getElementById('salaryMonthFilter').value=''; recalcDoctorSalary()" class="btn btn-gray text-xs">كل الوقت</button>
+            </div>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                <div class="bg-gray-50 rounded-xl p-3 border border-gray-100 text-center">
+                    <p class="text-xs text-gray-400 mb-1">إجمالي الفاتورة</p>
+                    <p class="font-bold text-gray-800" id="salaryKpiRevenue">0</p>
+                </div>
+                <div class="bg-green-50 rounded-xl p-3 border border-green-100 text-center">
+                    <p class="text-xs text-green-600 mb-1">المحصّل فعلاً</p>
+                    <p class="font-bold text-green-700" id="salaryKpiCollected">0</p>
+                </div>
+                <div class="bg-purple-50 rounded-xl p-3 border border-purple-100 text-center">
+                    <p class="text-xs text-purple-600 mb-1 font-semibold">عمولة الطبيب 💰</p>
+                    <p class="font-bold text-purple-700 text-lg" id="salaryKpiCommission">0</p>
+                </div>
+                <div class="bg-blue-50 rounded-xl p-3 border border-blue-100 text-center">
+                    <p class="text-xs text-blue-600 mb-1">عدد الجلسات</p>
+                    <p class="font-bold text-blue-700" id="salaryKpiSessions">0</p>
+                </div>
+            </div>
+            <div class="bg-white rounded-xl border border-gray-100 overflow-hidden max-h-80 overflow-y-auto">
+                <table class="w-full text-xs">
+                    <thead class="sticky top-0">
+                        <tr class="bg-slate-50 text-gray-400 uppercase border-b">
+                            <th class="px-3 py-2 text-right">التاريخ</th>
+                            <th class="px-3 py-2 text-right">الإجراء</th>
+                            <th class="px-3 py-2 text-right">المريض</th>
+                            <th class="px-3 py-2 text-right">التكلفة</th>
+                            <th class="px-3 py-2 text-right">المحصّل</th>
+                            <th class="px-3 py-2 text-right font-bold text-purple-600">العمولة</th>
+                        </tr>
+                    </thead>
+                    <tbody id="salaryTreatmentsList"></tbody>
+                </table>
+            </div>
+            <p class="text-xs text-gray-400 mt-2 text-center">* العمولة تُحسب من <strong>المبلغ المحصّل فعلاً</strong> فقط</p>
+        </div>
+    </div>
+
+    <!-- Create Invoice Modal -->
+    <div id="createInvoiceModal" class="modal-base">
+        <div class="modal-box max-w-lg">
+            <div class="flex justify-between items-center mb-4 border-b pb-3">
+                <h3 class="text-lg font-bold"><i class="fa-solid fa-file-invoice text-blue-500 mr-2"></i>New Invoice</h3>
+                <button onclick="closeModal('createInvoiceModal')" class="text-gray-300 hover:text-red-400 text-xl w-7 h-7 flex items-center justify-center"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="space-y-3">
+                <div><label class="text-xs font-semibold text-gray-500 block mb-1">Patient *</label><select id="invoicePatientId" class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm"></select></div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div><label class="text-xs font-semibold text-gray-500 block mb-1">Date</label><input type="date" id="invoiceDate" class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm"></div>
+                    <div><label class="text-xs font-semibold text-gray-500 block mb-1">Due Date</label><input type="date" id="invoiceDueDate" class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm"></div>
+                </div>
+                <div>
+                    <label class="text-xs font-semibold text-gray-500 block mb-2">Invoice Items</label>
+                    <div id="invoiceItemsContainer" class="space-y-2"></div>
+                    <button onclick="addInvoiceItem()" class="btn btn-gray text-xs mt-2"><i class="fa-solid fa-plus"></i> Add Item</button>
+                </div>
+                <div class="bg-slate-50 rounded-xl p-3 flex justify-between font-bold text-gray-800 mb-1">
+                    <span data-t="invoice.subtotal">Subtotal:</span><span id="invoiceSubtotalDisplay">0 EGP</span>
+                </div>
+                <div class="grid grid-cols-2 gap-3 mb-2">
+                    <div><label class="text-xs font-semibold text-gray-500 block mb-1" data-t="invoice.discount">Discount</label>
+                        <input type="number" id="invoiceDiscount" placeholder="0" class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm" oninput="updateInvoiceTotal()">
+                    </div>
+                    <div><label class="text-xs font-semibold text-gray-500 block mb-1">Amount Paid</label>
+                        <input type="number" id="invoicePaid" placeholder="0" class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm">
+                    </div>
+                </div>
+                <div class="bg-blue-50 border border-blue-100 rounded-xl p-3 flex justify-between font-bold text-blue-800">
+                    <span data-t="invoice.netTotal">Net Total:</span><span id="invoiceTotalDisplay">0 EGP</span>
+                </div>
+                <div><label class="text-xs font-semibold text-gray-500 block mb-1 mt-2">Notes</label><input type="text" id="invoiceNotes" placeholder="Optional" class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm"></div>
+            </div>
+            <div class="flex gap-2 mt-4 pt-4 border-t">
+                <button onclick="closeModal('createInvoiceModal')" class="btn btn-gray flex-1">Cancel</button>
+                <button onclick="saveInvoice()" class="btn btn-blue flex-1"><i class="fa-solid fa-save"></i> Save Invoice</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Inventory -->
+    <div id="addInvModal" class="modal-base">
+        <div class="modal-box max-w-md">
+            <div class="flex justify-between items-center mb-4 border-b pb-3">
+                <h3 class="text-lg font-bold"><i class="fa-solid fa-boxes-stacked text-blue-500 mr-2"></i>Add Inventory Item</h3>
+                <button onclick="closeModal('addInvModal')" class="text-gray-300 hover:text-red-400 text-xl w-7 h-7 flex items-center justify-center"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="space-y-3">
+                <div><label class="text-xs font-semibold text-gray-500 block mb-1">Item Name *</label><input type="text" id="invName" placeholder="e.g. Amoxicillin 500mg" class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm"></div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div><label class="text-xs font-semibold text-gray-500 block mb-1">Category</label>
+                        <select id="invCategory" class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm">
+                            <option value="medicine">💊 Medicine</option>
+                            <option value="consumable">🩺 Consumable</option>
+                            <option value="equipment">🔧 Equipment</option>
+                            <option value="lab_material">🔬 Lab Material</option>
+                            <option value="other">📦 Other</option>
+                        </select>
+                    </div>
+                    <div><label class="text-xs font-semibold text-gray-500 block mb-1">Unit</label><input type="text" id="invUnit" placeholder="pcs / box / ml" class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm"></div>
+                </div>
+                <div class="grid grid-cols-3 gap-3">
+                    <div><label class="text-xs font-semibold text-gray-500 block mb-1">Quantity *</label><input type="number" id="invQty" min="0" placeholder="0" class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm"></div>
+                    <div><label class="text-xs font-semibold text-gray-500 block mb-1">Min Alert ⚠️</label><input type="number" id="invMin" min="0" placeholder="5" class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm"></div>
+                    <div><label class="text-xs font-semibold text-gray-500 block mb-1">Unit Cost</label><input type="number" id="invUnitCost" min="0" placeholder="0" class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm"></div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div><label class="text-xs font-semibold text-gray-500 block mb-1">Supplier</label><input type="text" id="invSupplier" placeholder="Supplier name" class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm"></div>
+                    <div><label class="text-xs font-semibold text-gray-500 block mb-1">Expiry Date</label><input type="date" id="invExpiry" class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm"></div>
+                </div>
+                <div><label class="text-xs font-semibold text-gray-500 block mb-1">Notes</label><input type="text" id="invNotes" placeholder="Optional notes" class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm"></div>
+            </div>
+            <div class="flex gap-2 mt-4 pt-4 border-t">
+                <button onclick="closeModal('addInvModal')" class="btn btn-gray flex-1">Cancel</button>
+                <button id="invSaveBtn" onclick="saveInventoryItem()" class="btn btn-blue flex-1"><i class="fa-solid fa-save mr-1"></i>Save Item</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Restock Modal -->
+    <div id="restockModal" class="modal-base">
+        <div class="modal-box max-w-sm">
+            <div class="flex justify-between items-center mb-4 border-b pb-3">
+                <h3 class="text-lg font-bold"><i class="fa-solid fa-plus text-green-500 mr-2"></i>Restock Item</h3>
+                <button onclick="closeModal('restockModal')" class="text-gray-300 hover:text-red-400 text-xl w-7 h-7 flex items-center justify-center"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <input type="hidden" id="restockItemId">
+            <p class="text-sm font-bold text-gray-800 mb-4 p-3 bg-slate-50 rounded-xl" id="restockItemName"></p>
+            <div class="space-y-3">
+                <div><label class="text-xs font-semibold text-gray-500 block mb-1">Add Quantity *</label><input type="number" id="restockQty" min="1" placeholder="e.g. 50" class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm"></div>
+                <div><label class="text-xs font-semibold text-gray-500 block mb-1">New Unit Cost (optional)</label><input type="number" id="restockCost" placeholder="Leave empty to keep current" class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm"></div>
+                <div><label class="text-xs font-semibold text-gray-500 block mb-1">New Expiry Date (optional)</label><input type="date" id="restockExpiry" class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm"></div>
+            </div>
+            <div class="flex gap-2 mt-4 pt-4 border-t">
+                <button onclick="closeModal('restockModal')" class="btn btn-gray flex-1">Cancel</button>
+                <button onclick="confirmRestock()" class="btn btn-green flex-1"><i class="fa-solid fa-plus mr-1"></i>Add Stock</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Lab Order -->
+    <div id="addLabModal" class="modal-base">
+        <div class="modal-box max-w-lg">
+            <div class="flex justify-between items-center mb-4 border-b pb-3">
+                <h3 class="text-lg font-bold"><i class="fa-solid fa-flask text-purple-500 mr-2"></i>New Lab Order</h3>
+                <button onclick="closeModal('addLabModal')" class="text-gray-300 hover:text-red-400 text-xl w-7 h-7 flex items-center justify-center"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="space-y-3">
+                <div class="grid grid-cols-2 gap-3">
+                    <div><label class="text-xs font-semibold text-gray-500 block mb-1">Patient *</label><select id="labPatient" class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm"></select></div>
+                    <div><label class="text-xs font-semibold text-gray-500 block mb-1">Lab Name *</label><input type="text" id="labName" placeholder="e.g. Cairo Dental Lab" class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm"></div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div><label class="text-xs font-semibold text-gray-500 block mb-1">Work Type *</label>
+                        <select id="labWorkType" class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm">
+                            <option value="crown">👑 Crown</option>
+                            <option value="bridge">🌉 Bridge</option>
+                            <option value="full_denture">🦷 Full Denture</option>
+                            <option value="partial">🔗 Partial</option>
+                            <option value="veneer">✨ Veneer</option>
+                            <option value="implant_crown">🔩 Implant Crown</option>
+                            <option value="night_guard">🌙 Night Guard</option>
+                            <option value="retainer">📎 Retainer</option>
+                            <option value="other">📋 Other</option>
+                        </select>
+                    </div>
+                    <div><label class="text-xs font-semibold text-gray-500 block mb-1">Priority</label>
+                        <select id="labPriority" class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm">
+                            <option value="normal">Normal</option>
+                            <option value="urgent">🔴 Urgent</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="grid grid-cols-3 gap-3">
+                    <div><label class="text-xs font-semibold text-gray-500 block mb-1">Teeth</label><input type="text" id="labTeeth" placeholder="11, 21" class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm"></div>
+                    <div><label class="text-xs font-semibold text-gray-500 block mb-1">Material</label><input type="text" id="labMaterial" placeholder="Zirconia" class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm"></div>
+                    <div><label class="text-xs font-semibold text-gray-500 block mb-1">Shade</label><input type="text" id="labShade" placeholder="A2" class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm"></div>
+                </div>
+                <div class="grid grid-cols-3 gap-3">
+                    <div><label class="text-xs font-semibold text-gray-500 block mb-1">Due Date</label><input type="date" id="labDueDate" class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm"></div>
+                    <div><label class="text-xs font-semibold text-gray-500 block mb-1">Lab Cost</label><input type="number" id="labCost" placeholder="0" class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm"></div>
+                    <div><label class="text-xs font-semibold text-gray-500 block mb-1">Paid to Lab</label><input type="number" id="labPaidToLab" placeholder="0" class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm"></div>
+                </div>
+                <div><label class="text-xs font-semibold text-gray-500 block mb-1">Notes</label>
+                    <textarea id="labNotes" rows="2" placeholder="Special instructions..." class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm resize-none"></textarea>
+                </div>
+            </div>
+            <div class="flex gap-2 mt-4 pt-4 border-t">
+                <button onclick="closeModal('addLabModal')" class="btn btn-gray flex-1">Cancel</button>
+                <button onclick="saveLabOrder()" class="btn btn-blue flex-1"><i class="fa-solid fa-paper-plane mr-1"></i>Send to Lab</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lab Status Modal -->
+    <div id="labStatusModal" class="modal-base">
+        <div class="modal-box max-w-sm">
+            <div class="flex justify-between items-center mb-4 border-b pb-3">
+                <h3 class="text-lg font-bold"><i class="fa-solid fa-rotate text-blue-500 mr-2"></i>Update Status</h3>
+                <button onclick="closeModal('labStatusModal')" class="text-gray-300 hover:text-red-400 text-xl w-7 h-7 flex items-center justify-center"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <input type="hidden" id="labStatusOrderId">
+            <p class="text-sm font-bold text-gray-800 mb-1" id="labStatusPatient"></p>
+            <p class="text-xs text-gray-400 mb-3">Current: <span id="labStatusCurrent" class="font-semibold text-blue-600"></span></p>
+            <div class="grid grid-cols-2 gap-2 mb-3">
+                <button id="labStatusBtn-pending" onclick="quickLabStatus('pending')" class="btn btn-gray text-xs justify-center py-2.5">⏳ Pending</button>
+                <button id="labStatusBtn-in_progress" onclick="quickLabStatus('in_progress')" class="btn btn-gray text-xs justify-center py-2.5">🔧 In Progress</button>
+                <button id="labStatusBtn-ready" onclick="quickLabStatus('ready')" class="btn btn-green text-xs justify-center py-2.5">✅ Ready</button>
+                <button id="labStatusBtn-delivered" onclick="quickLabStatus('delivered')" class="btn btn-gray text-xs justify-center py-2.5">📦 Delivered</button>
+            </div>
+            <div><label class="text-xs font-semibold text-gray-500 block mb-1">Note (optional)</label>
+                <input type="text" id="labStatusNote" placeholder="e.g. Ready Friday" class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm">
+            </div>
+        </div>
+    </div>
+
+    <!-- Lab Payment Modal -->
+    <div id="labPayModal" class="modal-base">
+        <div class="modal-box max-w-sm">
+            <div class="flex justify-between items-center mb-4 border-b pb-3">
+                <h3 class="text-lg font-bold"><i class="fa-solid fa-coins text-green-500 mr-2"></i>Record Lab Payment</h3>
+                <button onclick="closeModal('labPayModal')" class="text-gray-300 hover:text-red-400 text-xl w-7 h-7 flex items-center justify-center"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <input type="hidden" id="labPayOrderId">
+            <div id="labPaySummary" class="mb-3"></div>
+            <div class="space-y-3">
+                <div><label class="text-xs font-semibold text-gray-500 block mb-1">Payment Amount *</label><input type="number" id="labPayAmount" placeholder="0" class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm"></div>
+                <div><label class="text-xs font-semibold text-gray-500 block mb-1">Note</label><input type="text" id="labPayNote" placeholder="Cash / Bank transfer..." class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm"></div>
+                <p class="text-xs text-gray-400 bg-blue-50 p-2 rounded-lg">💡 Payment will also be recorded as an expense automatically</p>
+            </div>
+            <div class="flex gap-2 mt-4 pt-4 border-t">
+                <button onclick="closeModal('labPayModal')" class="btn btn-gray flex-1">Cancel</button>
+                <button onclick="submitLabPayment()" class="btn btn-green flex-1"><i class="fa-solid fa-check mr-1"></i>Record Payment</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Patient -->
+    <div id="addPatientModal" class="modal-base">
+        <div class="modal-box max-w-md">
+            <div class="flex justify-between items-center mb-5 border-b pb-3">
+                <h3 class="text-lg font-bold" data-t="modal.newPatient">New Patient</h3>
+                <button onclick="closeModal('addPatientModal')" class="text-gray-300 hover:text-red-400 text-xl w-7 h-7 flex items-center justify-center"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="newPatientForm" class="space-y-3">
+                <div class="grid grid-cols-2 gap-3">
+                    <div><label class="text-xs font-semibold text-gray-500 block mb-1" data-t="modal.fullName">Full Name *</label><input type="text" id="patientName" required class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm" placeholder="Patient name"></div>
+                    <div><label class="text-xs font-semibold text-gray-500 block mb-1" data-t="modal.phone">Phone *</label><input type="tel" id="patientPhone" required class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm" placeholder="01xxxxxxxxx"></div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div><label class="text-xs font-semibold text-gray-500 block mb-1" data-t="modal.age">Age</label><input type="number" id="patientAge" min="1" max="120" class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm" placeholder="Age"></div>
+                    <div><label class="text-xs font-semibold text-gray-500 block mb-1" data-t="modal.gender">Gender</label>
+                        <select id="patientGender" class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm" onchange="onGenderChange()">
+                            <option value="">Select...</option>
+                            <option>Male</option>
+                            <option>Female</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="femaleOnlyFields" class="hidden grid grid-cols-2 gap-3">
+                    <label class="flex items-center gap-2 text-sm text-pink-600 font-medium cursor-pointer border border-pink-100 bg-pink-50 rounded-xl px-3 py-2.5 hover:bg-pink-100 transition">
+                        <input type="checkbox" id="patientPregnant" class="rounded accent-pink-500">
+                        <i class="fa-solid fa-baby text-pink-400"></i> <span data-t="modal.pregnant">Pregnant</span>
+                    </label>
+                    <label class="flex items-center gap-2 text-sm text-purple-600 font-medium cursor-pointer border border-purple-100 bg-purple-50 rounded-xl px-3 py-2.5 hover:bg-purple-100 transition">
+                        <input type="checkbox" id="patientBreastfeeding" class="rounded accent-purple-500">
+                        <i class="fa-solid fa-heart text-purple-400"></i> <span data-t="modal.breastfeeding">Breastfeeding</span>
+                    </label>
+                </div>
+                <div>
+                    <label class="text-xs font-semibold text-gray-500 block mb-1" data-t="modal.medHistory">Medical History / Allergies</label>
+                    <div class="grid grid-cols-2 gap-1.5 mb-2" id="medHistoryCheckboxes">
+                        <label class="flex items-center gap-1.5 text-xs text-gray-600 cursor-pointer hover:text-blue-600"><input type="checkbox" class="med-hist-cb rounded" value="Diabetes"> <span data-t="med.diabetes">Diabetes</span></label>
+                        <label class="flex items-center gap-1.5 text-xs text-gray-600 cursor-pointer hover:text-blue-600"><input type="checkbox" class="med-hist-cb rounded" value="Hypertension"> <span data-t="med.hypertension">Hypertension</span></label>
+                        <label class="flex items-center gap-1.5 text-xs text-gray-600 cursor-pointer hover:text-blue-600"><input type="checkbox" class="med-hist-cb rounded" value="Heart Disease"> <span data-t="med.heartDisease">Heart Disease</span></label>
+                        <label class="flex items-center gap-1.5 text-xs text-gray-600 cursor-pointer hover:text-blue-600"><input type="checkbox" class="med-hist-cb rounded" value="Asthma"> <span data-t="med.asthma">Asthma</span></label>
+                        <label class="flex items-center gap-1.5 text-xs text-gray-600 cursor-pointer hover:text-blue-600"><input type="checkbox" class="med-hist-cb rounded" value="Bleeding Disorder"> <span data-t="med.bleedingDisorder">Bleeding Disorder</span></label>
+                        <label class="flex items-center gap-1.5 text-xs text-gray-600 cursor-pointer hover:text-blue-600"><input type="checkbox" class="med-hist-cb rounded" value="Kidney Disease"> <span data-t="med.kidneyDisease">Kidney Disease</span></label>
+                        <label class="flex items-center gap-1.5 text-xs text-gray-600 cursor-pointer hover:text-blue-600"><input type="checkbox" class="med-hist-cb rounded" value="Liver Disease"> <span data-t="med.liverDisease">Liver Disease</span></label>
+                        <label class="flex items-center gap-1.5 text-xs text-gray-600 cursor-pointer hover:text-blue-600"><input type="checkbox" class="med-hist-cb rounded" value="Pregnancy"> <span data-t="med.pregnancy">Pregnancy</span></label>
+                        <label class="flex items-center gap-1.5 text-xs text-gray-600 cursor-pointer hover:text-blue-600"><input type="checkbox" class="med-hist-cb rounded" value="Penicillin Allergy"> <span data-t="med.penicillinAllergy">Penicillin Allergy</span></label>
+                        <label class="flex items-center gap-1.5 text-xs text-gray-600 cursor-pointer hover:text-blue-600"><input type="checkbox" class="med-hist-cb rounded" value="Aspirin Allergy"> <span data-t="med.aspirinAllergy">Aspirin Allergy</span></label>
+                        <label class="flex items-center gap-1.5 text-xs text-gray-600 cursor-pointer hover:text-blue-600"><input type="checkbox" class="med-hist-cb rounded" value="Blood Thinner (Warfarin)"> <span data-t="med.bloodThinner">Blood Thinner</span></label>
+                        <label class="flex items-center gap-1.5 text-xs text-gray-600 cursor-pointer hover:text-blue-600"><input type="checkbox" class="med-hist-cb rounded" value="Osteoporosis"> <span data-t="med.osteoporosis">Osteoporosis</span></label>
+                    </div>
+                    <input type="text" id="patientMedHistory" class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm" placeholder="Other / additional notes...">
+                </div>
+                <button type="submit" class="btn btn-blue w-full justify-center"><i class="fa-solid fa-save"></i> Save Patient</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Appointment -->
+    <div id="addAppointmentModal" class="modal-base">
+        <div class="modal-box max-w-md">
+            <div class="flex justify-between items-center mb-5 border-b pb-3">
+                <h3 class="text-lg font-bold" data-t="modal.bookAppt">Book Appointment</h3>
+                <button onclick="closeModal('addAppointmentModal')" class="text-gray-300 hover:text-red-400 text-xl w-7 h-7 flex items-center justify-center"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="newAppointmentForm" class="space-y-3">
+                <div style="position:relative;">
+                    <label class="text-xs font-semibold text-gray-500 block mb-1">Patient *</label>
+                    <div class="search-box">
+                        <i class="fa-solid fa-magnifying-glass text-xs"></i>
+                        <input type="text" id="appointmentPatientSearch" placeholder="Search patients..." class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm" oninput="filterAppointmentPatients()" onfocus="filterAppointmentPatients()">
+                    </div>
+                    <div id="appointmentPatientResults" class="autocomplete-results"></div>
+                    <input type="hidden" id="appointmentPatientId" required>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="text-xs font-semibold text-gray-500 block mb-1">Date *</label>
+                        <input type="date" id="appointmentDate" required class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm" onchange="refreshBookedSlots()">
+                    </div>
+                    <div>
+                        <label class="text-xs font-semibold text-gray-500 block mb-1">Time *</label>
+                        <input type="time" id="appointmentTime" required class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm" onchange="refreshBookedSlots()">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="text-xs font-semibold text-gray-500 block mb-1">Doctor *</label>
+                        <select id="appointmentDoctor" required class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm" onchange="refreshBookedSlots()">
+                            <option value="">Loading doctors...</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs font-semibold text-gray-500 block mb-1">Duration</label>
+                        <select id="appointmentDuration" class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm" onchange="refreshBookedSlots()">
+                            <option value="15">⏱ 15 min</option>
+                            <option value="30" selected>⏱ 30 min</option>
+                            <option value="45">⏱ 45 min</option>
+                            <option value="60">⏱ 60 min</option>
+                            <option value="90">⏱ 90 min</option>
+                            <option value="120">⏱ 2 hours</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="text-xs font-semibold text-gray-500 block mb-1">Chief Complaint</label>
+                    <input type="text" id="appointmentComplaint" class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm" placeholder="Reason for visit...">
+                </div>
+                <div id="apptConflictWarning" style="display:none;" class="rounded-xl p-3 text-sm font-semibold flex items-start gap-2" style="background:#fef2f2;border:1.5px solid #fecaca;color:#b91c1c;"></div>
+                <div id="bookedSlotsHint"></div>
+                <button type="submit" class="btn btn-green w-full justify-center">
+                    <i class="fa-solid fa-calendar-check"></i> Confirm Booking
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Treatment -->
+    <div id="addTreatmentModal" class="modal-base">
+        <div class="modal-box max-w-md">
+            <div class="flex justify-between items-center mb-5 border-b pb-3">
+                <h3 class="text-lg font-bold" id="treatmentModalTitle">Record Treatment & Payment</h3>
+                <button onclick="closeModal('addTreatmentModal')" class="text-gray-300 hover:text-red-400 text-xl w-7 h-7 flex items-center justify-center"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="newTreatmentForm" class="space-y-3">
+                <div id="treatmentPatientContainer" style="position:relative;">
+                    <label class="text-xs font-semibold text-gray-500 block mb-1">Patient *</label>
+                    <div class="search-box">
+                        <i class="fa-solid fa-magnifying-glass text-xs"></i>
+                        <input type="text" id="treatmentPatientSearch" placeholder="Search patients..." class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm" oninput="filterTreatmentPatients()" onfocus="filterTreatmentPatients()">
+                    </div>
+                    <div id="treatmentPatientResults" class="autocomplete-results"></div>
+                    <input type="hidden" id="treatmentPatientId">
+                </div>
+                <input type="hidden" id="treatmentToothNumber" value="">
+                <div id="treatmentToothPickerContainer">
+                    <label class="text-xs font-semibold text-gray-500 block mb-1">
+                        <i class="fa-solid fa-tooth text-blue-400 mr-1"></i>
+                        <span data-t="modal.toothNumber">Tooth Number</span> <span id="treatmentToothPickerLabel" class="text-blue-600 font-bold ml-1"></span>
+                    </label>
+                    <div class="border border-gray-200 rounded-xl p-3 bg-gray-50 select-none">
+                        <p class="text-center text-[9px] font-bold text-gray-400 mb-1 tracking-widest"><span data-t="profile.upperJaw2">UPPER JAW</span></p>
+                        <div class="flex justify-center gap-0.5 mb-0.5" id="tpUpperRow"></div>
+                        <div class="border-t border-dashed border-gray-300 my-1.5 relative">
+                            <span class="absolute left-1/2 -translate-x-1/2 -top-[9px] bg-gray-50 px-2 text-[8px] text-gray-400 font-bold">MIDLINE</span>
+                        </div>
+                        <div class="flex justify-center gap-0.5 mt-0.5" id="tpLowerRow"></div>
+                        <p class="text-center text-[9px] font-bold text-gray-400 mt-1 tracking-widest"><span data-t="profile.lowerJaw2">LOWER JAW</span></p>
+                    </div>
+                    <p class="text-[10px] text-gray-400 mt-1"><span data-t="profile.toothPickerHint">Click a tooth to select it. Click again to deselect.</span></p>
+                </div>
+                <div id="treatmentDoctorContainer">
+                    <label class="text-xs font-semibold text-gray-500 block mb-1">
+                        <i class="fa-solid fa-user-doctor text-purple-500 mr-1"></i> الطبيب المعالج
+                    </label>
+                    <select id="treatmentDoctorId" class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm" onchange="onTreatmentDoctorChange()"></select>
+                    <div id="treatmentCommissionPreview" class="hidden mt-1.5 px-3 py-2 bg-purple-50 border border-purple-100 rounded-xl text-xs text-purple-700 font-semibold">
+                        <i class="fa-solid fa-coins mr-1"></i> عمولة الطبيب: <span id="treatmentCommAmt">0</span>
+                    </div>
+                </div>
+                <div><label class="text-xs font-semibold text-gray-500 block mb-1" data-t="modal.procedure">Procedure *</label>
+                    <input type="text" id="treatmentProcedure" list="proceduresList" required class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm" placeholder="e.g. Filling, Root Canal, Extraction...">
+                    <datalist id="proceduresList">
+                        <option value="Filling - Composite">
+                        <option value="Filling - Amalgam">
+                        <option value="Root Canal Treatment">
+                        <option value="Crown - Porcelain">
+                        <option value="Crown - Metal">
+                        <option value="Extraction - Simple">
+                        <option value="Extraction - Surgical">
+                        <option value="Scaling &amp; Polishing">
+                        <option value="Teeth Whitening">
+                        <option value="Dental Implant">
+                        <option value="Denture - Full">
+                        <option value="Denture - Partial">
+                        <option value="Orthodontic Consultation">
+                        <option value="X-Ray - Periapical">
+                        <option value="X-Ray - Panoramic">
+                        <option value="Account Payment">
+                    </datalist>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div><label class="text-xs font-semibold text-gray-500 block mb-1" data-t="modal.totalCost">Total Cost</label><input type="number" id="treatmentTotalCost" min="0" class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm" placeholder="0"></div>
+                    <div><label class="text-xs font-semibold text-gray-500 block mb-1" data-t="modal.paidNow">Paid Now</label><input type="number" id="treatmentPaid" min="0" class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm" placeholder="0" oninput="onTreatmentDoctorChange()"></div>
+                </div>
+                <div><label class="text-xs font-semibold text-gray-500 block mb-1" data-t="modal.toothCondition">Tooth Condition</label>
+                    <select id="treatmentToothCondition" class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm">
+                        <option value="treated">Treated (Red)</option>
+                        <option value="crown_work">Crown (Yellow)</option>
+                        <option value="missing">Missing/Extracted (Gray)</option>
+                        <option value="root_canal">Root Canal (Purple)</option>
+                    </select>
+                </div>
+                <div><label class="text-xs font-semibold text-gray-500 block mb-1" data-t="modal.notes">Notes</label><input type="text" id="treatmentNotes" class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm" placeholder="Additional notes..."></div>
+                <button type="submit" class="btn w-full justify-center" style="background:#0891b2;color:white;"><i class="fa-solid fa-save"></i> Save & Record</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Expense -->
+    <div id="addExpenseModal" class="modal-base">
+        <div class="modal-box max-w-md">
+            <div class="flex justify-between items-center mb-5 border-b pb-3">
+                <h3 class="text-lg font-bold" data-t="modal.addExpense">Add Expense</h3>
+                <button onclick="closeModal('addExpenseModal')" class="text-gray-300 hover:text-red-400 text-xl w-7 h-7 flex items-center justify-center"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="newExpenseForm" class="space-y-3">
+                <div><label class="text-xs font-semibold text-gray-500 block mb-1">Item *</label><input type="text" id="expenseItem" required class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm" placeholder="Expense description"></div>
+                <div><label class="text-xs font-semibold text-gray-500 block mb-1">Category</label>
+                    <select id="expenseCategory" class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm">
+                        <option>Supplies</option>
+                        <option>Rent</option>
+                        <option>Salaries</option>
+                        <option>Utilities</option>
+                        <option>Equipment</option>
+                        <option>Maintenance</option>
+                        <option>Other</option>
+                    </select>
+                </div>
+                <div><label class="text-xs font-semibold text-gray-500 block mb-1">Amount *</label><input type="number" id="expenseAmount" min="0" required class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm" placeholder="0"></div>
+                <button type="submit" class="btn btn-red w-full justify-center"><i class="fa-solid fa-save"></i> Save Expense</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Prescription -->
+    <div id="addPrescriptionModal" class="modal-base">
+        <div class="modal-box max-w-lg">
+            <div class="flex justify-between items-center mb-5 border-b pb-3">
+                <h3 class="text-lg font-bold">Write Prescription</h3>
+                <button onclick="closeModal('addPrescriptionModal')" class="text-gray-300 hover:text-red-400 text-xl w-7 h-7 flex items-center justify-center"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="newPrescriptionForm" class="space-y-3">
+                <div><label class="text-xs font-semibold text-gray-500 block mb-1">Patient *</label><select id="prescriptionPatientId" required class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm"></select></div>
+                <div><label class="text-xs font-semibold text-gray-500 block mb-1">Diagnosis</label><input type="text" id="prescriptionDiagnosis" class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm" placeholder="e.g. Acute pulpitis..."></div>
+                <div><label class="text-xs font-semibold text-gray-500 block mb-1">Medications & Dosages *</label>
+                    <textarea id="prescriptionMeds" required rows="5" class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm" placeholder="e.g.&#10;Amoxicillin 500mg — 1 capsule × 3/day × 5 days&#10;Ibuprofen 400mg — 1 tab × 3/day after meals"></textarea>
+                </div>
+                <div><label class="text-xs font-semibold text-gray-500 block mb-1">Instructions</label><input type="text" id="prescriptionInstructions" class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm" placeholder="e.g. Avoid hot drinks..."></div>
+                <div class="flex gap-2">
+                    <button type="submit" class="btn flex-1 justify-center" style="background:#6366f1;color:white;"><i class="fa-solid fa-save"></i> Save</button>
+                    <button type="button" onclick="printPrescriptionPreview()" class="btn btn-outline flex-1 justify-center"><i class="fa-solid fa-print"></i> Save & Print</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Tooth Action Modal -->
+    <div id="toothActionModal" class="modal-base">
+        <div class="modal-box max-w-xs text-center">
+            <h3 class="text-lg font-bold mb-1" id="toothActionTitle">Tooth #</h3>
+            <p class="text-sm text-gray-400 mb-4">Select action:</p>
+            <div class="grid grid-cols-2 gap-2">
+                <button onclick="toothAction('treatment')" class="btn btn-blue justify-center text-xs"><i class="fa-solid fa-plus"></i> Add Treatment</button>
+                <button onclick="toothAction('treated')" class="btn justify-center text-xs" style="background:#fef2f2;color:#ef4444;border:1.5px solid #ef4444;"><i class="fa-solid fa-circle-dot"></i> Mark Treated</button>
+                <button onclick="toothAction('crown')" class="btn justify-center text-xs" style="background:#fffbeb;color:#d97706;border:1.5px solid #f59e0b;"><i class="fa-solid fa-crown"></i> Crown</button>
+                <button onclick="toothAction('missing')" class="btn justify-center text-xs" style="background:#f1f5f9;color:#64748b;border:1.5px solid #94a3b8;"><i class="fa-solid fa-xmark"></i> Missing</button>
+                <button onclick="toothAction('root')" class="btn justify-center text-xs" style="background:#f5f3ff;color:#7c3aed;border:1.5px solid #8b5cf6;"><i class="fa-solid fa-tooth"></i> Root Canal</button>
+                <button onclick="toothAction('clear')" class="btn btn-gray justify-center text-xs"><i class="fa-solid fa-eraser"></i> Clear</button>
+            </div>
+            <button onclick="closeModal('toothActionModal')" class="btn btn-gray w-full justify-center mt-3 text-xs">Cancel</button>
+        </div>
+    </div>
+
+    <!-- View Image Modal -->
+    <div id="viewImageModal" class="modal-base" style="background:rgba(0,0,0,0.92);">
+        <button onclick="closeModal('viewImageModal')" class="absolute top-5 right-5 text-white text-2xl hover:text-red-400 z-10"><i class="fa-solid fa-xmark"></i></button>
+        <img id="enlargedXray" src="" class="max-w-[90vw] max-h-[90vh] rounded-xl shadow-2xl">
+    </div>
+
+    <!-- Toast -->
+    <div id="toast" class="toast"></div>
+
+    <!-- ════════════════ SCRIPTS ════════════════ -->
+    <script src="supabase-config.js"></script>
+    <script src="dental-chart.js"></script>
+    <script src="logo_patch.js"></script>
+    <script src="startup_preload.js"></script>
+    <script src="app.js"></script>
+    <script src="local_db.js"></script>
+    <script src="session_payments.js"></script>
+    <script src="session_payments_patch.js"></script>
+    <script src="offline_sync_patch.js"></script>
+    <script src="fix_undefined_and_refresh.js"></script>
+    <script src="appointments_upgrade.js"></script>
+    <script src="doctors_module.js"></script>
+    <script src="fix_patch.js"></script>
+    <script src="fix_tooth_display.js"></script>
+    <script src="payment_update.js"></script>
+    <script src="tooth_picker_patch.js"></script>
+    <script src="med_history_patch.js"></script>
+    <script src="offline_first_patch.js"></script>
+    <script src="doctors_and_patient_fix.js"></script>
+    <script src="user_management.js"></script>
+    <script src="offline_profile_fix.js"></script>
+    <script src="procedures_catalog.js"></script>
+    <script src="patient_child_feature.js"></script>
+    <script src="user_header_patch.js"></script>
+    <script src="notifications_fix.js"></script>
+
+    <!-- ══ NAV ACTIVE FIX ══ -->
+    <script>
+        (function fixNavActive() {
+            const NAV_MAP = {
+                dashboard: 'nav-dashboard',
+                patients: 'nav-patients',
+                appointments: 'nav-appointments',
+                calendar: 'nav-calendar',
+                prescriptions: 'nav-prescriptions',
+                invoices: 'nav-invoices',
+                expenses: 'nav-expenses',
+                reports: 'nav-reports',
+                inventory: 'nav-inventory',
+                lab: 'nav-lab',
+                doctors: 'nav-doctors',
+                reminders: 'nav-reminders',
+                settings: 'nav-settings',
+            };
+
+            function setActiveNav(viewName) {
+                document.querySelectorAll('aside .sidebar-link').forEach(el => el.classList.remove('active'));
+                const navId = NAV_MAP[viewName];
+                if (navId) document.getElementById(navId)?.classList.add('active');
+            }
+
+            window.addEventListener('load', function () {
+                const _orig = window.switchView;
+                window.switchView = function (viewName) {
+                    if (typeof _orig === 'function') _orig(viewName);
+                    setActiveNav(viewName);
+                    if (window.innerWidth <= 900) {
+                        document.getElementById('sidebar')?.classList.remove('mobile-open');
+                        const bd = document.getElementById('sidebarBackdrop');
+                        if (bd) bd.style.display = 'none';
+                    }
+                };
+
+                const nav = document.querySelector('aside nav');
+                if (nav) {
+                    const observer = new MutationObserver(() => {
+                        const allActive = nav.querySelectorAll('.sidebar-link.active');
+                        if (allActive.length > 1) {
+                            const lastActive = allActive[allActive.length - 1];
+                            allActive.forEach(el => {
+                                if (el !== lastActive) el.classList.remove('active');
+                            });
+                        }
+                    });
+                    observer.observe(nav, { attributes: true, subtree: true, attributeFilter: ['class'] });
+                }
+            });
+        })();
+    </script>
+
+    <!-- Service Worker — مرة واحدة بس -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                    .then(() => console.log('[SW] Registered ✓'))
+                    .catch(err => console.warn('[SW] Error:', err));
+            });
+        }
+    </script>
+
+</body>
+</html>
