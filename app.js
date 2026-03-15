@@ -1861,6 +1861,14 @@ window.switchReportTab = function(tab) {
     if (tab === 'monthly') renderMonthlyReport();
 };
 
+// ✅ Edge-safe: attach tab click handlers via JS not inline onclick
+document.addEventListener('DOMContentLoaded', function() {
+    const btnOverview = document.getElementById('repTab-overview');
+    const btnMonthly  = document.getElementById('repTab-monthly');
+    if (btnOverview) btnOverview.addEventListener('click', function() { window.switchReportTab('overview'); });
+    if (btnMonthly)  btnMonthly.addEventListener('click',  function() { window.switchReportTab('monthly'); });
+});
+
 window.renderMonthlyReport = async function() {
     // استخدم الـ cache لو متاح
     const c = window._appCache;
