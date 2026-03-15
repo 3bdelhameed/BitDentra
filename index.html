@@ -1049,8 +1049,8 @@
                 </div>
                 <!-- Tabs -->
                 <div class="flex gap-1 mb-5 border-b border-gray-200">
-                    <button onclick="switchReportTab('overview')" id="repTab-overview" class="px-4 py-2 text-sm font-semibold border-b-2 border-blue-600 text-blue-600 -mb-px transition"><i class="fa-solid fa-chart-bar mr-1"></i> نظرة عامة</button>
-                    <button onclick="switchReportTab('monthly')" id="repTab-monthly" class="px-4 py-2 text-sm font-semibold border-b-2 border-transparent text-gray-400 -mb-px transition hover:text-blue-500"><i class="fa-solid fa-calendar-days mr-1"></i> تقرير الأشهر</button>
+                    <button id="repTab-overview" class="px-4 py-2 text-sm font-semibold border-b-2 border-blue-600 text-blue-600 -mb-px transition"><i class="fa-solid fa-chart-bar mr-1"></i> نظرة عامة</button>
+                    <button id="repTab-monthly" class="px-4 py-2 text-sm font-semibold border-b-2 border-transparent text-gray-400 -mb-px transition hover:text-blue-500"><i class="fa-solid fa-calendar-days mr-1"></i> تقرير الأشهر</button>
                 </div>
                 <!-- Overview Panel -->
                 <div id="repPanel-overview">
@@ -2031,6 +2031,24 @@
     <script src="patient_child_feature.js"></script>
     <script src="user_header_patch.js"></script>
     <script src="notifications_fix.js"></script>
+
+    <!-- ══ REPORT TABS ══ -->
+    <script>
+    window.switchReportTab = function(tab) {
+        ['overview','monthly'].forEach(function(name) {
+            var panel = document.getElementById('repPanel-' + name);
+            var btn   = document.getElementById('repTab-' + name);
+            if (!panel || !btn) return;
+            var active = name === tab;
+            panel.style.display = active ? 'block' : 'none';
+            btn.classList.toggle('border-blue-600', active);
+            btn.classList.toggle('text-blue-600',   active);
+            btn.classList.toggle('border-transparent', !active);
+            btn.classList.toggle('text-gray-400',   !active);
+        });
+        if (tab === 'monthly' && typeof window.renderMonthlyReport === 'function') window.renderMonthlyReport();
+    };
+    </script>
 
     <!-- ══ NAV ACTIVE FIX ══ -->
     <script>
