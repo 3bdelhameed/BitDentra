@@ -136,6 +136,19 @@
     async function dexieUpsert(table, data) {
         const store = getDexieStore(table);
         if (!store) {
+            // ✅ FIX: جرّب direct db access كـ fallback
+            try {
+                const dStore = TABLE_TO_DEXIE[table] || table;
+                const directStore = window.db && window.db[dStore];
+                if (directStore && !directStore._noopProxy) {
+                    if (Array.isArray(data)) {
+                        if (data.length) await directStore.bulkPut(data);
+                    } else if (data && typeof data === 'object') {
+                        await directStore.put(data);
+                    }
+                    return;
+                }
+            } catch (e2) { /* silent */ }
             console.warn('[Offline] dexieUpsert: store not found for', table, '– data will be missed', data);
             return;
         }
@@ -225,10 +238,38 @@
         const failed  = [];
         let   synced  = 0;
 
+        // ✅ FIX: خريطة تحويل الـ tempIds للـ real IDs بعد الـ insert
+        // مثال: { 'patients': { 1703123456789: 42 } }
+        const idRemap = {};
+
+        // ── دالة مساعدة: حوّل الـ tempIds في أي object ──────────────
+        function remapIds(data) {
+            if (!data || typeof data !== 'object') return data;
+            const out = { ...data };
+            // حوّل patient_id
+            if (out.patient_id && idRemap['patients'] && idRemap['patients'][String(out.patient_id)]) {
+                out.patient_id = idRemap['patients'][String(out.patient_id)];
+            }
+            // حوّل treatment_id
+            if (out.treatment_id && idRemap['treatments'] && idRemap['treatments'][String(out.treatment_id)]) {
+                out.treatment_id = idRemap['treatments'][String(out.treatment_id)];
+            }
+            // حوّل appointment_id
+            if (out.appointment_id && idRemap['appointments'] && idRemap['appointments'][String(out.appointment_id)]) {
+                out.appointment_id = idRemap['appointments'][String(out.appointment_id)];
+            }
+            return out;
+        }
+
         for (const op of q) {
             try {
                 if (op.action === 'insert') {
-                    const { id: _localId, _localOnly, _pendingSync, _pendingOp, ...cleanData } = op.data || {};
+                    let opData = op.data || {};
+
+                    // ✅ FIX: حوّل الـ tempIds في البيانات قبل الـ insert
+                    opData = remapIds(opData);
+
+                    const { id: _localId, _localOnly, _pendingSync, _pendingOp, ...cleanData } = opData;
 
                     // ✅ FIX: تحقق أولاً إن السجل مش موجود بالفعل في Supabase (منع duplicate)
                     let inserted = null;
@@ -260,17 +301,46 @@
                     }
 
                     if (inserted && inserted.id) {
-                        // ✅ FIX: احذف الـ local record بالـ tempId واضيف الـ real record
-                        if (_localId) await dexieDelete(op.table, _localId);
-                        await dexieUpsert(op.table, { ...inserted, _localOnly: false });
+                        // ✅ FIX: سجّل الـ tempId → realId في الخريطة عشان نحوّل الـ references
+                        if (_localId && String(_localId) !== String(inserted.id)) {
+                            if (!idRemap[op.table]) idRemap[op.table] = {};
+                            idRemap[op.table][String(_localId)] = inserted.id;
+                            console.log(`[Offline] 🔑 ID remap: ${op.table} ${_localId} → ${inserted.id}`);
+
+                            // ✅ حدّث الـ Dexie: احذف الـ temp record وضيف الـ real record
+                            await dexieDelete(op.table, _localId);
+                            await dexieUpsert(op.table, { ...inserted, _localOnly: false });
+
+                            // ✅ حدّث أي records في Dexie بتشاور على الـ tempId
+                            // مثال: treatments بتشاور على patient_id القديم
+                            if (op.table === 'patients') {
+                                try {
+                                    const allTr = await dexieGetAll('treatments', {});
+                                    for (const tr of allTr) {
+                                        const pid = tr.patient_id || tr.patientId;
+                                        if (String(pid) === String(_localId)) {
+                                            await dexieUpsert('treatments', { ...tr, patient_id: inserted.id, patientId: inserted.id });
+                                        }
+                                    }
+                                    const allAppt = await dexieGetAll('appointments', {});
+                                    for (const a of allAppt) {
+                                        const pid = a.patient_id || a.patientId;
+                                        if (String(pid) === String(_localId)) {
+                                            await dexieUpsert('appointments', { ...a, patient_id: inserted.id, patientId: inserted.id });
+                                        }
+                                    }
+                                } catch(_) {}
+                            }
+                        } else {
+                            await dexieDelete(op.table, _localId);
+                            await dexieUpsert(op.table, { ...inserted, _localOnly: false });
+                        }
 
                         // ✅ FIX: حدّث الـ in-memory cache في session_payments.js
                         if (op.table === 'session_payments') {
                             try {
-                                // اشيل الـ temp record واضيف الـ real record
                                 if (window._spCacheRemove) window._spCacheRemove(_localId);
                                 if (window._spCacheAdd)    window._spCacheAdd({ ...inserted, _localOnly: false });
-                                // امسح من localStorage
                                 const ls = JSON.parse(localStorage.getItem('sp_pending_payments') || '[]');
                                 localStorage.setItem('sp_pending_payments',
                                     JSON.stringify(ls.filter(p => String(p.id) !== String(_localId))));
@@ -324,9 +394,11 @@
             if (typeof showToast === 'function') {
                 showToast(`✅ تمت المزامنة — ${synced} عملية`, 'success');
             }
-            // ✅ امسح الـ localStorage fallback لـ session_payments بعد الـ sync
             try { localStorage.removeItem('sp_pending_payments'); } catch(_) {}
-            // ✅ FIX: لو بروفايل المريض مفتوح → رفرش الدفعات بعد الـ sync
+            // امسح الـ localStorage backups بعد المزامنة
+            Object.keys(TABLE_TO_DEXIE).forEach(t => {
+                try { localStorage.removeItem('offline_backup_' + t); } catch(_) {}
+            });
             if (typeof window.renderSessionPayments === 'function' && window.currentProfilePatientId) {
                 setTimeout(() => window.renderSessionPayments(window.currentProfilePatientId), 300);
             }
@@ -366,7 +438,7 @@
     // ══════════════════════════════════════════════════════════════
     function wrapDbGetAll() {
         const orig = window.dbGetAll;
-        if (!orig || orig._v3Wrapped) return;
+        if (!orig || orig._offlineV3Done) return;
 
         window.dbGetAll = async function (table, filters) {
             // ✅ أوف لاين → Dexie مع filtering صح
@@ -415,6 +487,7 @@
             }
         };
         window.dbGetAll._v3Wrapped = true;
+        window.dbGetAll._offlineV3Done = true;
         window.dbGetAll._offlineFirstWrapped = true;
         console.log('[Offline] ✓ dbGetAll wrapped (v3.2 with offline filtering)');
     }
@@ -424,45 +497,82 @@
     // ══════════════════════════════════════════════════════════════
     function wrapDbInsert() {
         const orig = window.dbInsert;
-        if (!orig || orig._v3Wrapped) return;
+        if (!orig || orig._offlineV3Done) return;
 
         window.dbInsert = async function (table, data) {
             const sbOk = window._sbReady
                 ? (typeof window._sbReady === 'function' ? window._sbReady() : !!window._sbReady)
                 : false;
 
+            // ── helper: احفظ في localStorage كـ emergency backup ──────
+            function lsBackup(record) {
+                try {
+                    const key = 'offline_backup_' + table;
+                    const existing = JSON.parse(localStorage.getItem(key) || '[]');
+                    const idx = existing.findIndex(r => String(r.id) === String(record.id));
+                    if (idx >= 0) existing[idx] = record;
+                    else existing.push(record);
+                    localStorage.setItem(key, JSON.stringify(existing));
+                } catch(e) {}
+            }
+
+            // ✅ FIX: offline إذا مفيش نت أو Supabase مش جاهز
             if (!navigator.onLine || !sbOk || !window._sb) {
                 const tempId = Date.now();
-                await dexieUpsert(table, { ...data, id: tempId, _localOnly: true });
+                const record = { ...data, id: tempId, _localOnly: true };
+                await dexieUpsert(table, record);
+                lsBackup(record);
                 addToQueue('insert', table, { ...data, id: tempId });
                 if (typeof showToast === 'function') showToast('💾 حُفظ محلياً — سيُزامَن عند عودة الاتصال', 'warning');
                 updateBadge();
                 return { ...data, id: tempId, _offline: true };
             }
 
+            // ✅ FIX: أون لاين — احفظ في Dexie+localStorage فوراً (حماية من انقطاع النت)
+            const tempId = Date.now();
+            const record = { ...data, id: tempId, _localOnly: true };
+            await dexieUpsert(table, record);
+            lsBackup(record);
+            addToQueue('insert', table, { ...data, id: tempId });
+
             try {
                 const { _localOnly, _pendingSync, _pendingOp, ...cleanData } = data;
-                const { data: inserted, error } = await window._sb
+
+                // ✅ FIX: timeout 8 ثواني على الـ Supabase request
+                const insertPromise = window._sb
                     .from(table)
                     .insert(cleanData)
                     .select()
                     .single();
+                const timeoutPromise = new Promise((_, rej) =>
+                    setTimeout(() => rej(new Error('insert_timeout')), 8000)
+                );
+
+                const { data: inserted, error } = await Promise.race([insertPromise, timeoutPromise]);
                 if (error) throw error;
+
+                // نجح الـ insert → امسح الـ temp record من Dexie والـ queue والـ localStorage
+                await dexieDelete(table, tempId);
+                try { localStorage.removeItem('offline_backup_' + table); } catch(e) {}
+                const q = getQueue().filter(op => !(op.table === table && op.id === tempId));
+                saveQueue(q);
                 await dexieUpsert(table, { ...inserted, _localOnly: false });
                 return inserted;
+
             } catch (e) {
-                console.warn('[Offline] dbInsert failed, queuing:', e.message);
-                const tempId = Date.now();
-                await dexieUpsert(table, { ...data, id: tempId, _localOnly: true });
-                addToQueue('insert', table, { ...data, id: tempId });
+                // فشل الـ insert → الـ temp record محفوظ بالفعل في Dexie + localStorage + queue
+                if (e.message !== 'insert_timeout') {
+                    console.warn('[Offline] dbInsert failed, queued:', e.message);
+                }
                 if (typeof showToast === 'function') showToast('💾 حُفظ محلياً — سيُزامَن عند عودة الاتصال', 'warning');
                 updateBadge();
                 return { ...data, id: tempId, _queued: true };
             }
         };
         window.dbInsert._v3Wrapped = true;
+        window.dbInsert._offlineV3Done = true;
         window.dbInsert._offlineFirstWrapped = true;
-        console.log('[Offline] ✓ dbInsert wrapped (v3.2)');
+        console.log('[Offline] ✓ dbInsert wrapped (v3.3 — instant save)');
     }
 
     // ══════════════════════════════════════════════════════════════
@@ -470,11 +580,19 @@
     // ══════════════════════════════════════════════════════════════
     function wrapDbUpdate() {
         const orig = window.dbUpdate;
-        if (!orig || orig._v3Wrapped) return;
+        if (!orig || orig._offlineV3Done) return;
 
         window.dbUpdate = async function (table, id, data) {
             const { _localOnly, _pendingSync, _pendingOp, ...cleanData } = data || {};
-            await dexieUpsert(table, { ...cleanData, id });
+
+            // ✅ FIX: استخدم .update() مش .put() عشان نحدّث الـ fields بس من غير ما نمسح الباقي
+            try {
+                const dStore = TABLE_TO_DEXIE[table] || table;
+                const store = window.db && window.db[dStore];
+                if (store && !store._noopProxy) {
+                    await store.update(id, cleanData);
+                }
+            } catch (e) { /* silent */ }
 
             const sbOk = window._sbReady
                 ? (typeof window._sbReady === 'function' ? window._sbReady() : !!window._sbReady)
@@ -487,19 +605,28 @@
             }
 
             try {
-                const { error } = await window._sb.from(table).update(cleanData).eq('id', id);
+                // ✅ FIX: timeout 8 ثواني
+                const updatePromise = window._sb.from(table).update(cleanData).eq('id', id);
+                const timeoutPromise = new Promise((_, rej) =>
+                    setTimeout(() => rej(new Error('update_timeout')), 8000)
+                );
+                const { error } = await Promise.race([updatePromise, timeoutPromise]);
                 if (error) throw error;
                 return { data: cleanData, _updated: true };
             } catch (e) {
-                console.warn('[Offline] dbUpdate failed, queuing:', e.message);
+                if (e.message !== 'update_timeout') {
+                    console.warn('[Offline] dbUpdate failed, queued:', e.message);
+                }
                 addToQueue('update', table, cleanData, id);
                 if (typeof showToast === 'function') showToast('💾 حُفظ محلياً — سيُزامن لاحقاً', 'warning');
+                updateBadge();
                 return { data: cleanData, _queued: true };
             }
         };
         window.dbUpdate._v3Wrapped = true;
+        window.dbUpdate._offlineV3Done = true;
         window.dbUpdate._offlineFirstWrapped = true;
-        console.log('[Offline] ✓ dbUpdate wrapped (v3.2)');
+        console.log('[Offline] ✓ dbUpdate wrapped (v3.3 — safe partial update)');
     }
 
     // ══════════════════════════════════════════════════════════════
@@ -507,13 +634,14 @@
     // ══════════════════════════════════════════════════════════════
     function wrapDbDelete() {
         const orig = window.dbDelete;
-        if (!orig || orig._v3Wrapped) return;
+        if (!orig || orig._offlineV3Done) return;
 
         window.dbDelete = async function (table, id) {
             if (id == null) {
                 console.error('[Offline] dbDelete called without id for table', table);
             }
 
+            // ✅ FIX: احذف من Dexie فوراً
             await dexieDelete(table, id);
 
             const sbOk = window._sbReady
@@ -526,23 +654,34 @@
                 if (typeof showToast === 'function') {
                     showToast('💾 تم الحذف محلياً — سيُزامن لاحقاً', 'warning');
                 }
+                updateBadge();
                 return { _offline: true };
             }
 
             try {
-                return await orig(table, id);
+                // ✅ FIX: timeout 8 ثواني
+                const deletePromise = window._sb.from(table).delete().eq('id', id);
+                const timeoutPromise = new Promise((_, rej) =>
+                    setTimeout(() => rej(new Error('delete_timeout')), 8000)
+                );
+                await Promise.race([deletePromise, timeoutPromise]);
+                return { _deleted: true };
             } catch (e) {
-                console.warn('[Offline] dbDelete failed, queuing:', e.message);
+                if (e.message !== 'delete_timeout') {
+                    console.warn('[Offline] dbDelete failed, queued:', e.message);
+                }
                 addToQueue('delete', table, null, id);
                 if (typeof showToast === 'function') {
                     showToast('💾 خطأ أثناء الحذف — سيتم إعادة المحاولة', 'warning');
                 }
+                updateBadge();
                 return { _queued: true };
             }
         };
         window.dbDelete._v3Wrapped = true;
+        window.dbDelete._offlineV3Done = true;
         window.dbDelete._offlineFirstWrapped = true;
-        console.log('[Offline] ✓ dbDelete wrapped (v3.2)');
+        console.log('[Offline] ✓ dbDelete wrapped (v3.3 — instant save)');
     }
 
     // ══════════════════════════════════════════════════════════════
@@ -550,25 +689,62 @@
     // ══════════════════════════════════════════════════════════════
     function wrapDbUpsert() {
         const orig = window.dbUpsert;
-        if (!orig || orig._v3Wrapped) return;
+        if (!orig || orig._offlineV3Done) return;
 
         window.dbUpsert = async function (table, data, conflictCols) {
-            await dexieUpsert(table, data);
+            // ✅ FIX: للـ tooth_states ابحث عن record موجود وحدّثه بدل put جديد
+            try {
+                const dStore = TABLE_TO_DEXIE[table] || table;
+                const store = window.db && window.db[dStore];
+                if (store && !store._noopProxy) {
+                    if (table === 'tooth_states') {
+                        const patId  = data.patient_id || data.patientId;
+                        const toothN = data.tooth_number || data.toothNumber;
+                        const all    = await store.toArray();
+                        const existing = all.find(r =>
+                            String(r.patient_id || r.patientId) === String(patId) &&
+                            String(r.tooth_number || r.toothNumber) === String(toothN)
+                        );
+                        if (existing) {
+                            await store.update(existing.id, data);
+                        } else {
+                            await store.put({ ...data });
+                        }
+                    } else {
+                        await store.put(data);
+                    }
+                }
+            } catch (e) { /* silent */ }
 
             if (!navigator.onLine) {
                 addToQueue('insert', table, data);
+                updateBadge();
                 return { data, _offline: true };
             }
 
-            try {
-                return await orig(table, data, conflictCols);
-            } catch (e) {
+            // ✅ FIX: ابعت لـ Supabase في الخلفية بدون await — الـ UI يتحدث فوراً
+            const sbOk = window._sbReady
+                ? (typeof window._sbReady === 'function' ? window._sbReady() : !!window._sbReady)
+                : false;
+
+            if (sbOk && window._sb) {
+                orig(table, data, conflictCols)
+                    .then(() => {})
+                    .catch(() => {
+                        addToQueue('insert', table, data);
+                        updateBadge();
+                    });
+            } else {
                 addToQueue('insert', table, data);
-                return { data, _queued: true };
+                updateBadge();
             }
+
+            return { data, _localFirst: true };
         };
         window.dbUpsert._v3Wrapped = true;
+        window.dbUpsert._offlineV3Done = true;
         window.dbUpsert._offlineFirstWrapped = true;
+        console.log('[Offline] ✓ dbUpsert wrapped (v3.3 — smart tooth_states)');
     }
 
     // ══════════════════════════════════════════════════════════════
@@ -794,7 +970,11 @@
             return;
         }
 
+        // ✅ FIX: زامن الـ queue الأول وانتظر يخلص قبل أي refresh
         await syncQueue();
+
+        // ✅ استنى شوية إضافية بعد syncQueue عشان Supabase يثبّت البيانات
+        await new Promise(r => setTimeout(r, 800));
 
         const remaining = getQueue();
         if (remaining.length === 0) {
@@ -875,6 +1055,20 @@
             waited++;
         }
 
+        // ✅ FIX: استرجع أي بيانات محفوظة في localStorage backups لـ Dexie
+        // (في حالة الصفحة اتفتحت من جديد بعد حفظ أوف لاين)
+        try {
+            for (const table of Object.keys(TABLE_TO_DEXIE)) {
+                const key = 'offline_backup_' + table;
+                const backed = JSON.parse(localStorage.getItem(key) || '[]');
+                for (const record of backed) {
+                    if (record._localOnly) {
+                        await dexieUpsert(table, record).catch(() => {});
+                    }
+                }
+            }
+        } catch(e) {}
+
         wrapDbGetAll();
         wrapDbInsert();
         wrapDbUpdate();
@@ -946,8 +1140,49 @@
     window._offlineDebug = () => ({
         queue:   getQueue(),
         online:  navigator.onLine,
+        sbReady: !!(window._sbReady && (typeof window._sbReady === 'function' ? window._sbReady() : window._sbReady)),
         syncing: _isSyncing,
+        dbInsertWrapped: !!(window.dbInsert?._v3Wrapped),
     });
+
+    // ── 🔍 Diagnostic tool — اضغط 3 مرات على أيقونة الـ sync ──────
+    window._showOfflineDiag = function() {
+        const q = getQueue();
+        const lsKeys = Object.keys(localStorage).filter(k => k.startsWith('offline_backup_'));
+        const backups = lsKeys.map(k => {
+            try { return `${k.replace('offline_backup_','')}: ${JSON.parse(localStorage.getItem(k)||'[]').length} records`; }
+            catch(e) { return k; }
+        });
+        const sbOk = !!(window._sbReady && (typeof window._sbReady === 'function' ? window._sbReady() : window._sbReady));
+        const msg = [
+            '🔍 OFFLINE DIAGNOSTIC',
+            '─────────────────────',
+            `🌐 navigator.onLine: ${navigator.onLine}`,
+            `🔌 Supabase Ready: ${sbOk}`,
+            `💾 _sb client: ${!!window._sb}`,
+            `🔄 Syncing: ${_isSyncing}`,
+            `⛓️ dbInsert wrapped: ${!!(window.dbInsert?._offlineV3Done)}`,
+            '',
+            `📋 Queue (${q.length}):`,
+            ...q.slice(0,10).map((op,i) => `  ${i+1}. ${op.action} ${op.table} id=${op.id||'?'}`),
+            q.length > 10 ? `  ... +${q.length-10} more` : '',
+            '',
+            `💽 LS Backups: ${backups.length ? backups.join(', ') : 'none'}`,
+        ].filter(x => x !== undefined).join('\n');
+        alert(msg);
+    };
+
+    function attachDiagTrigger() {
+        const badge = document.getElementById('offlineBadge');
+        if (!badge) { setTimeout(attachDiagTrigger, 2000); return; }
+        let clicks = 0;
+        badge.addEventListener('click', () => {
+            clicks++;
+            if (clicks >= 3) { clicks = 0; window._showOfflineDiag(); }
+            setTimeout(() => { clicks = 0; }, 2000);
+        });
+    }
+    setTimeout(attachDiagTrigger, 2000);
 
     if (document.readyState !== 'loading') {
         setTimeout(init, 150);

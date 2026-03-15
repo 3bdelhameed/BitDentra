@@ -738,14 +738,14 @@
                         </div>
                         <div class="w-10 h-10 bg-blue-50 text-blue-500 rounded-xl flex items-center justify-center"><i class="fa-solid fa-users"></i></div>
                     </div>
-                    <div class="stat-card border-l-4 border-l-green-500">
+                    <div class="stat-card border-l-4 border-l-green-500 cursor-pointer hover:shadow-md transition" onclick="showTodayRevenueModal()">
                         <div>
                             <h3 class="text-2xl font-bold text-gray-800" id="todayRevenue">0</h3>
                             <p class="text-gray-400 text-xs mt-1 font-medium" data-t="dash.todayRevenue">Today's Revenue</p>
                         </div>
                         <div class="w-10 h-10 bg-green-50 text-green-500 rounded-xl flex items-center justify-center"><i class="fa-solid fa-arrow-trend-up"></i></div>
                     </div>
-                    <div class="stat-card border-l-4 border-l-red-400">
+                    <div class="stat-card border-l-4 border-l-red-400 cursor-pointer hover:shadow-md transition" onclick="showTodayExpensesModal()">
                         <div>
                             <h3 class="text-2xl font-bold text-gray-800" id="todayExpenses">0</h3>
                             <p class="text-gray-400 text-xs mt-1 font-medium" data-t="dash.todayExpenses">Today's Expenses</p>
@@ -1047,30 +1047,49 @@
                         <button onclick="exportBackup()" class="btn btn-outline text-xs"><i class="fa-solid fa-download"></i> Backup JSON</button>
                     </div>
                 </div>
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5" id="reportKpis"></div>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
-                    <div class="bg-white rounded-xl border border-gray-100 p-5">
-                        <h3 class="font-bold text-gray-800 mb-3 text-sm flex items-center gap-2"><i class="fa-solid fa-chart-line text-blue-500"></i> Monthly Revenue (Last 6 months)</h3>
-                        <canvas id="revenueChart" height="180"></canvas>
-                    </div>
-                    <div class="bg-white rounded-xl border border-gray-100 p-5">
-                        <h3 class="font-bold text-gray-800 mb-3 text-sm flex items-center gap-2"><i class="fa-solid fa-chart-pie text-indigo-500"></i> Treatment Breakdown</h3>
-                        <canvas id="treatmentChart" height="180"></canvas>
-                    </div>
+                <!-- Tabs -->
+                <div class="flex gap-1 mb-5 border-b border-gray-200">
+                    <button onclick="switchReportTab('overview')" id="repTab-overview" class="px-4 py-2 text-sm font-semibold border-b-2 border-blue-600 text-blue-600 -mb-px transition"><i class="fa-solid fa-chart-bar mr-1"></i> نظرة عامة</button>
+                    <button onclick="switchReportTab('monthly')" id="repTab-monthly" class="px-4 py-2 text-sm font-semibold border-b-2 border-transparent text-gray-400 -mb-px transition hover:text-blue-500"><i class="fa-solid fa-calendar-days mr-1"></i> تقرير الأشهر</button>
                 </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
-                    <div class="bg-white rounded-xl border border-gray-100 p-5">
-                        <h3 class="font-bold text-gray-800 mb-4 border-b pb-2">Financial Summary</h3>
-                        <div id="financialReport" class="space-y-3"></div>
+                <!-- Overview Panel -->
+                <div id="repPanel-overview">
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5" id="reportKpis"></div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
+                        <div class="bg-white rounded-xl border border-gray-100 p-5">
+                            <h3 class="font-bold text-gray-800 mb-3 text-sm flex items-center gap-2"><i class="fa-solid fa-chart-line text-blue-500"></i> Monthly Revenue (Last 6 months)</h3>
+                            <canvas id="revenueChart" height="180"></canvas>
+                        </div>
+                        <div class="bg-white rounded-xl border border-gray-100 p-5">
+                            <h3 class="font-bold text-gray-800 mb-3 text-sm flex items-center gap-2"><i class="fa-solid fa-chart-pie text-indigo-500"></i> Treatment Breakdown</h3>
+                            <canvas id="treatmentChart" height="180"></canvas>
+                        </div>
                     </div>
-                    <div class="bg-white rounded-xl border border-gray-100 p-5">
-                        <h3 class="font-bold text-gray-800 mb-4 border-b pb-2">Patient Statistics</h3>
-                        <div id="patientReport" class="space-y-3"></div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
+                        <div class="bg-white rounded-xl border border-gray-100 p-5">
+                            <h3 class="font-bold text-gray-800 mb-4 border-b pb-2">Financial Summary</h3>
+                            <div id="financialReport" class="space-y-3"></div>
+                        </div>
+                        <div class="bg-white rounded-xl border border-gray-100 p-5">
+                            <h3 class="font-bold text-gray-800 mb-4 border-b pb-2">Patient Statistics</h3>
+                            <div id="patientReport" class="space-y-3"></div>
+                        </div>
                     </div>
+                    <div class="bg-white rounded-xl border border-gray-100 p-5 mb-5">
+                        <h3 class="font-bold text-gray-800 mb-4 border-b pb-2">Outstanding Debts</h3>
+                        <div id="debtReport"></div>
+                    </div>
+                    <div id="dailyProfitCard"></div>
                 </div>
-                <div class="bg-white rounded-xl border border-gray-100 p-5">
-                    <h3 class="font-bold text-gray-800 mb-4 border-b pb-2">Outstanding Debts</h3>
-                    <div id="debtReport"></div>
+                <!-- Monthly Panel -->
+                <div id="repPanel-monthly" style="display:none">
+                    <div class="bg-white rounded-xl border border-gray-100 p-5">
+                        <div class="flex items-center justify-between mb-4 border-b pb-3">
+                            <h3 class="font-bold text-gray-800 flex items-center gap-2"><i class="fa-solid fa-calendar-days text-blue-500"></i> تقرير الأرباح — كل الأشهر</h3>
+                            <select id="monthlyReportYear" class="border border-gray-200 rounded-xl px-3 py-1.5 text-sm" onchange="renderMonthlyReport()"></select>
+                        </div>
+                        <div id="monthlyReportBody"></div>
+                    </div>
                 </div>
             </div>
 
@@ -1953,6 +1972,36 @@
         <img id="enlargedXray" src="" class="max-w-[90vw] max-h-[90vh] rounded-xl shadow-2xl">
     </div>
 
+    <!-- Today Revenue Details Modal -->
+    <div id="todayRevenueModal" class="modal-base">
+        <div class="modal-box max-w-lg">
+            <div class="flex justify-between items-center mb-5 border-b pb-3">
+                <h3 class="text-lg font-bold flex items-center gap-2"><i class="fa-solid fa-arrow-trend-up text-green-500"></i> إيرادات اليوم</h3>
+                <button onclick="closeModal('todayRevenueModal')" class="text-gray-300 hover:text-red-400 text-xl w-7 h-7 flex items-center justify-center"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div id="todayRevenueModalBody"><p class="text-center text-gray-400 py-8">جاري التحميل...</p></div>
+            <div class="mt-4 pt-3 border-t flex justify-between items-center">
+                <span class="text-sm text-gray-500 font-semibold">الإجمالي</span>
+                <span id="todayRevenueModalTotal" class="text-xl font-black text-green-600">0</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Today Expenses Details Modal -->
+    <div id="todayExpensesModal" class="modal-base">
+        <div class="modal-box max-w-lg">
+            <div class="flex justify-between items-center mb-5 border-b pb-3">
+                <h3 class="text-lg font-bold flex items-center gap-2"><i class="fa-solid fa-arrow-trend-down text-red-400"></i> مصروفات اليوم</h3>
+                <button onclick="closeModal('todayExpensesModal')" class="text-gray-300 hover:text-red-400 text-xl w-7 h-7 flex items-center justify-center"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div id="todayExpensesModalBody"><p class="text-center text-gray-400 py-8">جاري التحميل...</p></div>
+            <div class="mt-4 pt-3 border-t flex justify-between items-center">
+                <span class="text-sm text-gray-500 font-semibold">الإجمالي</span>
+                <span id="todayExpensesModalTotal" class="text-xl font-black text-red-500">0</span>
+            </div>
+        </div>
+    </div>
+
     <!-- Toast -->
     <div id="toast" class="toast"></div>
 
@@ -1960,7 +2009,6 @@
     <script src="supabase-config.js"></script>
     <script src="dental-chart.js"></script>
     <script src="logo_patch.js"></script>
-    <script src="startup_preload.js"></script>
     <script src="app.js"></script>
     <script src="local_db.js"></script>
     <script src="session_payments.js"></script>
@@ -1975,6 +2023,7 @@
     <script src="tooth_picker_patch.js"></script>
     <script src="med_history_patch.js"></script>
     <script src="offline_first_patch.js"></script>
+    <script src="startup_preload.js"></script>
     <script src="doctors_and_patient_fix.js"></script>
     <script src="user_management.js"></script>
     <script src="offline_profile_fix.js"></script>

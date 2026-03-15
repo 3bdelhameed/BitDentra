@@ -1257,7 +1257,7 @@ window.showCalDay = async function(dateStr) {
     list.innerHTML = appts.map(a => {
         const sc = { Waiting:'bg-orange-100 text-orange-600', Inside:'bg-blue-100 text-blue-600', Examined:'bg-green-100 text-green-600', Cancelled:'bg-red-100 text-red-600' }[a.status] || 'bg-gray-100 text-gray-600';
         return `<div class="flex items-center justify-between py-2 border-b border-gray-50 text-sm">
-            <div><span class="font-bold text-blue-600 mr-2">${a.time}</span><span class="font-semibold">${a.patientName}</span><span class="text-gray-400 ml-2 text-xs">${a.doctor}</span>${a.complaint ? `<span class="text-gray-400 ml-2 text-xs">— ${a.complaint}</span>` : ''}</div>
+            <div><span class="font-bold text-blue-600 mr-2">${a.time}</span><span class="font-semibold">${a.patient_name||a.patientName||''}</span><span class="text-gray-400 ml-2 text-xs">${a.doctor}</span>${a.complaint ? `<span class="text-gray-400 ml-2 text-xs">— ${a.complaint}</span>` : ''}</div>
             <span class="badge ${sc}">${t('appts.' + a.status.toLowerCase())}</span>
         </div>`;
     }).join('') + `<button onclick="prefillApptDate('${dateStr}')" class="btn btn-green text-xs mt-3"><i class="fa-solid fa-plus"></i> ${t('cal.addAppt')}</button>`;
@@ -1650,16 +1650,21 @@ window.confirmDeleteAll = function() {
 
 // ── 20. BACKUP ───────────────────────────
 window.exportBackup = async function() {
+    const safeGet = async (tbl) => { try { return await dbGetAll(tbl); } catch(e) { return []; } };
     const data = {
-        patients:      await dbGetAll('patients'),
-        appointments:  await dbGetAll('appointments'),
-        treatments:    await dbGetAll('treatments'),
-        expenses:      await dbGetAll('expenses'),
-        prescriptions: await dbGetAll('prescriptions'),
-        toothStates:   await db.toothStates.toArray(),
-        patientNotes:  await db.patientNotes.toArray(),
-        invoices:      await dbGetAll('invoices'),
-        exportedAt:    new Date().toISOString()
+        patients:      await safeGet('patients'),
+        appointments:  await safeGet('appointments'),
+        treatments:    await safeGet('treatments'),
+        expenses:      await safeGet('expenses'),
+        prescriptions: await safeGet('prescriptions'),
+        toothStates:   await db.toothStates.toArray().catch(()=>[]),
+        patientNotes:  await db.patientNotes.toArray().catch(()=>[]),
+        invoices:      await safeGet('invoices'),
+        labOrders:     await safeGet('lab_orders'),
+        inventory:     await safeGet('inventory'),
+        doctors:       await safeGet('doctors'),
+        exportedAt:    new Date().toISOString(),
+        profitRatios:  getProfitRatios(),
     };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const a = document.createElement('a');
@@ -1675,11 +1680,30 @@ window.importBackup = async function(event) {
     if (!confirm(t('confirm.importBackup'))) return;
     const text = await file.text();
     const data = JSON.parse(text);
-    const tables = ['patients','appointments','treatments','expenses','prescriptions','toothStates','patientNotes'];
-    for (const tbl of tables) {
-        if (data[tbl] && data[tbl].length > 0) {
-            const rows = data[tbl].map(r => { const {id, ...rest} = r; return rest; });
-            await db[tbl].bulkAdd(rows);
+
+    if (data.profitRatios) {
+        localStorage.setItem(PROFIT_RATIOS_KEY, JSON.stringify(data.profitRatios));
+    }
+
+    const TABLE_RESTORE_MAP = {
+        patients:      'patients',
+        appointments:  'appointments',
+        treatments:    'treatments',
+        expenses:      'expenses',
+        prescriptions: 'prescriptions',
+        toothStates:   'toothStates',
+        patientNotes:  'patientNotes',
+        invoices:      'invoices',
+        labOrders:     'labOrders',
+        inventory:     'inventory',
+        doctors:       'doctors',
+    };
+    for (const [key, tbl] of Object.entries(TABLE_RESTORE_MAP)) {
+        if (data[key] && data[key].length > 0) {
+            try {
+                const rows = data[key].map(r => { const {id, ...rest} = r; return rest; });
+                await db[tbl].bulkAdd(rows);
+            } catch(e) { console.warn(`[importBackup] failed: ${tbl}`, e.message); }
         }
     }
     showToast(t('toast.backupImported'));
@@ -1752,6 +1776,149 @@ async function updateDashboard() {
         }).join('');
     }
 }
+
+// ── 21.2 TODAY REVENUE MODAL ─────────────
+window.showTodayRevenueModal = async function() {
+    const todayStr = today();
+    const curr     = getCurrency();
+    // استخدم الـ cache لو متاح (أسرع) وإلا اقرأ من DB
+    const c = window._appCache;
+    const treatments = (c && c.loaded && c.treatments) ? c.treatments : await dbGetAll('treatments');
+    const todayTr  = treatments.filter(tr => tr.date === todayStr && parseFloat(tr.paid||0) > 0);
+    const body     = document.getElementById('todayRevenueModalBody');
+    const totalEl  = document.getElementById('todayRevenueModalTotal');
+    let sum = 0;
+    todayTr.forEach(tr => { sum += parseFloat(tr.paid)||0; });
+    totalEl.innerText = `${sum} ${curr}`;
+    if (todayTr.length === 0) {
+        body.innerHTML = `<div class="text-center py-10 text-gray-300"><i class="fa-solid fa-receipt text-5xl mb-3 block opacity-30"></i><p class="text-sm">لا توجد إيرادات اليوم</p></div>`;
+    } else {
+        const byPatient = {};
+        todayTr.forEach(tr => {
+            const pid = tr.patient_id || tr.patientId;
+            const pname = tr.patient_name || tr.patientName || 'غير معروف';
+            if (!byPatient[pid]) byPatient[pid] = { name: pname, id: pid, treatments: [] };
+            byPatient[pid].treatments.push(tr);
+        });
+        body.innerHTML = `<div class="space-y-3 max-h-80 overflow-y-auto pr-1">${Object.values(byPatient).map(p => {
+            const pTotal = p.treatments.reduce((s,tr)=>s+(parseFloat(tr.paid)||0),0);
+            return `<div class="rounded-xl border border-gray-100 overflow-hidden">
+                <div class="flex items-center justify-between px-4 py-2.5 bg-green-50 border-b border-green-100 cursor-pointer hover:bg-green-100 transition" onclick="openPatientProfile(${p.id}); closeModal('todayRevenueModal');">
+                    <div class="flex items-center gap-2"><div class="w-7 h-7 rounded-lg bg-green-200 text-green-700 flex items-center justify-center text-xs font-bold">${p.name.charAt(0)}</div><span class="font-semibold text-sm text-gray-800">${p.name}</span></div>
+                    <span class="font-black text-green-600 text-sm">${pTotal} ${curr}</span>
+                </div>
+                ${p.treatments.map(tr => `<div class="flex justify-between items-center px-4 py-2 text-xs text-gray-600 border-b border-gray-50 last:border-0 bg-white">
+                    <span><i class="fa-solid fa-tooth text-blue-300 mr-1"></i>${tr.procedure}${(tr.tooth_number||tr.toothNumber)?` <span class="text-blue-400">#${tr.tooth_number||tr.toothNumber}</span>`:''}</span>
+                    <span class="font-semibold text-green-600">${tr.paid} ${curr}</span>
+                </div>`).join('')}
+            </div>`;
+        }).join('')}</div>`;
+    }
+    document.getElementById('todayRevenueModal').classList.add('open');
+};
+
+// ── 21.3 TODAY EXPENSES MODAL ────────────
+window.showTodayExpensesModal = async function() {
+    const todayStr = today();
+    const curr     = getCurrency();
+    // استخدم الـ cache لو متاح
+    const c = window._appCache;
+    const expenses = (c && c.loaded && c.expenses) ? c.expenses : await dbGetAll('expenses');
+    const todayExp = expenses.filter(e => e.date === todayStr);
+    const body     = document.getElementById('todayExpensesModalBody');
+    const totalEl  = document.getElementById('todayExpensesModalTotal');
+    let sum = 0;
+    todayExp.forEach(e => { sum += parseFloat(e.amount)||0; });
+    totalEl.innerText = `${sum} ${curr}`;
+    if (todayExp.length === 0) {
+        body.innerHTML = `<div class="text-center py-10 text-gray-300"><i class="fa-solid fa-file-invoice-dollar text-5xl mb-3 block opacity-30"></i><p class="text-sm">لا توجد مصروفات اليوم</p></div>`;
+    } else {
+        const CC = { Supplies:'bg-blue-50 text-blue-600', Rent:'bg-purple-50 text-purple-600', Salaries:'bg-yellow-50 text-yellow-700', Utilities:'bg-cyan-50 text-cyan-600', Equipment:'bg-indigo-50 text-indigo-600', Maintenance:'bg-orange-50 text-orange-600', lab:'bg-teal-50 text-teal-600', Other:'bg-gray-100 text-gray-600' };
+        body.innerHTML = `<div class="space-y-2 max-h-80 overflow-y-auto pr-1">${todayExp.map(e => {
+            const cat = e.category||'Other'; const cls = CC[cat]||CC['Other'];
+            return `<div class="flex items-center justify-between px-4 py-3 rounded-xl border border-gray-100 bg-white hover:bg-red-50 transition">
+                <div class="flex items-center gap-3"><span class="badge text-[11px] px-2.5 py-1 ${cls}">${cat}</span><span class="text-sm font-semibold text-gray-800">${e.item}</span></div>
+                <span class="font-black text-red-500 text-sm">${e.amount} ${curr}</span>
+            </div>`;
+        }).join('')}</div>`;
+    }
+    document.getElementById('todayExpensesModal').classList.add('open');
+};
+
+// ── 21.4 REPORT TABS ─────────────────────
+window.switchReportTab = function(tab) {
+    ['overview','monthly'].forEach(name => {
+        const panel = document.getElementById(`repPanel-${name}`);
+        const btn   = document.getElementById(`repTab-${name}`);
+        if (!panel || !btn) return;
+        const active = name === tab;
+        panel.style.display = active ? 'block' : 'none';
+        btn.classList.toggle('border-blue-600', active);
+        btn.classList.toggle('text-blue-600',   active);
+        btn.classList.toggle('border-transparent', !active);
+        btn.classList.toggle('text-gray-400',   !active);
+    });
+    if (tab === 'monthly') renderMonthlyReport();
+};
+
+window.renderMonthlyReport = async function() {
+    // استخدم الـ cache لو متاح
+    const c = window._appCache;
+    const treatments = (c && c.loaded && c.treatments) ? c.treatments : await dbGetAll('treatments');
+    const expenses   = (c && c.loaded && c.expenses)   ? c.expenses   : await dbGetAll('expenses');
+    const curr       = getCurrency();
+    const yearsSet   = new Set();
+    treatments.forEach(tr => { const y=(tr.date||'').slice(0,4); if(y) yearsSet.add(y); });
+    expenses.forEach(e  => { const y=(e.date||'').slice(0,4);  if(y) yearsSet.add(y); });
+    const years = [...yearsSet].sort((a,b)=>b-a);
+    const sel = document.getElementById('monthlyReportYear');
+    if (sel) {
+        const cur = sel.value || years[0] || String(new Date().getFullYear());
+        sel.innerHTML = years.map(y=>`<option value="${y}" ${y===cur?'selected':''}>${y}</option>`).join('');
+        if (!sel.value && years.length) sel.value = years[0];
+    }
+    const selectedYear = sel ? sel.value : (years[0] || String(new Date().getFullYear()));
+    const MONTHS = currentLang==='ar'
+        ? ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر']
+        : ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    const monthData = MONTHS.map((month, m) => {
+        const mStr = `${selectedYear}-${String(m+1).padStart(2,'0')}`;
+        const rev  = treatments.filter(tr=>(tr.date||'').startsWith(mStr)).reduce((s,tr)=>s+(parseFloat(tr.paid)||0),0);
+        const exp  = expenses.filter(e=>(e.date||'').startsWith(mStr)).reduce((s,e)=>s+(parseFloat(e.amount)||0),0);
+        return { month, rev, exp, net: rev-exp };
+    });
+    const totalRev = monthData.reduce((s,d)=>s+d.rev,0);
+    const totalExp = monthData.reduce((s,d)=>s+d.exp,0);
+    const maxRev   = Math.max(...monthData.map(d=>d.rev), 1);
+    document.getElementById('monthlyReportBody').innerHTML = `
+    <div class="overflow-x-auto"><table class="w-full text-sm">
+        <thead><tr class="bg-slate-50 text-gray-400 text-xs uppercase border-b">
+            <th class="text-right px-4 py-3">الشهر</th>
+            <th class="text-right px-4 py-3 text-green-600">الإيراد</th>
+            <th class="text-right px-4 py-3 text-red-400">المصروف</th>
+            <th class="text-right px-4 py-3 text-blue-600">صافي الربح</th>
+            <th class="px-4 py-3 w-36">نسبة الإيراد</th>
+        </tr></thead>
+        <tbody>${monthData.map(d => {
+            const pct = Math.round(d.rev/maxRev*100);
+            const hasData = d.rev>0||d.exp>0;
+            return `<tr class="border-b border-gray-50 ${hasData?'hover:bg-blue-50':'opacity-40'} transition">
+                <td class="px-4 py-3 font-semibold text-gray-700">${d.month}</td>
+                <td class="px-4 py-3 text-green-600 font-semibold">${d.rev>0?d.rev.toLocaleString()+' '+curr:'—'}</td>
+                <td class="px-4 py-3 text-red-400">${d.exp>0?d.exp.toLocaleString()+' '+curr:'—'}</td>
+                <td class="px-4 py-3 font-bold ${d.net>=0?'text-green-600':'text-red-500'}">${hasData?d.net.toLocaleString()+' '+curr:'—'}</td>
+                <td class="px-4 py-3"><div class="flex items-center gap-2"><div class="flex-1 bg-gray-100 rounded-full h-2 overflow-hidden"><div class="h-2 rounded-full ${d.rev>0?'bg-green-400':'bg-gray-200'}" style="width:${pct}%"></div></div><span class="text-[11px] text-gray-400 w-8">${pct}%</span></div></td>
+            </tr>`;
+        }).join('')}</tbody>
+        <tfoot><tr class="bg-slate-50 font-bold border-t-2 border-gray-200">
+            <td class="px-4 py-3 text-gray-700">الإجمالي</td>
+            <td class="px-4 py-3 text-green-700">${totalRev.toLocaleString()} ${curr}</td>
+            <td class="px-4 py-3 text-red-500">${totalExp.toLocaleString()} ${curr}</td>
+            <td class="px-4 py-3 ${(totalRev-totalExp)>=0?'text-green-700':'text-red-500'}">${(totalRev-totalExp).toLocaleString()} ${curr}</td>
+            <td></td>
+        </tr></tfoot>
+    </table></div>`;
+};
 
 // ── 21.5 PRINT PATIENT SHEET ──
 window.printPatientSheet = async function() {
@@ -2050,12 +2217,12 @@ window.checkReminders = async function() {
         return appts.map(a => `
             <div class="flex items-center justify-between py-2.5 border-b border-gray-50 last:border-0">
                 <div>
-                    <p class="font-semibold text-gray-700 text-sm">${a.patientName}</p>
+                    <p class="font-semibold text-gray-700 text-sm">${a.patient_name||a.patientName||''}</p>
                     <p class="text-xs text-gray-400">${a.time || '--:--'} ${a.complaint ? '· '+a.complaint : ''}</p>
                 </div>
                 <div class="flex items-center gap-2">
                     <span class="badge badge-${(a.status||'waiting').toLowerCase()}">${a.status||'Waiting'}</span>
-                    <button onclick="openPatientProfile(${a.patientId})" class="btn btn-outline text-xs px-2 py-1"><i class="fa-solid fa-user"></i></button>
+                    <button onclick="openPatientProfile(${a.patient_id||a.patientId})" class="btn btn-outline text-xs px-2 py-1"><i class="fa-solid fa-user"></i></button>
                 </div>
             </div>`).join('');
     };
@@ -2102,6 +2269,36 @@ window.exportExcel = async function() {
         invoices.forEach(i => iData.push([i.id, i.patient_name||i.patientName, i.date, i.total, i.paid, i.total-i.paid, i.status||'']));
         XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(iData), 'Invoices');
     }
+
+    try {
+        const labOrders = await dbGetAll('lab_orders');
+        if (labOrders.length) {
+            const lData = [['#','Patient','Lab','Work Type','Status','Due Date','Cost','Paid','Owed','Notes']];
+            labOrders.forEach(o => {
+                const cost = parseFloat(o.cost)||0;
+                const paid = parseFloat(o.paid_to_lab||o.paidToLab)||0;
+                lData.push([o.id, o.patient_name||o.patientName||'', o.lab_name||o.labName||'',
+                    o.work_type||o.workType||'', o.status||'', o.due_date||o.dueDate||'',
+                    cost, paid, Math.max(0,cost-paid), o.notes||'']);
+            });
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(lData), 'Lab Orders');
+        }
+    } catch(e) {}
+
+    try {
+        const inventory = await dbGetAll('inventory');
+        if (inventory.length) {
+            const invData = [['#','Item','Category','Qty','Min Qty','Unit','Unit Cost','Stock Value','Supplier','Expiry']];
+            inventory.forEach(item => {
+                const qty  = parseFloat(item.qty)||0;
+                const cost = parseFloat(item.unit_cost||item.unitCost)||0;
+                invData.push([item.id, item.name, item.category||'', qty,
+                    item.min_qty||item.minQty||0, item.unit||'',
+                    cost, (qty*cost).toFixed(2), item.supplier||'', item.expiry||'']);
+            });
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(invData), 'Inventory');
+        }
+    } catch(e) {}
 
     const totalRevenue = treatments.reduce((s,tr) => s+(parseFloat(tr.total_cost||tr.totalCost)||0), 0);
     const totalPaid    = treatments.reduce((s,tr) => s+(parseFloat(tr.paid)||0), 0);

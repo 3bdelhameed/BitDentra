@@ -93,12 +93,25 @@ async function initSupabase() {
         updateSyncBadge('online');
         console.log('[Supabase] ✓ Connected');
 
-        // refresh offline cache now that we have cloud access
+        // ✅ FIX: زامن الـ offline queue الأول قبل أي preload
+        // عشان البيانات المحلية توصل Supabase قبل ما نجيب منه
+        try {
+            if (typeof window.syncOfflineQueue === 'function') {
+                console.log('[Supabase] Syncing offline queue before preload...');
+                await window.syncOfflineQueue();
+                // استنى شوية عشان Supabase يثبّت البيانات
+                await new Promise(r => setTimeout(r, 500));
+            }
+        } catch(e) { console.warn('[Supabase] syncOfflineQueue failed:', e.message); }
+
+        // Upload _pendingSync records (supabase-config's own queue)
+        await uploadPendingRecords();
+
+        // بعد ما كل البيانات اترفعت، دلوقتي نجيب من Supabase
         if (typeof window.preloadAllData === 'function') {
             try {
                 await window.preloadAllData(true);
             } catch(e){ console.warn('[Supabase] preload after connect failed', e.message); }
-            // also update UI if dashboard visible
             if (typeof window.renderDashboardFromCache === 'function') {
                 window.renderDashboardFromCache();
             }
@@ -106,9 +119,6 @@ async function initSupabase() {
                 window.updateDashboard();
             }
         }
-
-        // Upload anything saved offline while we were disconnected
-        await uploadPendingRecords();
 
         startRealtimeListeners();
         return true;
