@@ -1350,39 +1350,85 @@ window.printPrescription = async function(id) {
     const rows = await dbGetAll('prescriptions');
     const p = rows.find(r => r.id == id);
     if (!p) return;
-    const pName = p.patient_name || p.patientName;
+    // ✅ FIX: يدعم snake_case و camelCase
+    const pName = p.patient_name || p.patientName || '—';
     const s = getSettings();
-    const win = window.open('', '_blank');
-    win.document.write(`
-        <html><head><title>Prescription</title>
-        <style>
-            body { font-family: serif; max-width: 680px; margin: 40px auto; padding: 20px; }
-            .header { text-align: center; border-bottom: 2px solid #333; padding-bottom: 15px; margin-bottom: 20px; }
-            h1 { font-size: 22px; margin: 0; } h2 { font-size: 14px; color: #666; margin: 4px 0; }
-            .rx { font-size: 36px; color: #1e40af; font-style: italic; }
-            .body { font-size: 14px; line-height: 1.8; white-space: pre-wrap; }
-            .footer { border-top: 1px solid #ddd; margin-top: 30px; padding-top: 10px; display: flex; justify-content: space-between; font-size: 12px; color: #888; }
-            .sig { text-align: right; margin-top: 40px; }
-        </style></head><body>
+    const logoHtml = s.logo
+        ? `<img src="${s.logo}" style="height:65px;object-fit:contain;">`
+        : `<div style="width:58px;height:58px;border-radius:10px;background:#eff6ff;font-size:34px;display:flex;align-items:center;justify-content:center;">🦷</div>`;
+    const win = window.open('', '_blank', 'width=780,height:950');
+    win.document.write(`<!DOCTYPE html><html dir="auto"><head><meta charset="UTF-8">
+    <title>Prescription — ${pName}</title>
+    <style>
+        *{box-sizing:border-box;margin:0;padding:0;}
+        body{font-family:'Segoe UI',Arial,sans-serif;background:#fff;color:#1e293b;padding:40px;}
+        .page{max-width:640px;margin:0 auto;}
+        .header{display:flex;justify-content:space-between;align-items:center;padding-bottom:20px;border-bottom:3px solid #2563eb;margin-bottom:24px;}
+        .clinic-name{font-size:20px;font-weight:800;color:#2563eb;}
+        .clinic-sub{font-size:12px;color:#64748b;margin-top:3px;}
+        .logo-wrap{text-align:right;margin-left:20px;}
+        .patient-row{display:flex;gap:20px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px 18px;margin-bottom:20px;}
+        .patient-field{flex:1;}
+        .field-label{font-size:10px;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;margin-bottom:3px;}
+        .field-val{font-size:15px;font-weight:700;color:#1e293b;}
+        .rx-header{display:flex;align-items:center;gap:12px;margin-bottom:14px;}
+        .rx-symbol{font-size:42px;color:#2563eb;font-style:italic;font-family:Georgia,serif;line-height:1;}
+        .rx-title{font-size:13px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:1px;}
+        .diagnosis{background:#eff6ff;border-left:4px solid #2563eb;border-radius:0 8px 8px 0;padding:10px 14px;margin-bottom:18px;font-size:13px;}
+        .diagnosis strong{color:#1d4ed8;}
+        .meds-box{background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:18px;margin-bottom:18px;}
+        .meds-body{font-size:14px;line-height:2;white-space:pre-wrap;color:#1e293b;}
+        .instructions{background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:12px 16px;font-size:12px;color:#92400e;margin-bottom:24px;}
+        .sig{display:flex;justify-content:flex-end;margin-top:30px;}
+        .sig-box{text-align:center;width:200px;}
+        .sig-line{border-bottom:1.5px solid #1e293b;margin-bottom:6px;height:36px;}
+        .sig-name{font-size:13px;font-weight:700;}
+        .sig-title{font-size:11px;color:#64748b;}
+        .footer{margin-top:28px;padding-top:12px;border-top:1px solid #e2e8f0;display:flex;justify-content:space-between;font-size:11px;color:#94a3b8;}
+        @media print{@page{margin:12mm;size:A4}body{padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;}}
+    </style></head><body>
+    <div class="page">
         <div class="header">
-            <h1>${s.clinicName || 'Dental Clinic'}</h1>
-            <h2>${s.doctorName || ''}</h2>
-            <h2>${s.phone || ''}</h2>
+            <div>
+                <div class="clinic-name">${s.clinicName || 'Dental Clinic'}</div>
+                ${s.doctorName ? `<div class="clinic-sub">👨‍⚕️ ${s.doctorName}</div>` : ''}
+                <div class="clinic-sub">${[s.phone, s.address].filter(Boolean).join(' · ')}</div>
+            </div>
+            <div class="logo-wrap">${logoHtml}</div>
         </div>
-        <p><strong>Patient:</strong> ${pName} &nbsp;&nbsp; <strong>Date:</strong> ${p.date}</p>
-        ${p.diagnosis ? `<p><strong>Diagnosis:</strong> ${p.diagnosis}</p>` : ''}
-        <br>
-        <div class="rx">℞</div>
-        <div class="body">${p.meds}</div>
-        ${p.instructions ? `<br><p><strong>Instructions:</strong> ${p.instructions}</p>` : ''}
+        <div class="patient-row">
+            <div class="patient-field">
+                <div class="field-label">Patient</div>
+                <div class="field-val">${pName}</div>
+            </div>
+            <div class="patient-field">
+                <div class="field-label">Date</div>
+                <div class="field-val">${p.date || '—'}</div>
+            </div>
+        </div>
+        ${p.diagnosis ? `<div class="diagnosis"><strong>Diagnosis:</strong> ${p.diagnosis}</div>` : ''}
+        <div class="rx-header">
+            <div class="rx-symbol">℞</div>
+            <div class="rx-title">Medications &amp; Dosages</div>
+        </div>
+        <div class="meds-box">
+            <div class="meds-body">${p.meds || '—'}</div>
+        </div>
+        ${p.instructions ? `<div class="instructions">📋 <strong>Instructions:</strong> ${p.instructions}</div>` : ''}
         <div class="sig">
-            <p>_____________________</p>
-            <p>${s.doctorName || 'Doctor'}</p>
+            <div class="sig-box">
+                <div class="sig-line"></div>
+                <div class="sig-name">${s.doctorName || 'Doctor'}</div>
+                <div class="sig-title">${s.clinicName || 'Dental Clinic'}</div>
+            </div>
         </div>
-        <div class="footer"><span>Printed from ${s.clinicName}</span><span>${p.date}</span></div>
-        <script>window.onload = () => { window.print(); window.close(); }<\/script>
-        </body></html>
-    `);
+        <div class="footer">
+            <span>${s.clinicName || 'Dental Clinic'} — Confidential Medical Document</span>
+            <span>${p.date || ''}</span>
+        </div>
+    </div>
+    <script>window.onload = () => { window.print(); window.close(); }<\/script>
+    </body></html>`);
     win.document.close();
 };
 
@@ -1958,86 +2004,324 @@ window.printPatientSheet = async function() {
     if (p.medical_history || p.medHistory) medParts.push(p.medical_history || p.medHistory);
     const pMedHistory = medParts.join(' · ') || '';
 
-    const win = window.open('', '_blank');
+    const win = window.open('', '_blank', 'width=900,height=1100');
     const isAr = currentLang === 'ar';
-    win.document.write(`
-    <html dir="${isAr ? 'rtl' : 'ltr'}"><head><title>Patient Sheet — ${p.name}</title>
+    const debt = totalCost - totalPaid;
+    const isSettled = debt <= 0;
+    const logoHtml = s.logo
+        ? `<img src="${s.logo}" style="height:60px;object-fit:contain;">`
+        : `<div style="width:60px;height:60px;border-radius:12px;background:#eff6ff;font-size:36px;display:flex;align-items:center;justify-content:center;">🦷</div>`;
+    const printDate = new Date().toLocaleDateString(isAr ? 'ar-EG' : 'en-US', { year:'numeric', month:'long', day:'numeric' });
+    const L = (ar, en) => isAr ? ar : en;
+
+    win.document.write(`<!DOCTYPE html><html dir="${isAr?'rtl':'ltr'}"><head><meta charset="UTF-8">
+    <title>${L('ملف المريض','Patient Record')} — ${p.name}</title>
     <style>
-        body { font-family: ${isAr ? 'Cairo, Arial' : 'Inter, Arial'}, sans-serif; max-width: 750px; margin: 30px auto; padding: 20px; color: #1e293b; font-size: 13px; }
-        .header { background: linear-gradient(135deg, #1d4ed8, #0891b2); color: white; padding: 20px 24px; border-radius: 12px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
-        .header h1 { margin: 0; font-size: 20px; } .header p { margin: 3px 0; opacity: 0.85; font-size: 12px; }
-        .section { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 16px; margin-bottom: 14px; }
-        .section h3 { margin: 0 0 12px 0; color: #1d4ed8; font-size: 14px; border-bottom: 1px solid #dbeafe; padding-bottom: 6px; }
-        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-        .info-item { display: flex; gap: 6px; } .label { color: #64748b; font-size: 11px; font-weight: 600; text-transform: uppercase; min-width: 80px; }
-        table { width: 100%; border-collapse: collapse; font-size: 12px; }
-        th { background: #e2e8f0; padding: 6px 10px; text-align: ${isAr ? 'right' : 'left'}; color: #475569; font-size: 11px; }
-        td { padding: 6px 10px; border-bottom: 1px solid #f1f5f9; }
-        .balance-row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 13px; }
-        .balance-row.total { font-weight: 700; font-size: 14px; border-top: 2px solid #e2e8f0; padding-top: 8px; margin-top: 4px; }
-        .red { color: #ef4444; } .green { color: #16a34a; }
-        .footer { text-align: center; margin-top: 20px; color: #94a3b8; font-size: 11px; border-top: 1px solid #e2e8f0; padding-top: 10px; }
-        @media print { @page { margin: 15mm; } }
+        *{box-sizing:border-box;margin:0;padding:0;}
+        body{
+            font-family:${isAr?"'Cairo','Segoe UI',Arial":"'Segoe UI',Arial,sans-serif"};
+            background:#fff;color:#1e293b;padding:32px;
+            -webkit-print-color-adjust:exact;
+            print-color-adjust:exact;
+        }
+        .page{max-width:720px;margin:0 auto;}
+
+        /* ── Header ── */
+        .header{
+            display:flex;justify-content:space-between;align-items:center;
+            background:#1d4ed8;
+            color:#fff;border-radius:12px;padding:22px 26px;margin-bottom:22px;
+        }
+        .h-left .clinic{font-size:20px;font-weight:800;letter-spacing:.3px;}
+        .h-left .sub{font-size:12px;opacity:.8;margin-top:4px;}
+        .h-right{text-align:${isAr?'left':'right'};}
+        .h-right .doc-title{font-size:16px;font-weight:800;letter-spacing:1px;text-transform:uppercase;}
+        .h-right .doc-date{font-size:11px;opacity:.7;margin-top:4px;}
+        .logo-wrap{margin:0 18px;}
+
+        /* ── Patient card ── */
+        .patient-card{
+            display:flex;align-items:center;gap:16px;
+            background:#eff6ff;border:1.5px solid #bfdbfe;
+            border-radius:12px;padding:16px 20px;margin-bottom:18px;
+        }
+        .avatar{
+            width:52px;height:52px;border-radius:10px;
+            background:#1d4ed8;color:#fff;
+            font-size:22px;font-weight:800;
+            display:flex;align-items:center;justify-content:center;flex-shrink:0;
+        }
+        .patient-name{font-size:19px;font-weight:800;color:#0f172a;}
+        .patient-meta{font-size:12px;color:#475569;margin-top:5px;display:flex;gap:16px;flex-wrap:wrap;}
+        .meta-item{display:flex;align-items:center;gap:5px;}
+        .meta-icon{
+            font-size:13px;flex-shrink:0;
+        }
+        .balance-box{text-align:${isAr?'left':'right'};margin-${isAr?'right':'left'}:auto;}
+        .balance-label{
+            display:inline-block;padding:4px 14px;border-radius:999px;
+            font-size:11px;font-weight:700;
+        }
+        .label-settled{background:#dcfce7;color:#15803d;}
+        .label-debt{background:#fee2e2;color:#dc2626;}
+        .balance-amount{font-size:18px;font-weight:900;margin-top:5px;}
+        .amount-green{color:#15803d;} .amount-red{color:#dc2626;}
+
+        /* ── Med warning ── */
+        .med-warning{
+            background:#fefce8;border:1.5px solid #fde047;
+            border-radius:10px;padding:11px 16px;margin-bottom:18px;
+            font-size:12px;color:#713f12;
+            display:flex;align-items:flex-start;gap:10px;
+        }
+        .warn-bar{
+            width:4px;min-height:100%;border-radius:2px;
+            background:#eab308;flex-shrink:0;align-self:stretch;
+        }
+
+        /* ── Section ── */
+        .section{margin-bottom:16px;border-radius:12px;border:1px solid #e2e8f0;overflow:hidden;}
+        .section-head{
+            display:flex;align-items:center;gap:10px;
+            padding:11px 16px;background:#f8fafc;border-bottom:1px solid #e2e8f0;
+        }
+        .sec-accent{width:4px;height:20px;border-radius:2px;flex-shrink:0;}
+        .section-title{font-size:13px;font-weight:700;color:#1e293b;}
+        .section-count{
+            font-size:10px;color:#64748b;margin-${isAr?'right':'left'}:auto;
+            background:#e2e8f0;border-radius:999px;padding:2px 10px;font-weight:700;
+        }
+
+        /* ── Info grid ── */
+        .info-grid{display:grid;grid-template-columns:1fr 1fr;}
+        .info-cell{padding:10px 16px;border-bottom:1px solid #f1f5f9;font-size:12px;}
+        .info-cell:nth-child(odd){border-${isAr?'left':'right'}:1px solid #f1f5f9;}
+        .info-cell.full{grid-column:span 2;}
+        .info-lbl{font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.7px;margin-bottom:3px;}
+        .info-val{font-size:13px;font-weight:600;color:#1e293b;}
+
+        /* ── Table ── */
+        table{width:100%;border-collapse:collapse;font-size:12px;}
+        thead th{
+            background:#1d4ed8;color:#fff;
+            padding:9px 14px;font-size:11px;font-weight:600;
+            text-align:${isAr?'right':'left'};
+        }
+        tbody tr:nth-child(even){background:#f8fafc;}
+        tbody td{padding:9px 14px;border-bottom:1px solid #f1f5f9;color:#374151;}
+        tbody tr:last-child td{border-bottom:none;}
+
+        /* ── Status pills ── */
+        .pill{display:inline-block;padding:2px 9px;border-radius:999px;font-size:10px;font-weight:700;}
+        .pill-green{background:#dcfce7;color:#15803d;}
+        .pill-red{background:#fee2e2;color:#dc2626;}
+        .pill-blue{background:#dbeafe;color:#1d4ed8;}
+        .pill-gray{background:#f1f5f9;color:#475569;}
+        .pill-amber{background:#fef3c7;color:#92400e;}
+
+        /* ── Financial rows ── */
+        .fin-row{
+            display:flex;justify-content:space-between;align-items:center;
+            padding:9px 16px;border-bottom:1px solid #f1f5f9;font-size:13px;
+        }
+        .fin-row:last-child{border-bottom:none;}
+        .fin-row.fin-total{background:#f8fafc;font-weight:800;font-size:14px;}
+
+        /* ── Prescription block ── */
+        .rx-block{padding:12px 16px;}
+        .rx-block + .rx-block{border-top:1px solid #f1f5f9;}
+        .rx-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;}
+        .rx-diag{
+            font-size:11px;font-weight:700;color:#4f46e5;
+            background:#eef2ff;padding:3px 10px;border-radius:999px;
+        }
+        .rx-date{font-size:11px;color:#94a3b8;}
+        .rx-meds{
+            font-size:12px;color:#374151;line-height:1.8;
+            white-space:pre-wrap;background:#f9fafb;
+            border-radius:8px;padding:10px 13px;
+        }
+        .rx-instructions{
+            margin-top:6px;font-size:11px;color:#713f12;
+            background:#fefce8;border-radius:6px;padding:6px 12px;
+            border-left:3px solid #eab308;
+        }
+
+        /* ── Footer ── */
+        .footer{
+            margin-top:26px;padding-top:12px;border-top:1px solid #e2e8f0;
+            display:flex;justify-content:space-between;align-items:center;
+            font-size:11px;color:#94a3b8;
+        }
+        .footer-clinic{font-weight:700;color:#475569;font-size:12px;}
+        .confidential{
+            text-align:center;margin-top:10px;
+            font-size:9px;color:#cbd5e1;letter-spacing:2.5px;text-transform:uppercase;
+        }
+
+        @media print{
+            @page{margin:12mm;size:A4;}
+            body{padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+            .page{max-width:100%;}
+        }
     </style></head><body>
-    <div class="header">
-        <div><h1>${s.clinicName || 'DentalClinic'}</h1><p>${s.doctorName || ''}</p><p>${s.phone || ''}</p></div>
-        <div style="text-align:${isAr?'left':'right'}"><p style="font-size:16px;font-weight:700;">${isAr ? 'ملف المريض' : 'Patient Record'}</p><p>${new Date().toLocaleDateString()}</p></div>
-    </div>
+    <div class="page">
 
-    <div class="section">
-        <h3>${isAr ? 'بيانات المريض' : 'Patient Information'}</h3>
-        <div class="info-grid">
-            <div class="info-item"><span class="label">${isAr?'الاسم':'Name'}:</span> <strong>${p.name}</strong></div>
-            <div class="info-item"><span class="label">${isAr?'الهاتف':'Phone'}:</span> ${p.phone||'—'}</div>
-            <div class="info-item"><span class="label">${isAr?'العمر':'Age'}:</span> ${p.age || '—'}</div>
-            <div class="info-item"><span class="label">${isAr?'الجنس':'Gender'}:</span> ${p.gender || '—'}</div>
-            <div class="info-item" style="grid-column:span 2"><span class="label">${isAr?'التاريخ الطبي':'Med History'}:</span> ${pMedHistory || '—'}</div>
-            ${notesRec?.notes ? `<div class="info-item" style="grid-column:span 2"><span class="label">${isAr?'ملاحظات':'Notes'}:</span> ${notesRec.notes}</div>` : ''}
+        <!-- HEADER -->
+        <div class="header">
+            <div class="h-left">
+                <div class="clinic">${s.clinicName || 'Dental Clinic'}</div>
+                ${s.doctorName ? `<div class="sub">${s.doctorName}</div>` : ''}
+                <div class="sub">${[s.phone, s.address].filter(Boolean).join('  |  ')}</div>
+            </div>
+            <div class="logo-wrap">${logoHtml}</div>
+            <div class="h-right">
+                <div class="doc-title">${L('ملف المريض','Patient Record')}</div>
+                <div class="doc-date">${printDate}</div>
+            </div>
         </div>
-    </div>
 
-    ${treatments.length > 0 ? `
-    <div class="section">
-        <h3>${isAr ? 'سجل العلاجات' : 'Treatment History'} (${treatments.length})</h3>
-        <table>
-            <thead><tr>
-                <th>${isAr?'التاريخ':'Date'}</th><th>${isAr?'الإجراء':'Procedure'}</th><th>${isAr?'السن':'Tooth'}</th>
-                <th>${isAr?'التكلفة':'Cost'}</th><th>${isAr?'المدفوع':'Paid'}</th>
-            </tr></thead>
-            <tbody>${treatments.map(tr => `
-                <tr>
-                    <td>${tr.date}</td><td>${tr.procedure}</td><td>${tr.tooth_number||tr.toothNumber || '—'}</td>
-                    <td>${tr.total_cost||tr.totalCost} ${curr}</td><td class="${tr.paid < (tr.total_cost||tr.totalCost) ? 'red' : 'green'}">${tr.paid} ${curr}</td>
-                </tr>`).join('')}
-            </tbody>
-        </table>
-        <div style="margin-top:12px;border-top:1px solid #e2e8f0;padding-top:10px;">
-            <div class="balance-row"><span>${isAr?'إجمالي التكلفة':'Total Cost'}:</span><span>${totalCost} ${curr}</span></div>
-            <div class="balance-row green"><span>${isAr?'إجمالي المدفوع':'Total Paid'}:</span><span>${totalPaid} ${curr}</span></div>
-            <div class="balance-row total ${totalCost-totalPaid>0?'red':'green'}"><span>${isAr?'المتبقي':'Balance'}:</span><span>${totalCost-totalPaid} ${curr}</span></div>
+        <!-- PATIENT CARD -->
+        <div class="patient-card">
+            <div class="avatar">${p.name.charAt(0).toUpperCase()}</div>
+            <div>
+                <div class="patient-name">${p.name}</div>
+                <div class="patient-meta">
+                    ${p.phone  ? `<span class="meta-item">${p.phone}</span>` : ''}
+                    ${p.age    ? `<span class="meta-item">${p.age} ${L('سنة','yrs')}</span>` : ''}
+                    ${p.gender ? `<span class="meta-item">${p.gender}</span>` : ''}
+                    ${p.created_at||p.createdAt ? `<span class="meta-item">${p.created_at||p.createdAt}</span>` : ''}
+                </div>
+            </div>
+            <div class="balance-box">
+                <span class="balance-label ${isSettled?'label-settled':'label-debt'}">
+                    ${isSettled ? L('مسدد','Settled') : L('متبقي','Balance Due')}
+                </span>
+                <div class="balance-amount ${isSettled?'amount-green':'amount-red'}">${Math.abs(debt).toLocaleString()} ${curr}</div>
+            </div>
         </div>
-    </div>` : ''}
 
-    ${appointments.length > 0 ? `
-    <div class="section">
-        <h3>${isAr ? 'المواعيد' : 'Appointments'} (${appointments.length})</h3>
-        <table>
-            <thead><tr><th>${isAr?'التاريخ':'Date'}</th><th>${isAr?'الوقت':'Time'}</th><th>${isAr?'الطبيب':'Doctor'}</th><th>${isAr?'الحالة':'Status'}</th></tr></thead>
-            <tbody>${appointments.map(a => `<tr><td>${a.date}</td><td>${a.time}</td><td>${a.doctor}</td><td>${a.status}</td></tr>`).join('')}</tbody>
-        </table>
-    </div>` : ''}
+        <!-- MED HISTORY -->
+        ${pMedHistory ? `
+        <div class="med-warning">
+            <div class="warn-bar"></div>
+            <div><strong>⚠️ ${L('التاريخ الطبي','Medical Alert')}:</strong> ${pMedHistory}</div>
+        </div>` : ''}
 
-    ${prescriptions.length > 0 ? `
-    <div class="section">
-        <h3>${isAr ? 'الوصفات الطبية' : 'Prescriptions'} (${prescriptions.length})</h3>
-        <table>
-            <thead><tr><th>${isAr?'التاريخ':'Date'}</th><th>${isAr?'التشخيص':'Diagnosis'}</th><th>${isAr?'الأدوية':'Medications'}</th></tr></thead>
-            <tbody>${prescriptions.map(rx => `<tr><td>${rx.date}</td><td>${rx.diagnosis||'—'}</td><td style="white-space:pre-wrap">${rx.meds}</td></tr>`).join('')}</tbody>
-        </table>
-    </div>` : ''}
+        <!-- PATIENT INFO -->
+        <div class="section">
+            <div class="section-head">
+                <div class="sec-accent" style="background:#2563eb;"></div>
+                <div class="section-title">${L('البيانات الأساسية','Patient Information')}</div>
+            </div>
+            <div class="info-grid">
+                <div class="info-cell"><div class="info-lbl">${L('الاسم','Full Name')}</div><div class="info-val">${p.name}</div></div>
+                <div class="info-cell"><div class="info-lbl">${L('الهاتف','Phone')}</div><div class="info-val">${p.phone||'—'}</div></div>
+                <div class="info-cell"><div class="info-lbl">${L('العمر','Age')}</div><div class="info-val">${p.age||'—'}</div></div>
+                <div class="info-cell"><div class="info-lbl">${L('الجنس','Gender')}</div><div class="info-val">${p.gender||'—'}</div></div>
+                <div class="info-cell"><div class="info-lbl">${L('تاريخ التسجيل','Registered')}</div><div class="info-val">${p.created_at||p.createdAt||'—'}</div></div>
+                <div class="info-cell"><div class="info-lbl">${L('عدد العلاجات','Treatments')}</div><div class="info-val">${treatments.length}</div></div>
+                ${notesRec?.notes ? `<div class="info-cell full"><div class="info-lbl">${L('ملاحظات سريرية','Clinical Notes')}</div><div class="info-val">${notesRec.notes}</div></div>` : ''}
+            </div>
+        </div>
 
-    <div class="footer">
-        <p>${isAr ? 'طُبع من' : 'Printed from'} ${s.clinicName || 'DentalClinic'} — ${new Date().toLocaleString()}</p>
+        <!-- TREATMENTS -->
+        ${treatments.length > 0 ? `
+        <div class="section">
+            <div class="section-head">
+                <div class="sec-accent" style="background:#16a34a;"></div>
+                <div class="section-title">${L('سجل العلاجات','Treatment History')}</div>
+                <div class="section-count">${treatments.length} ${L('علاج','records')}</div>
+            </div>
+            <table>
+                <thead><tr>
+                    <th>${L('التاريخ','Date')}</th>
+                    <th>${L('الإجراء','Procedure')}</th>
+                    <th>${L('السن','Tooth')}</th>
+                    <th style="text-align:${isAr?'left':'right'}">${L('التكلفة','Cost')}</th>
+                    <th style="text-align:${isAr?'left':'right'}">${L('المدفوع','Paid')}</th>
+                    <th style="text-align:${isAr?'left':'right'}">${L('الحالة','Status')}</th>
+                </tr></thead>
+                <tbody>${treatments.map(tr => {
+                    const cost = parseFloat(tr.total_cost||tr.totalCost)||0;
+                    const paid = parseFloat(tr.paid)||0;
+                    const full = paid >= cost;
+                    return `<tr>
+                        <td style="color:#64748b;font-size:11px">${tr.date||'—'}</td>
+                        <td style="font-weight:600">${tr.procedure||'—'}</td>
+                        <td>${tr.tooth_number||tr.toothNumber ? `<span class="pill pill-blue">${tr.tooth_number||tr.toothNumber}</span>` : '—'}</td>
+                        <td style="text-align:${isAr?'left':'right'};font-weight:600">${cost.toLocaleString()} ${curr}</td>
+                        <td style="text-align:${isAr?'left':'right'};color:#15803d;font-weight:600">${paid.toLocaleString()} ${curr}</td>
+                        <td style="text-align:${isAr?'left':'right'}">
+                            <span class="pill ${full?'pill-green':'pill-amber'}">${full ? L('مسدد','Paid') : L('جزئي','Partial')}</span>
+                        </td>
+                    </tr>`;
+                }).join('')}</tbody>
+            </table>
+            <div class="fin-row"><span style="color:#475569">${L('إجمالي التكلفة','Total Cost')}</span><span style="font-weight:700">${totalCost.toLocaleString()} ${curr}</span></div>
+            <div class="fin-row"><span style="color:#15803d">${L('إجمالي المدفوع','Total Paid')}</span><span style="color:#15803d;font-weight:700">${totalPaid.toLocaleString()} ${curr}</span></div>
+            <div class="fin-row fin-total">
+                <span>${L('المتبقي','Balance Due')}</span>
+                <span style="color:${isSettled?'#15803d':'#dc2626'}">${debt.toLocaleString()} ${curr}</span>
+            </div>
+        </div>` : ''}
+
+        <!-- APPOINTMENTS -->
+        ${appointments.length > 0 ? `
+        <div class="section">
+            <div class="section-head">
+                <div class="sec-accent" style="background:#d97706;"></div>
+                <div class="section-title">${L('المواعيد','Appointments')}</div>
+                <div class="section-count">${appointments.length}</div>
+            </div>
+            <table>
+                <thead><tr>
+                    <th>${L('التاريخ','Date')}</th>
+                    <th>${L('الوقت','Time')}</th>
+                    <th>${L('الطبيب','Doctor')}</th>
+                    <th>${L('الشكوى','Complaint')}</th>
+                    <th>${L('الحالة','Status')}</th>
+                </tr></thead>
+                <tbody>${appointments.map(a => {
+                    const sc = {Waiting:'pill-amber',Inside:'pill-blue',Examined:'pill-green',Cancelled:'pill-red'};
+                    return `<tr>
+                        <td style="color:#64748b;font-size:11px">${a.date||'—'}</td>
+                        <td style="font-weight:700;color:#1d4ed8">${a.time||'—'}</td>
+                        <td>${a.doctor||'—'}</td>
+                        <td style="color:#64748b;font-size:11px">${a.complaint||'—'}</td>
+                        <td><span class="pill ${sc[a.status]||'pill-gray'}">${a.status||'—'}</span></td>
+                    </tr>`;
+                }).join('')}</tbody>
+            </table>
+        </div>` : ''}
+
+        <!-- PRESCRIPTIONS -->
+        ${prescriptions.length > 0 ? `
+        <div class="section">
+            <div class="section-head">
+                <div class="sec-accent" style="background:#7c3aed;"></div>
+                <div class="section-title">${L('الوصفات الطبية','Prescriptions')}</div>
+                <div class="section-count">${prescriptions.length}</div>
+            </div>
+            ${prescriptions.map(rx => `
+            <div class="rx-block">
+                <div class="rx-header">
+                    <span class="rx-diag">${rx.diagnosis || L('وصفة طبية','Prescription')}</span>
+                    <span class="rx-date">${rx.date||''}</span>
+                </div>
+                <div class="rx-meds">${rx.meds||''}</div>
+                ${rx.instructions ? `<div class="rx-instructions">${L('تعليمات','Instructions')}: ${rx.instructions}</div>` : ''}
+            </div>`).join('')}
+        </div>` : ''}
+
+        <!-- FOOTER -->
+        <div class="footer">
+            <div class="footer-clinic">🦷 ${s.clinicName || 'Dental Clinic'}</div>
+            <div>${s.doctorName || ''}</div>
+            <div>${L('طُبع في','Printed')} ${printDate}</div>
+        </div>
+        <div class="confidential">⚕ Confidential Medical Document ⚕</div>
+
     </div>
     <script>window.onload = () => { window.print(); }<\/script>
     </body></html>`);
@@ -2214,45 +2498,97 @@ window.deleteInvoice = async function(id) {
 
 window.printInvoice = async function(id) {
     const invRows = await dbGetAll('invoices'); const inv = invRows.find(r=>r.id==id);
+    if (!inv) return;
     const s = getSettings();
     const curr = getCurrency();
-    const due = inv.total - inv.paid;
-    const logoHtml = s.logo ? `<img src="${s.logo}" style="height:60px;object-fit:contain;margin-bottom:8px;">` : `<div style="font-size:32px;">🦷</div>`;
-    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Invoice #${String(inv.id).padStart(4,'0')}</title>
+    // ✅ FIX: يدعم snake_case و camelCase
+    const patName = inv.patient_name || inv.patientName || '—';
+    const due = Math.max(0, (parseFloat(inv.total)||0) - (parseFloat(inv.paid)||0));
+    const isPaid = due <= 0;
+    const logoHtml = s.logo
+        ? `<img src="${s.logo}" style="height:70px;object-fit:contain;margin-bottom:10px;">`
+        : `<div style="width:64px;height:64px;border-radius:12px;background:#eff6ff;font-size:38px;display:flex;align-items:center;justify-content:center;margin-bottom:8px;">🦷</div>`;
+    const html = `<!DOCTYPE html><html dir="auto"><head><meta charset="UTF-8">
+    <title>Invoice #${String(inv.id).padStart(4,'0')}</title>
     <style>
-        body{font-family:Arial,sans-serif;margin:0;padding:32px;color:#1e293b;max-width:700px;margin:0 auto;}
-        .header{text-align:center;margin-bottom:28px;padding-bottom:20px;border-bottom:2px solid #e2e8f0;}
-        .clinic-name{font-size:24px;font-weight:800;color:#2563eb;margin:4px 0;}
-        .meta{display:flex;justify-content:space-between;margin-bottom:20px;font-size:13px;}
-        table{width:100%;border-collapse:collapse;margin:16px 0;}
-        th{background:#f1f5f9;padding:10px 12px;text-align:left;font-size:12px;color:#64748b;text-transform:uppercase;}
-        td{padding:10px 12px;border-bottom:1px solid #f1f5f9;font-size:13px;}
-        .totals{margin-top:12px;text-align:right;}
-        .totals div{margin:4px 0;font-size:13px;}
-        .due{font-size:18px;font-weight:800;color:${due>0?'#ef4444':'#16a34a'};}
-        @media print{@page{margin:20mm}body{padding:0}}
+        *{box-sizing:border-box;margin:0;padding:0;}
+        body{font-family:'Segoe UI',Arial,sans-serif;background:#fff;color:#1e293b;padding:40px;
+            -webkit-print-color-adjust:exact;print-color-adjust:exact;}
+        .page{max-width:680px;margin:0 auto;}
+        .header{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:24px;border-bottom:3px solid #2563eb;margin-bottom:28px;}
+        .clinic-logo{text-align:center;}
+        .clinic-name{font-size:22px;font-weight:800;color:#2563eb;margin-top:6px;}
+        .clinic-sub{font-size:12px;color:#64748b;margin-top:3px;}
+        .invoice-meta{text-align:right;}
+        .invoice-title{font-size:28px;font-weight:900;color:#1e293b;letter-spacing:1px;}
+        .invoice-num{font-size:13px;color:#64748b;margin-top:4px;}
+        .invoice-date{font-size:12px;color:#94a3b8;margin-top:2px;}
+        .patient-box{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:16px 20px;margin-bottom:24px;display:flex;justify-content:space-between;align-items:center;}
+        .patient-label{font-size:10px;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;}
+        .patient-name{font-size:17px;font-weight:700;color:#1e293b;}
+        .badge{display:inline-block;padding:4px 14px;border-radius:999px;font-size:11px;font-weight:700;}
+        .badge-paid{background:#dcfce7;color:#16a34a;}
+        .badge-due{background:#fee2e2;color:#dc2626;}
+        table{width:100%;border-collapse:collapse;margin-bottom:20px;}
+        thead tr{background:#2563eb;}
+        thead th{color:#fff;padding:11px 14px;font-size:12px;font-weight:600;text-align:left;}
+        thead th:last-child{text-align:right;}
+        tbody tr:nth-child(even){background:#f8fafc;}
+        tbody td{padding:11px 14px;font-size:13px;border-bottom:1px solid #f1f5f9;}
+        tbody td:last-child{text-align:right;font-weight:600;}
+        .totals{display:flex;justify-content:flex-end;}
+        .totals-box{width:260px;}
+        .totals-row{display:flex;justify-content:space-between;padding:7px 0;font-size:13px;border-bottom:1px solid #f1f5f9;}
+        .totals-row.final{border-bottom:none;margin-top:6px;padding-top:10px;border-top:2px solid #e2e8f0;}
+        .totals-row.final .lbl{font-size:15px;font-weight:800;}
+        .totals-row.final .val{font-size:17px;font-weight:900;color:${isPaid?'#16a34a':'#dc2626'};}
+        .notes-box{margin-top:20px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:12px 16px;font-size:12px;color:#92400e;}
+        .footer{margin-top:36px;padding-top:16px;border-top:1px solid #e2e8f0;display:flex;justify-content:space-between;font-size:11px;color:#94a3b8;}
+        @media print{@page{margin:15mm;size:A4}body{padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;}}
     </style></head><body>
-    <div class="header">
-        ${logoHtml}
-        <div class="clinic-name">${s.clinicName || 'DentalClinic'}</div>
-        <div style="font-size:12px;color:#64748b;">${s.phone || ''} ${s.address ? '| '+s.address : ''}</div>
+    <div class="page">
+        <div class="header">
+            <div class="clinic-logo">
+                ${logoHtml}
+                <div class="clinic-name">${s.clinicName || 'Dental Clinic'}</div>
+                <div class="clinic-sub">${[s.phone, s.address].filter(Boolean).join(' · ')}</div>
+            </div>
+            <div class="invoice-meta">
+                <div class="invoice-title">INVOICE</div>
+                <div class="invoice-num">#${String(inv.id).padStart(4,'0')}</div>
+                <div class="invoice-date">Date: ${inv.date || '—'}</div>
+                ${inv.due_date||inv.dueDate ? `<div class="invoice-date">Due: ${inv.due_date||inv.dueDate}</div>` : ''}
+            </div>
+        </div>
+        <div class="patient-box">
+            <div>
+                <div class="patient-label">Billed To</div>
+                <div class="patient-name">${patName}</div>
+            </div>
+            <span class="badge ${isPaid?'badge-paid':'badge-due'}">${isPaid?'✓ PAID':'UNPAID'}</span>
+        </div>
+        <table>
+            <thead><tr><th>#</th><th>Description</th><th style="text-align:right">Amount</th></tr></thead>
+            <tbody>
+                ${(inv.items||[]).map((item,i)=>`
+                <tr><td style="color:#94a3b8">${i+1}</td><td>${item.desc||'—'}</td><td>${parseFloat(item.amount||0).toFixed(2)} ${curr}</td></tr>`).join('')}
+            </tbody>
+        </table>
+        <div class="totals">
+            <div class="totals-box">
+                <div class="totals-row"><span>Subtotal</span><span>${parseFloat(inv.total||0).toFixed(2)} ${curr}</span></div>
+                <div class="totals-row" style="color:#16a34a"><span>Paid</span><span>${parseFloat(inv.paid||0).toFixed(2)} ${curr}</span></div>
+                <div class="totals-row final"><span class="lbl">Balance Due</span><span class="val">${due.toFixed(2)} ${curr}</span></div>
+            </div>
+        </div>
+        ${inv.notes ? `<div class="notes-box"><strong>📋 Notes:</strong> ${inv.notes}</div>` : ''}
+        <div class="footer">
+            <span>⚕ ${s.clinicName || 'Dental Clinic'}</span>
+            <span>${s.phone || ''}</span>
+        </div>
     </div>
-    <div class="meta">
-        <div><strong>Invoice #${String(inv.id).padStart(4,'0')}</strong><br><span style="color:#64748b">Patient: ${inv.patientName}</span></div>
-        <div style="text-align:right"><span style="color:#64748b">Date: ${inv.date}</span>${inv.dueDate ? '<br><span style="color:#64748b">Due: '+inv.dueDate+'</span>' : ''}</div>
-    </div>
-    <table>
-        <thead><tr><th>Description</th><th style="text-align:right">Amount</th></tr></thead>
-        <tbody>${inv.items.map(item=>`<tr><td>${item.desc}</td><td style="text-align:right">${item.amount} ${curr}</td></tr>`).join('')}</tbody>
-    </table>
-    <div class="totals">
-        <div>Total: <strong>${inv.total} ${curr}</strong></div>
-        <div style="color:#16a34a">Paid: <strong>${inv.paid} ${curr}</strong></div>
-        <div class="due">Due: ${due} ${curr}</div>
-    </div>
-    ${inv.notes ? '<p style="margin-top:20px;font-size:12px;color:#64748b;border-top:1px solid #e2e8f0;padding-top:12px">Notes: '+inv.notes+'</p>' : ''}
     <script>window.onload=()=>{window.print();}<\/script></body></html>`;
-    const w = window.open('', '_blank', 'width=800,height=900');
+    const w = window.open('', '_blank', 'width=820,height=950');
     w.document.write(html); w.document.close();
 };
 
