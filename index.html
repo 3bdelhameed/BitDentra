@@ -606,39 +606,59 @@
             transition: all .25s ease;
         }
 
-        /* ===== MOBILE RESPONSIVE PATCH ===== */
+        /* ===== MOBILE RESPONSIVE ===== */
         @media (max-width: 900px) {
             aside {
                 position: fixed;
-                left: 0;
-                top: 0;
+                left: 0; top: 0;
                 height: 100%;
                 z-index: 60;
                 transform: translateX(-100%);
                 transition: transform .3s ease;
             }
-
-            aside.mobile-open {
-                transform: translateX(0);
-            }
-
-            main {
-                width: 100%;
-            }
-
-            .stat-card {
-                padding: 14px;
-            }
+            aside.mobile-open { transform: translateX(0); }
+            main { width: 100%; }
+            .stat-card { padding: 12px 14px; }
+            /* header buttons */
+            header .btn { font-size: 11px; padding: 5px 8px; }
+            /* profile action buttons */
+            #profileActionButtons { flex-wrap: wrap; gap: 4px; }
+            #profileActionButtons .btn { font-size: 11px; padding: 5px 8px; }
         }
 
-        @media (max-width: 600px) {
-            .grid-cols-4 {
-                grid-template-columns: repeat(2, 1fr) !important;
-            }
+        @media (max-width: 640px) {
+            /* grids */
+            .lg\:grid-cols-4, .grid-cols-4 { grid-template-columns: repeat(2, 1fr) !important; }
+            .lg\:grid-cols-3, .md\:grid-cols-3 { grid-template-columns: 1fr !important; }
+            .md\:grid-cols-2 { grid-template-columns: 1fr !important; }
+            .sm\:grid-cols-4 { grid-template-columns: repeat(2, 1fr) !important; }
+            .grid-cols-2 { grid-template-columns: 1fr !important; }
 
-            .grid-cols-2 {
-                grid-template-columns: repeat(1, 1fr) !important;
-            }
+            /* padding */
+            .p-5 { padding: 12px !important; }
+            .p-6 { padding: 14px !important; }
+
+            /* stat cards in dashboard */
+            #dashboardView .grid.grid-cols-2 { grid-template-columns: repeat(2, 1fr) !important; }
+            #dashboardView .grid.lg\:grid-cols-4 { grid-template-columns: repeat(2, 1fr) !important; }
+
+            /* tables scroll */
+            table { font-size: 12px; }
+            th, td { padding: 6px 8px !important; }
+
+            /* modal */
+            .modal-box { padding: 16px; margin: 8px; border-radius: 14px; max-height: 95vh; }
+
+            /* profile */
+            #profileInfoCards { grid-template-columns: repeat(2, 1fr) !important; }
+            #profileActionButtons .btn span { display: none; }
+
+            /* invoice table hide less important cols on mobile */
+            .inv-hide-mobile { display: none !important; }
+
+            /* text adjustments */
+            .text-2xl { font-size: 1.25rem !important; }
+            h2.text-xl { font-size: 1rem !important; }
         }
     </style>
 </head>
@@ -1145,10 +1165,6 @@
                                 <button onclick="exportExcel()" class="btn btn-green w-full justify-center"><i class="fa-solid fa-file-excel"></i> Export to Excel</button>
                                 <button onclick="exportBackup()" class="btn btn-outline w-full justify-center"><i class="fa-solid fa-download"></i> Export Backup (JSON)</button>
                                 <label class="btn btn-outline w-full justify-center cursor-pointer"><i class="fa-solid fa-upload"></i> Import Backup<input type="file" class="hidden" accept=".json" onchange="importBackup(event)"></label>
-                                <div class="border-t pt-3 mt-3">
-                                    <p class="text-xs text-gray-400 mb-2">⚠️ Danger Zone</p>
-                                    <button onclick="confirmDeleteAll()" class="btn btn-red w-full justify-center text-xs"><i class="fa-solid fa-trash"></i> Delete All Data</button>
-                                </div>
                             </div>
                         </div>
                     </div>
@@ -1158,26 +1174,27 @@
             <!-- ── INVOICES ── -->
             <div class="view-section h-full overflow-y-auto p-5" id="invoicesView">
                 <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-xl font-bold flex items-center gap-2"><i class="fa-solid fa-file-invoice text-blue-500"></i> Invoices</h2>
-                    <button onclick="openModal('createInvoiceModal')" class="btn btn-blue text-xs"><i class="fa-solid fa-plus"></i> New Invoice</button>
+                    <h2 class="text-xl font-bold flex items-center gap-2"><i class="fa-solid fa-file-invoice text-blue-500"></i> الفواتير</h2>
+                    <button onclick="openModal('createInvoiceModal')" class="btn btn-blue text-xs"><i class="fa-solid fa-plus"></i> فاتورة جديدة</button>
                 </div>
                 <div class="bg-white rounded-xl border border-gray-100 overflow-hidden">
                     <table class="w-full text-sm">
                         <thead>
                             <tr class="bg-slate-50 text-gray-500 text-xs uppercase">
                                 <th class="text-left px-4 py-3">#</th>
-                                <th class="text-left px-4 py-3">Patient</th>
-                                <th class="text-left px-4 py-3">Date</th>
-                                <th class="text-right px-4 py-3">Total</th>
-                                <th class="text-right px-4 py-3">Paid</th>
-                                <th class="text-right px-4 py-3">Due</th>
-                                <th class="text-center px-4 py-3">Actions</th>
+                                <th class="text-left px-4 py-3">الاسم</th>
+                                <th class="text-left px-4 py-3 inv-hide-mobile">النوع</th>
+                                <th class="text-left px-4 py-3 inv-hide-mobile">التاريخ</th>
+                                <th class="text-right px-4 py-3">الإجمالي</th>
+                                <th class="text-right px-4 py-3 inv-hide-mobile">المدفوع</th>
+                                <th class="text-right px-4 py-3">المتبقي</th>
+                                <th class="text-center px-4 py-3">إجراءات</th>
                             </tr>
                         </thead>
                         <tbody id="invoicesTableBody"></tbody>
                     </table>
                     <div id="invoicesEmpty" class="hidden text-center py-12 text-gray-400"><i class="fa-solid fa-file-invoice text-4xl mb-3 opacity-30"></i>
-                        <p class="text-sm">No invoices yet</p>
+                        <p class="text-sm">لا توجد فواتير بعد</p>
                     </div>
                 </div>
             </div>
@@ -1511,39 +1528,62 @@
     <div id="createInvoiceModal" class="modal-base">
         <div class="modal-box max-w-lg">
             <div class="flex justify-between items-center mb-4 border-b pb-3">
-                <h3 class="text-lg font-bold"><i class="fa-solid fa-file-invoice text-blue-500 mr-2"></i>New Invoice</h3>
+                <h3 class="text-lg font-bold"><i class="fa-solid fa-file-invoice text-blue-500 mr-2"></i>فاتورة جديدة</h3>
                 <button onclick="closeModal('createInvoiceModal')" class="text-gray-300 hover:text-red-400 text-xl w-7 h-7 flex items-center justify-center"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="space-y-3">
-                <div><label class="text-xs font-semibold text-gray-500 block mb-1">Patient *</label><select id="invoicePatientId" class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm"></select></div>
+                <!-- نوع الفاتورة -->
+                <div class="flex gap-2">
+                    <button id="invTypePat" onclick="setInvoiceType('patient')"
+                        class="flex-1 py-2 rounded-xl text-xs font-bold border-2 border-blue-500 bg-blue-50 text-blue-700 transition">
+                        <i class="fa-solid fa-user mr-1"></i> مريض
+                    </button>
+                    <button id="invTypeSupp" onclick="setInvoiceType('supplier')"
+                        class="flex-1 py-2 rounded-xl text-xs font-bold border-2 border-gray-200 bg-white text-gray-500 transition">
+                        <i class="fa-solid fa-building mr-1"></i> مورد / شركة
+                    </button>
+                </div>
+                <input type="hidden" id="invoiceType" value="patient">
+
+                <!-- مريض -->
+                <div id="invPatientRow">
+                    <label class="text-xs font-semibold text-gray-500 block mb-1">المريض *</label>
+                    <select id="invoicePatientId" class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm"></select>
+                </div>
+                <!-- مورد / شركة -->
+                <div id="invSupplierRow" class="hidden">
+                    <label class="text-xs font-semibold text-gray-500 block mb-1">اسم المورد / الشركة *</label>
+                    <input type="text" id="invoiceSupplierName" placeholder="مثال: شركة الدواء، مورد مستلزمات..." class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm">
+                </div>
+
                 <div class="grid grid-cols-2 gap-3">
-                    <div><label class="text-xs font-semibold text-gray-500 block mb-1">Date</label><input type="date" id="invoiceDate" class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm"></div>
-                    <div><label class="text-xs font-semibold text-gray-500 block mb-1">Due Date</label><input type="date" id="invoiceDueDate" class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm"></div>
+                    <div><label class="text-xs font-semibold text-gray-500 block mb-1">التاريخ</label><input type="date" id="invoiceDate" class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm"></div>
+                    <div><label class="text-xs font-semibold text-gray-500 block mb-1">تاريخ الاستحقاق</label><input type="date" id="invoiceDueDate" class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm"></div>
                 </div>
                 <div>
-                    <label class="text-xs font-semibold text-gray-500 block mb-2">Invoice Items</label>
+                    <label class="text-xs font-semibold text-gray-500 block mb-2">البنود</label>
                     <div id="invoiceItemsContainer" class="space-y-2"></div>
-                    <button onclick="addInvoiceItem()" class="btn btn-gray text-xs mt-2"><i class="fa-solid fa-plus"></i> Add Item</button>
+                    <button onclick="addInvoiceItem()" class="btn btn-gray text-xs mt-2"><i class="fa-solid fa-plus"></i> إضافة بند</button>
                 </div>
                 <div class="bg-slate-50 rounded-xl p-3 flex justify-between font-bold text-gray-800 mb-1">
-                    <span data-t="invoice.subtotal">Subtotal:</span><span id="invoiceSubtotalDisplay">0 EGP</span>
+                    <span>الإجمالي:</span><span id="invoiceSubtotalDisplay">0 EGP</span>
                 </div>
                 <div class="grid grid-cols-2 gap-3 mb-2">
-                    <div><label class="text-xs font-semibold text-gray-500 block mb-1" data-t="invoice.discount">Discount</label>
+                    <div><label class="text-xs font-semibold text-gray-500 block mb-1">خصم</label>
                         <input type="number" id="invoiceDiscount" placeholder="0" class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm" oninput="updateInvoiceTotal()">
                     </div>
-                    <div><label class="text-xs font-semibold text-gray-500 block mb-1">Amount Paid</label>
+                    <div><label class="text-xs font-semibold text-gray-500 block mb-1">المدفوع</label>
                         <input type="number" id="invoicePaid" placeholder="0" class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm">
                     </div>
                 </div>
                 <div class="bg-blue-50 border border-blue-100 rounded-xl p-3 flex justify-between font-bold text-blue-800">
-                    <span data-t="invoice.netTotal">Net Total:</span><span id="invoiceTotalDisplay">0 EGP</span>
+                    <span>الصافي:</span><span id="invoiceTotalDisplay">0 EGP</span>
                 </div>
-                <div><label class="text-xs font-semibold text-gray-500 block mb-1 mt-2">Notes</label><input type="text" id="invoiceNotes" placeholder="Optional" class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm"></div>
+                <div><label class="text-xs font-semibold text-gray-500 block mb-1 mt-2">ملاحظات</label><input type="text" id="invoiceNotes" placeholder="اختياري" class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm"></div>
             </div>
             <div class="flex gap-2 mt-4 pt-4 border-t">
-                <button onclick="closeModal('createInvoiceModal')" class="btn btn-gray flex-1">Cancel</button>
-                <button onclick="saveInvoice()" class="btn btn-blue flex-1"><i class="fa-solid fa-save"></i> Save Invoice</button>
+                <button onclick="closeModal('createInvoiceModal')" class="btn btn-gray flex-1">إلغاء</button>
+                <button onclick="saveInvoice()" class="btn btn-blue flex-1"><i class="fa-solid fa-save"></i> حفظ الفاتورة</button>
             </div>
         </div>
     </div>

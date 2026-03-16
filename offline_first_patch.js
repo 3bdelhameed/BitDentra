@@ -214,9 +214,18 @@
     //  SYNC ENGINE
     // ══════════════════════════════════════════════════════════════
     let _isSyncing = false;
+    let _lastSyncTime = 0;
+    const SYNC_DEBOUNCE_MS = 3000; // منع sync مرتين في أقل من 3 ثواني
 
     async function syncQueue() {
         if (_isSyncing || !navigator.onLine) return;
+
+        // ✅ FIX: debounce — لو السينك خلص من أقل من 3 ثواني، تجاهل
+        const now = Date.now();
+        if (now - _lastSyncTime < SYNC_DEBOUNCE_MS) {
+            console.log('[Offline] syncQueue debounced — too soon after last sync');
+            return;
+        }
 
         const q = getQueue();
         if (!q.length) { updateBadge(); return; }
@@ -387,6 +396,7 @@
 
         saveQueue(failed);
         _isSyncing = false;
+        _lastSyncTime = Date.now(); // ✅ FIX: سجّل وقت انتهاء الـ sync للـ debounce
         updateBadge();
 
         if (synced > 0) {
@@ -528,17 +538,10 @@
                 return { ...data, id: tempId, _offline: true };
             }
 
-            // ✅ FIX: أون لاين — احفظ في Dexie+localStorage فوراً (حماية من انقطاع النت)
-            const tempId = Date.now();
-            const record = { ...data, id: tempId, _localOnly: true };
-            await dexieUpsert(table, record);
-            lsBackup(record);
-            addToQueue('insert', table, { ...data, id: tempId });
-
+            // ── أون لاين: جرّب Supabase مباشرةً بدون إضافة للـ queue
             try {
                 const { _localOnly, _pendingSync, _pendingOp, ...cleanData } = data;
 
-                // ✅ FIX: timeout 8 ثواني على الـ Supabase request
                 const insertPromise = window._sb
                     .from(table)
                     .insert(cleanData)
@@ -551,19 +554,20 @@
                 const { data: inserted, error } = await Promise.race([insertPromise, timeoutPromise]);
                 if (error) throw error;
 
-                // نجح الـ insert → امسح الـ temp record من Dexie والـ queue والـ localStorage
-                await dexieDelete(table, tempId);
-                try { localStorage.removeItem('offline_backup_' + table); } catch(e) {}
-                const q = getQueue().filter(op => !(op.table === table && op.id === tempId));
-                saveQueue(q);
+                // نجح → احفظ في Dexie بدون queue
                 await dexieUpsert(table, { ...inserted, _localOnly: false });
                 return inserted;
 
             } catch (e) {
-                // فشل الـ insert → الـ temp record محفوظ بالفعل في Dexie + localStorage + queue
+                // فشل → دلوقتي نضيفه للـ queue كـ fallback
                 if (e.message !== 'insert_timeout') {
-                    console.warn('[Offline] dbInsert failed, queued:', e.message);
+                    console.warn('[Offline] dbInsert failed online, queuing:', e.message);
                 }
+                const tempId = Date.now();
+                const record = { ...data, id: tempId, _localOnly: true };
+                await dexieUpsert(table, record);
+                lsBackup(record);
+                addToQueue('insert', table, { ...data, id: tempId });
                 if (typeof showToast === 'function') showToast('💾 حُفظ محلياً — سيُزامَن عند عودة الاتصال', 'warning');
                 updateBadge();
                 return { ...data, id: tempId, _queued: true };
@@ -1078,7 +1082,9 @@
         patchSessionPaymentsOffline();
 
         const pendingQ = getQueue();
-        if (pendingQ.length > 0 && navigator.onLine) {
+        // ✅ FIX: sync بس لو في ops فعلاً محتاجة sync (مش كل حاجة في الـ queue)
+        const trulPending = pendingQ.filter(op => !op._syncing);
+        if (trulPending.length > 0 && navigator.onLine) {
             let sbWait = 0;
             while (sbWait < 80) {
                 const ok = window._sbReady
@@ -1189,5 +1195,20 @@
     } else {
         document.addEventListener('DOMContentLoaded', () => setTimeout(init, 150));
     }
+
+    // ✅ FIX: startup_preload بيعمل re-wrap بعد init بوقت
+    // نعمل re-check بعد 2 ثانية ونعيد الـ wrap لو اتفقد
+    setTimeout(function reWrapIfNeeded() {
+        if (!window.dbInsert?._offlineV3Done) {
+            console.log('[Offline] Re-wrapping dbInsert (startup_preload overwrote it)');
+            wrapDbInsert();
+            wrapDbUpdate();
+            wrapDbDelete();
+            wrapDbUpsert();
+        }
+        if (!window.dbGetAll?._offlineV3Done) {
+            wrapDbGetAll();
+        }
+    }, 2000);
 
 })();

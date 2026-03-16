@@ -512,6 +512,13 @@ function openModal(modalId, toothNum = null) {
         document.getElementById('invoicePaid').value = '';
         document.getElementById('invoiceNotes').value = '';
         document.getElementById('invoiceTotalDisplay').textContent = '0 ' + getCurrency();
+        document.getElementById('invoiceSubtotalDisplay').textContent = '0 ' + getCurrency();
+        const discEl = document.getElementById('invoiceDiscount');
+        if (discEl) discEl.value = '';
+        const suppEl = document.getElementById('invoiceSupplierName');
+        if (suppEl) suppEl.value = '';
+        // reset to patient type
+        if (typeof window.setInvoiceType === 'function') window.setInvoiceType('patient');
         addInvoiceItem();
     }
     const el = document.getElementById(modalId);
@@ -2081,6 +2088,19 @@ window.toggleDarkMode = function() {
 };
 
 // ── 25. INVOICES ─────────────────────────
+// ── Invoice type toggle ──────────────────
+window.setInvoiceType = function(type) {
+    document.getElementById('invoiceType').value = type;
+    const isPat = type === 'patient';
+    document.getElementById('invPatientRow').classList.toggle('hidden', !isPat);
+    document.getElementById('invSupplierRow').classList.toggle('hidden', isPat);
+    // styles
+    const btnPat  = document.getElementById('invTypePat');
+    const btnSupp = document.getElementById('invTypeSupp');
+    if (btnPat)  { btnPat.classList.toggle('border-blue-500',  isPat);  btnPat.classList.toggle('bg-blue-50',    isPat);  btnPat.classList.toggle('text-blue-700', isPat);  btnPat.classList.toggle('border-gray-200',  !isPat); btnPat.classList.toggle('bg-white',  !isPat); btnPat.classList.toggle('text-gray-500', !isPat); }
+    if (btnSupp) { btnSupp.classList.toggle('border-blue-500', !isPat); btnSupp.classList.toggle('bg-blue-50',   !isPat); btnSupp.classList.toggle('text-blue-700', !isPat); btnSupp.classList.toggle('border-gray-200', isPat);  btnSupp.classList.toggle('bg-white', isPat);  btnSupp.classList.toggle('text-gray-500', isPat); }
+};
+
 window.loadInvoices = async function() {
     const curr = getCurrency();
     const invoices = await dbGetAll('invoices');
@@ -2089,15 +2109,22 @@ window.loadInvoices = async function() {
     if (!invoices.length) { tbody.innerHTML = ''; empty.classList.remove('hidden'); return; }
     empty.classList.add('hidden');
     tbody.innerHTML = invoices.sort((a,b) => b.id - a.id).map(inv => {
-        const due = inv.total - inv.paid;
-        const statusColor = due <= 0 ? 'text-green-600' : due === inv.total ? 'text-red-500' : 'text-yellow-600';
+        const due       = (parseFloat(inv.total)||0) - (parseFloat(inv.paid)||0);
+        const rawName   = inv.patient_name || inv.patientName || '—';
+        const isSupp    = rawName.startsWith('🏢 ');
+        const name      = isSupp ? rawName.slice(3) : rawName;
+        const typeBadge = isSupp
+            ? `<span class="badge" style="background:#f0fdf4;color:#15803d;font-size:10px"><i class="fa-solid fa-building mr-1"></i>مورد</span>`
+            : `<span class="badge" style="background:#eff6ff;color:#1d4ed8;font-size:10px"><i class="fa-solid fa-user mr-1"></i>مريض</span>`;
+        const statusColor = due <= 0 ? 'text-green-600' : due === (parseFloat(inv.total)||0) ? 'text-red-500' : 'text-yellow-600';
         return `<tr class="border-b border-gray-50 hover:bg-slate-50">
             <td class="px-4 py-3 text-xs text-gray-400 font-mono">#${String(inv.id).padStart(4,'0')}</td>
-            <td class="px-4 py-3 font-semibold text-gray-700">${inv.patient_name||inv.patientName}</td>
-            <td class="px-4 py-3 text-xs text-gray-400">${inv.date}</td>
-            <td class="px-4 py-3 text-right font-bold">${inv.total} ${curr}</td>
-            <td class="px-4 py-3 text-right text-green-600 font-semibold">${inv.paid} ${curr}</td>
-            <td class="px-4 py-3 text-right font-bold ${statusColor}">${due} ${curr}</td>
+            <td class="px-4 py-3 font-semibold text-gray-700">${name}</td>
+            <td class="px-4 py-3 inv-hide-mobile">${typeBadge}</td>
+            <td class="px-4 py-3 text-xs text-gray-400 inv-hide-mobile">${inv.date||''}</td>
+            <td class="px-4 py-3 text-right font-bold">${(parseFloat(inv.total)||0).toLocaleString()} ${curr}</td>
+            <td class="px-4 py-3 text-right text-green-600 font-semibold inv-hide-mobile">${(parseFloat(inv.paid)||0).toLocaleString()} ${curr}</td>
+            <td class="px-4 py-3 text-right font-bold ${statusColor}">${due.toLocaleString()} ${curr}</td>
             <td class="px-4 py-3 text-center">
                 <button onclick="printInvoice(${inv.id})" class="btn btn-outline text-xs px-2 py-1"><i class="fa-solid fa-print"></i></button>
                 <button onclick="deleteInvoice(${inv.id})" class="btn btn-gray text-xs px-2 py-1 ml-1"><i class="fa-solid fa-trash"></i></button>
@@ -2111,42 +2138,70 @@ window.addInvoiceItem = function() {
     const div = document.createElement('div');
     div.className = 'flex gap-2 items-center invoice-item';
     div.innerHTML = `
-        <input type="text" placeholder="Description" class="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm inv-desc">
-        <input type="number" placeholder="Amount" class="w-28 border border-gray-200 rounded-lg px-3 py-2 text-sm inv-amount" oninput="updateInvoiceTotal()">
+        <input type="text" placeholder="الوصف" class="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm inv-desc">
+        <input type="number" placeholder="المبلغ" class="w-28 border border-gray-200 rounded-lg px-3 py-2 text-sm inv-amount" oninput="updateInvoiceTotal()">
         <button onclick="this.parentElement.remove();updateInvoiceTotal()" class="text-red-400 hover:text-red-600 w-6 h-6 flex items-center justify-center flex-shrink-0"><i class="fa-solid fa-xmark"></i></button>`;
     container.appendChild(div);
 };
 
 window.updateInvoiceTotal = function() {
-    let total = 0;
-    document.querySelectorAll('.inv-amount').forEach(el => { total += parseFloat(el.value)||0; });
+    let subtotal = 0;
+    document.querySelectorAll('.inv-amount').forEach(el => { subtotal += parseFloat(el.value)||0; });
+    const discount = parseFloat(document.getElementById('invoiceDiscount')?.value)||0;
+    const net = Math.max(0, subtotal - discount);
     const curr = getCurrency();
-    document.getElementById('invoiceTotalDisplay').textContent = total + ' ' + curr;
+    const subEl = document.getElementById('invoiceSubtotalDisplay');
+    const totEl = document.getElementById('invoiceTotalDisplay');
+    if (subEl) subEl.textContent = subtotal.toLocaleString() + ' ' + curr;
+    if (totEl) totEl.textContent = net.toLocaleString() + ' ' + curr;
 };
 
 window.saveInvoice = async function() {
-    const patientId = parseInt(document.getElementById('invoicePatientId').value);
-    const pRows = await dbGetAll('patients'); const patient = pRows.find(r=>r.id==patientId);
-    if (!patient) { showToast('Select a patient', 'error'); return; }
+    const type = document.getElementById('invoiceType')?.value || 'patient';
+    const curr = getCurrency();
+    let entityName = '', patientId = null;
+
+    if (type === 'patient') {
+        patientId = parseInt(document.getElementById('invoicePatientId').value);
+        const pRows = await dbGetAll('patients');
+        const patient = pRows.find(r => r.id == patientId);
+        if (!patient) { showToast('اختر مريضاً', 'error'); return; }
+        entityName = patient.name;
+    } else {
+        entityName = (document.getElementById('invoiceSupplierName')?.value || '').trim();
+        if (!entityName) { showToast('ادخل اسم المورد', 'error'); return; }
+    }
+
     const items = [];
     document.querySelectorAll('.invoice-item').forEach(row => {
-        const desc = row.querySelector('.inv-desc').value;
-        const amount = parseFloat(row.querySelector('.inv-amount').value)||0;
+        const desc   = row.querySelector('.inv-desc').value.trim();
+        const amount = parseFloat(row.querySelector('.inv-amount').value) || 0;
         if (desc || amount) items.push({ desc, amount });
     });
-    if (!items.length) { showToast('Add at least one item', 'error'); return; }
-    const total = items.reduce((s,i) => s + i.amount, 0);
-    const paid = parseFloat(document.getElementById('invoicePaid').value)||0;
+    if (!items.length) { showToast('أضف بنداً واحداً على الأقل', 'error'); return; }
+
+    const subtotal = items.reduce((s,i) => s + i.amount, 0);
+    const discount = parseFloat(document.getElementById('invoiceDiscount')?.value) || 0;
+    const total    = Math.max(0, subtotal - discount);
+    const paid     = parseFloat(document.getElementById('invoicePaid').value) || 0;
+    const notes    = document.getElementById('invoiceNotes').value.trim() || null;
+
+    // ✅ snake_case يطابق الـ Supabase schema الفعلي
+    const displayName = type === 'supplier' ? `🏢 ${entityName}` : entityName;
+
     await dbInsert('invoices', {
-        patientId, patientName: patient.name,
-        date: document.getElementById('invoiceDate').value || today(),
-        dueDate: document.getElementById('invoiceDueDate').value,
-        items, total, paid,
-        notes: document.getElementById('invoiceNotes').value,
+        patient_id:   patientId,
+        patient_name: displayName,
+        date:         document.getElementById('invoiceDate').value || today(),
+        due_date:     document.getElementById('invoiceDueDate').value || null,
+        items,
+        total,
+        paid,
+        notes:  document.getElementById('invoiceNotes').value || null,
         status: paid >= total ? 'paid' : paid > 0 ? 'partial' : 'unpaid'
     });
     closeModal('createInvoiceModal');
-    showToast('Invoice saved!', 'success');
+    showToast('✅ تم حفظ الفاتورة', 'success');
     loadInvoices();
 };
 
