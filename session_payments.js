@@ -450,7 +450,12 @@ async function recalcTreatmentPaid(treatmentId) {
                 const tid = p.treatment_id ?? p.treatmentId;
                 return String(tid) === String(tr.id);
             });
-            const paid  = trPay.reduce((s, p) => s + (parseFloat(p.amount) || 0), 0);
+
+            // ✅ FIX: لو مفيش دفعات في الـ cache، استخدم treatments.paid المحفوظ كـ fallback
+            const paidFromPayments = trPay.reduce((s, p) => s + (parseFloat(p.amount) || 0), 0);
+            const paidFromTreatment = parseFloat(tr.paid) || 0;
+            const paid = (trPay.length > 0) ? paidFromPayments : paidFromTreatment;
+
             const debt  = cost - paid;
 
             totalCost += cost;

@@ -554,39 +554,84 @@
 
     // إخفاء القوائم بناءً على الصلاحيات المحفوظة لليوزر الحالي
     window.applyUserPermissions = async function() {
+
+        function revealNav() {
+            const skeleton = document.getElementById('sidebarSkeleton');
+            const nav      = document.getElementById('sidebarNav');
+            if (!nav) return;
+            // أظهر الـ nav واخفي الـ skeleton بـ fade
+            nav.style.display = '';
+            requestAnimationFrame(() => {
+                nav.style.opacity = '1';
+                if (skeleton) skeleton.style.opacity = '0';
+                setTimeout(() => { if (skeleton) skeleton.style.display = 'none'; }, 250);
+            });
+        }
+
         if (isAdmin()) {
-            // الأدمن بيشوف كل حاجة دايماً (بما فيها الإعدادات)
             PERMISSIONS_LIST.forEach(p => {
                 const el = document.getElementById(p.id);
                 if (el) el.style.display = 'flex';
             });
+            ['nav-section-main','nav-section-clinical','nav-section-finance','nav-section-system'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.style.display = '';
+            });
             const settingsEl = document.getElementById('nav-settings');
             if (settingsEl) settingsEl.style.display = 'flex';
+            window._currentUserPermissions = PERMISSIONS_LIST.map(p => p.id);
+            revealNav();
             return;
         }
 
         try {
             const username = sessionStorage.getItem('clinicUsername');
+
+            if (!username) { revealNav(); return; }
+
+            // أخفي كل القوائم والـ headers (الـ nav نفسه مخفي)
+            PERMISSIONS_LIST.forEach(p => {
+                const el = document.getElementById(p.id);
+                if (el) el.style.display = 'none';
+            });
+            ['nav-section-main','nav-section-clinical','nav-section-finance','nav-section-system'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.style.display = 'none';
+            });
+
             const data = await window.dbGetAll('clinic_users');
             const currentUser = data.find(u => u.username === username);
-            
+
             if (currentUser && currentUser.permissions) {
-                const perms = JSON.parse(currentUser.permissions);
-                
-                // إخفاء كل القوائم أولاً، ثم إظهار المسموح فقط
+                let perms = [];
+                try { perms = JSON.parse(currentUser.permissions); } catch(e) {}
+
+                window._currentUserPermissions = perms;
+
                 PERMISSIONS_LIST.forEach(p => {
                     const el = document.getElementById(p.id);
-                    if (el) {
-                        if (perms.includes(p.id)) {
-                            el.style.display = 'flex';
-                        } else {
-                            el.style.display = 'none';
-                        }
-                    }
+                    if (el) el.style.display = perms.includes(p.id) ? 'flex' : 'none';
+                });
+
+                const settingsEl = document.getElementById('nav-settings');
+                if (settingsEl) settingsEl.style.display = perms.includes('nav-settings') ? 'flex' : 'none';
+
+                const SECTION_MAP = {
+                    'nav-section-main':     ['nav-dashboard','nav-patients','nav-appointments','nav-calendar'],
+                    'nav-section-clinical': ['nav-prescriptions'],
+                    'nav-section-finance':  ['nav-invoices','nav-expenses','nav-reports'],
+                    'nav-section-system':   ['nav-inventory','nav-lab','nav-doctors','nav-reminders','nav-settings'],
+                };
+                Object.entries(SECTION_MAP).forEach(([sectionId, linkIds]) => {
+                    const hasVisible = linkIds.some(lid => perms.includes(lid));
+                    const el = document.getElementById(sectionId);
+                    if (el) el.style.display = hasVisible ? '' : 'none';
                 });
             }
         } catch(e) {
-            console.error('Error applying permissions', e);
+            console.error('[Permissions] Error:', e);
+        } finally {
+            revealNav();
         }
     };
 
@@ -601,8 +646,8 @@
         patchSwitchView();
         patchLanguageToggle();
         
-        // تطبيق الصلاحيات بعد تحميل الصفحة
-        setTimeout(window.applyUserPermissions, 1000);
+        setTimeout(window.applyUserPermissions, 300);
+        setTimeout(window.applyUserPermissions, 1500);
     }
 
     if (document.readyState === 'loading') {

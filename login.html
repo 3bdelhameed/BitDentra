@@ -293,6 +293,7 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
         if (remember) localStorage.setItem('clinicRemember', JSON.stringify({username}));
         else localStorage.removeItem('clinicRemember');
         sessionStorage.setItem('clinicLoggedIn', '1');
+        sessionStorage.setItem('clinicUsername',  data.username);
         sessionStorage.setItem('clinicRole',     data.role);
         sessionStorage.setItem('clinicUserName', loginLang==='ar' ? (data.name_ar||'') : (data.name_en||''));
         showAlert('alertBox', s.accessGranted, 'success');

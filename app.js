@@ -442,19 +442,20 @@ function applyRoleUI() {
     const rl = ROLE_LABELS[role];
     if (hRole && rl) hRole.innerText = currentLang === 'ar' ? rl.ar : rl.en;
     else if (hRole)  hRole.innerText = role;
-    if (role !== 'doctor') {
-        ['nav-expenses','nav-reports','nav-settings','nav-invoices','nav-doctors'].forEach(id => {
-            const el = document.getElementById(id);
-            if (el) el.style.display = 'none';
-        });
-        document.querySelectorAll('.nav-section-finance').forEach(el => el.style.display = 'none');
-    }
+    // الإخفاء/الإظهار مسؤولية applyUserPermissions في user_management.js فقط
 }
 
 function switchView(viewName) {
-    if (!isDoctor() && DOCTOR_ONLY_VIEWS.includes(viewName)) {
-        showToast('⛔ غير مصرح — Doctor access only', 'error');
-        return;
+    const role = getCurrentRole();
+    if (role !== 'admin' && role !== 'doctor') {
+        if (DOCTOR_ONLY_VIEWS.includes(viewName)) {
+            const navId = { expenses:'nav-expenses', reports:'nav-reports', settings:'nav-settings', invoices:'nav-invoices' }[viewName];
+            const allowed = window._currentUserPermissions;
+            if (!allowed || !navId || !allowed.includes(navId)) {
+                showToast('⛔ غير مصرح', 'error');
+                return;
+            }
+        }
     }
 
     viewIds.forEach(v => {

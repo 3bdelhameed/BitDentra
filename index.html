@@ -660,6 +660,32 @@
             .text-2xl { font-size: 1.25rem !important; }
             h2.text-xl { font-size: 1rem !important; }
         }
+        /* ── Sidebar Skeleton ── */
+        @keyframes shimmer {
+            0%   { background-position: -400px 0; }
+            100% { background-position:  400px 0; }
+        }
+        .sk-line {
+            height: 36px;
+            border-radius: 8px;
+            margin-bottom: 4px;
+            background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+            background-size: 400px 100%;
+            animation: shimmer 1.4s ease-in-out infinite;
+        }
+        .sk-label {
+            height: 10px;
+            width: 50%;
+            border-radius: 4px;
+            margin: 16px 12px 8px;
+            background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+            background-size: 400px 100%;
+            animation: shimmer 1.4s ease-in-out infinite;
+        }
+        body.dark .sk-line  { background: linear-gradient(90deg,#1e293b 25%,#273548 50%,#1e293b 75%); background-size:400px 100%; }
+        body.dark .sk-label { background: linear-gradient(90deg,#1e293b 25%,#273548 50%,#1e293b 75%); background-size:400px 100%; }
+        #sidebarSkeleton { transition: opacity 0.25s ease; }
+        #sidebarNav      { transition: opacity 0.25s ease; }
     </style>
 </head>
 
@@ -670,19 +696,36 @@
         <div class="h-16 flex items-center justify-center border-b border-gray-100" id="sidebarLogoArea">
             <span class="text-xl font-bold text-blue-900 sidebar-logo-text">Bit<span class="text-blue-500">Dentra</span> <i class="fa-solid fa-tooth text-blue-400 ml-1 text-base"></i></span>
         </div>
-        <nav class="flex-1 overflow-y-auto py-3 px-2">
-            <p class="px-3 text-[10px] font-semibold text-gray-400 mb-1 mt-1 uppercase tracking-wider" data-t="nav.main">Main</p>
+        <!-- Skeleton — يظهر أثناء تحميل الصلاحيات -->
+        <div id="sidebarSkeleton" class="flex-1 px-2 py-3">
+            <div class="sk-label"></div>
+            <div class="sk-line"></div>
+            <div class="sk-line" style="width:85%"></div>
+            <div class="sk-line" style="width:90%"></div>
+            <div class="sk-line" style="width:80%"></div>
+            <div class="sk-label"></div>
+            <div class="sk-line" style="width:88%"></div>
+            <div class="sk-label"></div>
+            <div class="sk-line"></div>
+            <div class="sk-line" style="width:82%"></div>
+            <div class="sk-line" style="width:87%"></div>
+            <div class="sk-label"></div>
+            <div class="sk-line" style="width:85%"></div>
+            <div class="sk-line" style="width:80%"></div>
+        </div>
+        <nav class="flex-1 overflow-y-auto py-3 px-2" id="sidebarNav" style="display:none;opacity:0">
+            <p class="px-3 text-[10px] font-semibold text-gray-400 mb-1 mt-1 uppercase tracking-wider" id="nav-section-main" data-t="nav.main">Main</p>
             <a onclick="switchView('dashboard')" id="nav-dashboard" class="sidebar-link active"><i class="fa-solid fa-border-all"></i> <span data-t="nav.dashboard">Dashboard</span></a>
             <a onclick="switchView('patients')" id="nav-patients" class="sidebar-link"><i class="fa-solid fa-users"></i> <span data-t="nav.patients">Patients</span></a>
             <a onclick="switchView('appointments')" id="nav-appointments" class="sidebar-link"><i class="fa-solid fa-clipboard-list"></i> <span data-t="nav.appointments">Appointments</span></a>
             <a onclick="switchView('calendar')" id="nav-calendar" class="sidebar-link"><i class="fa-solid fa-calendar-days"></i> <span data-t="nav.calendar">Calendar</span></a>
-            <p class="px-3 text-[10px] font-semibold text-gray-400 mb-1 mt-3 uppercase tracking-wider" data-t="nav.clinical">CLINICAL</p>
+            <p class="px-3 text-[10px] font-semibold text-gray-400 mb-1 mt-3 uppercase tracking-wider" id="nav-section-clinical" data-t="nav.clinical">CLINICAL</p>
             <a onclick="switchView('prescriptions')" id="nav-prescriptions" class="sidebar-link"><i class="fa-solid fa-prescription-bottle-medical"></i> <span data-t="nav.prescriptions">Prescriptions</span></a>
-            <p class="px-3 text-[10px] font-semibold text-gray-400 mb-1 mt-3 uppercase tracking-wider nav-section-finance" data-t="nav.finance">FINANCE</p>
+            <p class="px-3 text-[10px] font-semibold text-gray-400 mb-1 mt-3 uppercase id="nav-section-finance" tracking-wider nav-section-finance" data-t="nav.finance">FINANCE</p>
             <a onclick="switchView('invoices')" id="nav-invoices" class="sidebar-link"><i class="fa-solid fa-file-invoice"></i> <span data-t="nav.invoices">Invoices</span></a>
             <a onclick="switchView('expenses')" id="nav-expenses" class="sidebar-link"><i class="fa-solid fa-file-invoice-dollar"></i> <span data-t="nav.expenses">Expenses</span></a>
             <a onclick="switchView('reports')" id="nav-reports" class="sidebar-link"><i class="fa-solid fa-chart-bar"></i> <span data-t="nav.reports">Reports</span></a>
-            <p class="px-3 text-[10px] font-semibold text-gray-400 mb-1 mt-3 uppercase tracking-wider" data-t="nav.system">SYSTEM</p>
+            <p class="px-3 text-[10px] font-semibold text-gray-400 mb-1 mt-3 uppercase tracking-wider" id="nav-section-system" data-t="nav.system">SYSTEM</p>
             <a onclick="switchView('inventory')" id="nav-inventory" class="sidebar-link" style="position:relative">
                 <i class="fa-solid fa-boxes-stacked"></i> <span>Inventory</span>
                 <span id="invAlertBadge" class="hidden absolute top-1 right-1 bg-red-500 text-white text-[9px] rounded-full w-4 h-4 flex items-center justify-center font-bold">0</span>
@@ -2071,6 +2114,7 @@
     <script src="patient_child_feature.js"></script>
     <script src="user_header_patch.js"></script>
     <script src="notifications_fix.js"></script>
+    <script src="easy_wins.js"></script>
 
     <!-- ══ REPORT TABS ══ -->
     <script>
