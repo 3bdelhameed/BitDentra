@@ -2187,7 +2187,21 @@
             });
         })();
     </script>
-
+<!-- ══ SIDEBAR FALLBACK FIX ══ -->
+<script>
+    // إذا الـ sidebar لسه مخفي بعد 2 ثانية، اكشفه قسراً
+    window.addEventListener('load', function () {
+        setTimeout(function () {
+            const nav = document.getElementById('sidebarNav');
+            const skeleton = document.getElementById('sidebarSkeleton');
+            if (nav && (nav.style.display === 'none' || nav.style.opacity === '0')) {
+                if (skeleton) skeleton.style.display = 'none';
+                nav.style.display = 'block';
+                nav.style.opacity = '1';
+            }
+        }, 2000);
+    });
+</script>
     <!-- Service Worker — مرة واحدة بس -->
     <script>
         if ('serviceWorker' in navigator) {
