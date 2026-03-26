@@ -420,6 +420,11 @@
         const tbody = document.getElementById('allPatientsTableBody');
         if (!tbody) return;
         const curr = typeof getCurrency === 'function' ? getCurrency() : 'EGP';
+        const sortedPatients = [...(patients || [])].sort((a, b) => {
+            const left = `${b.created_at || b.createdAt || ''}|${b.id || 0}`;
+            const right = `${a.created_at || a.createdAt || ''}|${a.id || 0}`;
+            return left.localeCompare(right);
+        });
 
         if (!patients || !patients.length) {
             tbody.innerHTML = '';
@@ -436,7 +441,7 @@
             bmap[pid].paid += parseFloat(tr.paid) || 0;
         });
 
-        tbody.innerHTML = [...patients].reverse().map((p, i) => {
+        tbody.innerHTML = sortedPatients.map((p, i) => {
             const b    = bmap[p.id] || { cost:0, paid:0 };
             const debt = b.cost - b.paid;
             const debtHtml = debt > 0.01

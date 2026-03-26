@@ -5,7 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BitDentra— Dashboard</title>
-    <script>if (!sessionStorage.getItem('clinicLoggedIn')) { window.location.replace('login.html'); }</script>
+    <script src="auth.js"></script>
+    <script>if (!window.clinicAuth || !window.clinicAuth.requireSession('login.html')) {}</script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://unpkg.com/dexie/dist/dexie.js"></script>
@@ -16,7 +17,7 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="ClinicSys">
-    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2966/2966327.png">
+    <link rel="apple-touch-icon" href="icon.png">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Cairo:wght@400;600;700&display=swap');
 
@@ -569,6 +570,100 @@
             }
         }
 
+        /* ===== GLOBAL SEARCH ===== */
+        #globalSearchWrap {
+            position: relative;
+        }
+        #globalSearchInput {
+            width: 220px;
+            padding: 7px 14px 7px 36px;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 13px;
+            background: #f8fafc;
+            color: #374151;
+            transition: all 0.2s;
+        }
+        #globalSearchInput:focus {
+            width: 280px;
+            border-color: #3b82f6 !important;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
+        }
+        #globalSearchIcon {
+            position: absolute;
+            left: 11px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #94a3b8;
+            font-size: 13px;
+            pointer-events: none;
+        }
+        #globalSearchDropdown {
+            position: absolute;
+            top: calc(100% + 6px);
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+            z-index: 200;
+            max-height: 320px;
+            overflow-y: auto;
+            display: none;
+            min-width: 280px;
+        }
+        #globalSearchDropdown.open { display: block; }
+        .gsearch-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 14px;
+            cursor: pointer;
+            border-bottom: 1px solid #f1f5f9;
+            transition: background 0.15s;
+        }
+        .gsearch-item:last-child { border-bottom: none; }
+        .gsearch-item:hover { background: #eff6ff; }
+        .gsearch-avatar {
+            width: 34px; height: 34px;
+            border-radius: 10px;
+            background: #dbeafe;
+            color: #2563eb;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 700; font-size: 14px; flex-shrink: 0;
+        }
+        .gsearch-name { font-weight: 600; font-size: 13px; color: #1e293b; }
+        .gsearch-sub { font-size: 11px; color: #94a3b8; margin-top: 1px; }
+        .gsearch-empty { padding: 16px; text-align: center; color: #94a3b8; font-size: 13px; }
+
+        /* Patient Quick View Modal */
+        #patientQuickModal .modal-box { max-width: 720px; }
+        .pqv-tab {
+            padding: 7px 16px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            color: #64748b;
+            background: transparent;
+            border: none;
+            transition: all 0.15s;
+        }
+        .pqv-tab.active { background: #2563eb; color: white; }
+        .pqv-tab:hover:not(.active) { background: #f1f5f9; color: #374151; }
+        .pqv-panel { display: none; }
+        .pqv-panel.active { display: block; }
+
+        body.dark #globalSearchInput { background: #1e293b; color: #e2e8f0; border-color: #334155; }
+        body.dark #globalSearchDropdown { background: #1e293b; border-color: #334155; }
+        body.dark .gsearch-item:hover { background: #0f172a; }
+        body.dark .gsearch-name { color: #e2e8f0; }
+        [dir="rtl"] #globalSearchIcon { left: auto; right: 11px; }
+        [dir="rtl"] #globalSearchInput { padding: 7px 36px 7px 14px; }
+        [dir="rtl"] #globalSearchDropdown { left: auto; right: 0; }
+
         /* ===== SIDEBAR COLLAPSE (Desktop) ===== */
         #sidebar {
             transition: width .25s ease;
@@ -757,6 +852,16 @@
                 <span class="font-semibold text-gray-700" id="headerTitle">Dashboard</span>
             </div>
             <div class="flex items-center gap-3">
+                <!-- Global Search -->
+                <div id="globalSearchWrap" class="relative hidden sm:block">
+                    <i class="fa-solid fa-magnifying-glass" id="globalSearchIcon"></i>
+                    <input type="text" id="globalSearchInput" placeholder="Search patient..." autocomplete="off"
+                        oninput="globalSearchHandler(this.value)"
+                        onkeydown="globalSearchKeyNav(event)"
+                        onfocus="if(this.value.trim().length>=1) document.getElementById('globalSearchDropdown').classList.add('open')"
+                    />
+                    <div id="globalSearchDropdown"></div>
+                </div>
                 <div id="syncBadge" class="hidden items-center px-1"></div>
                 <button onclick="toggleLanguage()" id="langToggleBtn" class="btn btn-outline text-xs px-3 py-1.5">🌐 عربي</button>
                 <button onclick="toggleDarkMode()" id="darkModeBtn" class="btn btn-outline text-xs px-2.5 py-1.5" title="Dark Mode"><i class="fa-solid fa-moon"></i></button>
@@ -2085,6 +2190,39 @@
         </div>
     </div>
 
+    <!-- ════ PATIENT QUICK VIEW MODAL ════ -->
+    <div id="patientQuickModal" class="modal-base">
+        <div class="modal-box" style="max-width:720px">
+            <div class="flex items-center justify-between mb-4 pb-3 border-b border-gray-100">
+                <div class="flex items-center gap-3">
+                    <div id="pqvAvatar" class="w-12 h-12 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-xl"></div>
+                    <div>
+                        <h2 id="pqvName" class="text-lg font-bold text-gray-800"></h2>
+                        <p id="pqvSub" class="text-xs text-gray-400 mt-0.5"></p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button id="pqvOpenProfileBtn" class="btn btn-blue text-xs"><i class="fa-solid fa-arrow-up-right-from-square"></i> Open Profile</button>
+                    <button onclick="closeModal('patientQuickModal')" class="text-gray-300 hover:text-red-400 text-xl w-8 h-8 flex items-center justify-center"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+            </div>
+            <div id="pqvInfoRow" class="grid grid-cols-3 gap-3 mb-4"></div>
+            <div id="pqvBalanceRow" class="grid grid-cols-3 gap-3 mb-4"></div>
+            <div class="flex gap-1 mb-3 bg-gray-50 rounded-xl p-1 flex-wrap">
+                <button class="pqv-tab active" onclick="switchPqvTab(this,'pqvAppts')"><i class="fa-solid fa-calendar-days mr-1"></i>Appointments</button>
+                <button class="pqv-tab" onclick="switchPqvTab(this,'pqvTreatments')"><i class="fa-solid fa-tooth mr-1"></i>Treatments</button>
+                <button class="pqv-tab" onclick="switchPqvTab(this,'pqvRx')"><i class="fa-solid fa-prescription-bottle-medical mr-1"></i>Prescriptions</button>
+                <button class="pqv-tab" onclick="switchPqvTab(this,'pqvInvoices')"><i class="fa-solid fa-file-invoice mr-1"></i>Invoices</button>
+            </div>
+            <div style="max-height:320px;overflow-y:auto">
+                <div id="pqvAppts" class="pqv-panel active"></div>
+                <div id="pqvTreatments" class="pqv-panel"></div>
+                <div id="pqvRx" class="pqv-panel"></div>
+                <div id="pqvInvoices" class="pqv-panel"></div>
+            </div>
+        </div>
+    </div>
+
     <!-- Toast -->
     <div id="toast" class="toast"></div>
 
@@ -2187,7 +2325,9 @@
             });
         })();
     </script>
-<!-- ══ SIDEBAR FALLBACK FIX ══ -->
+
+    <!-- Service Worker — مرة واحدة بس -->
+    <!-- ══ SIDEBAR FALLBACK FIX ══ -->
 <script>
     // إذا الـ sidebar لسه مخفي بعد 2 ثانية، اكشفه قسراً
     window.addEventListener('load', function () {
@@ -2202,7 +2342,6 @@
         }, 2000);
     });
 </script>
-    <!-- Service Worker — مرة واحدة بس -->
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {

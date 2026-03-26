@@ -1,9 +1,10 @@
 // ✅ غيّر الرقم هنا كل ما تعمل تحديث لأي ملف JS
-const CACHE_NAME = 'clinic-app-v8';
+const CACHE_NAME = 'clinic-app-v9';
 
 const LOCAL_FILES = [
     'login.html',
     'index.html',
+    'auth.js',
     'app.js',
     'manifest.json',
     'supabase-config.js',

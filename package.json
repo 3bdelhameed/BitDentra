@@ -1,0 +1,40 @@
+{
+  "name": "bitdentra-desktop",
+  "version": "1.0.0",
+  "description": "BitDentra desktop wrapper",
+  "main": "electron-main.js",
+  "author": "BitDentra",
+  "license": "UNLICENSED",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "build:win": "electron-builder --win portable"
+  },
+  "build": {
+    "appId": "com.bitdentra.desktop",
+    "productName": "BitDentra",
+    "files": [
+      "**/*",
+      "!dist{,/**}",
+      "!node_modules/.cache{,/**}"
+    ],
+    "directories": {
+      "output": "release-icon"
+    },
+    "win": {
+      "signAndEditExecutable": false,
+      "target": [
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    }
+  },
+  "devDependencies": {
+    "electron": "^37.2.0",
+    "electron-builder": "^26.0.12"
+  }
+}

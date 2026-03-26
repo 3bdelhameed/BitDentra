@@ -211,12 +211,26 @@ if (!window._appointmentsRefreshDefined) {
                 return;
             }
 
-            const selectedOpt = sel.selectedIndex >= 0 ? sel.options[sel.selectedIndex] : null;
-            const patientName = selectedOpt ? selectedOpt.text : '';
+            let patientName = '';
+            const patientId = parseInt(sel.value, 10);
+
+            if (!Number.isNaN(patientId)) {
+                const cached = window.cachedPatients || window.allPatientsData || [];
+                const found = cached.find(p => String(p.id) === String(patientId));
+                if (found && found.name) {
+                    patientName = found.name;
+                }
+            }
+
+            if (!patientName) {
+                const searchInput = document.getElementById('appointmentPatientSearch');
+                patientName = searchInput ? (searchInput.value || '').trim() : '';
+            }
+
             const complaintEl = document.getElementById('appointmentComplaint');
 
             await dbInsert('appointments', {
-                patient_id:    parseInt(sel.value),
+                patient_id:    patientId,
                 patient_name:  patientName,
                 date:          date,
                 time:          time,

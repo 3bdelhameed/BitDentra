@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="auth.js"></script>
     <title>DentalClinic — Sign In</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
     <link rel="manifest" href="manifest.json">
@@ -204,9 +205,12 @@ async function loadUsersFromDB() {
     const sb = getSB();
     if (!sb) { setDbStatus('error', 'Cannot reach database'); return; }
     try {
-        const { data, error } = await sb.from('clinic_users').select('*').eq('is_active', true);
+        const { data, error } = await sb.from('clinic_users').select('id, username, password, is_active').eq('is_active', true);
         if (error) throw error;
         _dbUsers = data || [];
+        if (window.clinicAuth) {
+            await window.clinicAuth.migrateLegacyUserPasswords(sb, _dbUsers);
+        }
         setDbStatus('online', 'Connected — ready to sign in');
     } catch(e) {
         setDbStatus('error', 'Database unavailable — cannot sign in');
@@ -260,7 +264,9 @@ function toggleLoginLang(){loginLang=loginLang==='en'?'ar':'en';localStorage.set
 
 function showAlert(id,msg,type){
     const el=document.getElementById(id);
-    el.innerHTML=`<i class="fa-solid fa-${type==='success'?'circle-check':'circle-exclamation'}"></i><span>${msg}</span>`;
+    el.innerHTML=`<i class="fa-solid fa-${type==='success'?'circle-check':'circle-exclamation'}"></i><span></span>`;
+    const textNode = el.querySelector('span');
+    if(textNode) textNode.textContent = String(msg || '');
     el.className=`alert show ${type}`;
 }
 function hideAlert(id){document.getElementById(id).className='alert';}
@@ -287,15 +293,28 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
     try {
         const { data, error } = await sb
             .from('clinic_users').select('*')
-            .eq('username', username).eq('password', password).eq('is_active', true)
+            .eq('username', username).eq('is_active', true)
             .single();
         if (error || !data) throw new Error('invalid');
+        const isValid = window.clinicAuth
+            ? await window.clinicAuth.verifyPassword(password, data.password)
+            : password === data.password;
+        if (!isValid) throw new Error('invalid');
+        if (window.clinicAuth && !window.clinicAuth.isStoredPasswordHashed(data.password)) {
+            const hashedPassword = await window.clinicAuth.hashPassword(password);
+            const { error: migrateError } = await sb.from('clinic_users').update({ password: hashedPassword }).eq('id', data.id);
+            if (!migrateError) data.password = hashedPassword;
+        }
         if (remember) localStorage.setItem('clinicRemember', JSON.stringify({username}));
         else localStorage.removeItem('clinicRemember');
-        sessionStorage.setItem('clinicLoggedIn', '1');
-        sessionStorage.setItem('clinicUsername',  data.username);
-        sessionStorage.setItem('clinicRole',     data.role);
-        sessionStorage.setItem('clinicUserName', loginLang==='ar' ? (data.name_ar||'') : (data.name_en||''));
+        if (window.clinicAuth) {
+            window.clinicAuth.setSession(window.clinicAuth.buildSessionUser(data, loginLang));
+        } else {
+            sessionStorage.setItem('clinicLoggedIn', '1');
+            sessionStorage.setItem('clinicUsername',  data.username);
+            sessionStorage.setItem('clinicRole',     data.role);
+            sessionStorage.setItem('clinicUserName', loginLang==='ar' ? (data.name_ar||'') : (data.name_en||''));
+        }
         showAlert('alertBox', s.accessGranted, 'success');
         setTimeout(() => { window.location.href = 'index.html'; }, 700);
     } catch(e) {
@@ -307,6 +326,10 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
 });
 
 window.addEventListener('DOMContentLoaded', async ()=>{
+    if (window.clinicAuth && window.clinicAuth.isAuthenticated()) {
+        window.location.replace('index.html');
+        return;
+    }
     loginLang=localStorage.getItem('clinicLang')||'en';
     applyLang();
     const r=localStorage.getItem('clinicRemember');

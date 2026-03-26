@@ -7,7 +7,7 @@
     'use strict';
 
     function isAdmin() {
-        return (sessionStorage.getItem('clinicRole') || '') === 'admin';
+        return (window.clinicAuth ? window.clinicAuth.getCurrentRole() : (sessionStorage.getItem('clinicRole') || '')) === 'admin';
     }
 
     const ROLE_MAP = {
@@ -168,8 +168,8 @@
                                 <input type="text" id="userUsername" required class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm font-semibold" placeholder="ahmed99" dir="ltr">
                             </div>
                             <div>
-                                <label class="text-xs font-semibold text-gray-500 block mb-1">كلمة المرور (Password) *</label>
-                                <input type="text" id="userPassword" required class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm font-semibold" placeholder="••••••••" dir="ltr">
+                                <label class="text-xs font-semibold text-gray-500 block mb-1">كلمة المرور (اتركها فارغة للإبقاء على الحالية)</label>
+                                <input type="password" id="userPassword" class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm font-semibold" placeholder="••••••••" dir="ltr" autocomplete="new-password">
                             </div>
                         </div>
 
@@ -224,7 +224,7 @@
             if (!navigator.onLine) throw new Error('لا يوجد اتصال بالإنترنت.');
 
             // ✅ جلب البيانات مباشرة من السيرفر لضمان أننا نرى النسخة الحقيقية وليس الكاش
-            const { data, error } = await window._sb.from('clinic_users').select('*').order('created_at', { ascending: true });
+            const { data, error } = await window._sb.from('clinic_users').select('id, username, name_ar, name_en, role, is_active, permissions, created_at').order('created_at', { ascending: true });
             
             if (error) throw error;
             _usersList = data || [];
@@ -269,6 +269,7 @@
         const tbody = document.getElementById('usersTableBody');
         const empty = document.getElementById('usersEmptyState');
         const lang = localStorage.getItem('clinicLang') || 'ar';
+        const esc = window.escapeHtml || ((value) => String(value ?? ''));
         
         if (!users.length) {
             tbody.innerHTML = '';
@@ -280,6 +281,8 @@
         tbody.innerHTML = users.map(u => {
             const rl = ROLE_MAP[u.role] || ROLE_MAP['reception'];
             const name = u.name_ar || u.name_en || u.username;
+            const safeName = esc(name);
+            const safeUsername = esc(u.username || '');
             const roleName = lang === 'ar' ? rl.ar : rl.en;
             
             const activeHtml = u.is_active 
@@ -302,19 +305,19 @@
                 <td class="px-4 py-3">
                     <div class="flex items-center gap-3">
                         <div class="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm shadow-sm" style="background:var(--tw-colors-${rl.color}-100,#dbeafe); color:var(--tw-colors-${rl.color}-600,#2563eb);">
-                            ${name.charAt(0).toUpperCase()}
+                            ${esc(name.charAt(0).toUpperCase())}
                         </div>
-                        <div class="font-semibold text-gray-800 text-sm">${name}</div>
+                        <div class="font-semibold text-gray-800 text-sm">${safeName}</div>
                     </div>
                 </td>
-                <td class="px-4 py-3 text-gray-500 font-mono text-sm" dir="ltr">@${u.username}</td>
+                <td class="px-4 py-3 text-gray-500 font-mono text-sm" dir="ltr">@${safeUsername}</td>
                 <td class="px-4 py-3 text-center">${roleBadge}</td>
                 <td class="px-4 py-3 text-center">${activeHtml}</td>
                 <td class="px-4 py-3 text-center">${dateHtml}</td>
                 <td class="px-4 py-3 text-center">
                     <div class="flex gap-1 justify-center">
                         <button onclick="window.openUserModal('${u.id}')" class="btn btn-outline text-xs px-2 py-1"><i class="fa-solid fa-pen"></i></button>
-                        <button onclick="window.deleteUser('${u.id}', '${u.username}')" class="btn text-xs px-2 py-1" style="background:#fef2f2;color:#ef4444;border:1px solid #fecaca;"><i class="fa-solid fa-trash"></i></button>
+                        <button onclick='window.deleteUser(${JSON.stringify(u.id)}, ${JSON.stringify(u.username || "")})' class="btn text-xs px-2 py-1" style="background:#fef2f2;color:#ef4444;border:1px solid #fecaca;"><i class="fa-solid fa-trash"></i></button>
                     </div>
                 </td>
             </tr>`;
@@ -343,6 +346,7 @@
         const form = document.getElementById('userForm');
         const title = document.getElementById('userModalTitle');
         const lang = localStorage.getItem('clinicLang') || 'ar';
+        const esc = window.escapeHtml || ((value) => String(value ?? ''));
         
         form.reset();
         document.getElementById('userId').value = '';
@@ -353,7 +357,7 @@
             if (u) {
                 document.getElementById('userId').value = u.id;
                 document.getElementById('userUsername').value = u.username;
-                document.getElementById('userPassword').value = u.password;
+                document.getElementById('userPassword').value = '';
                 document.getElementById('userNameAr').value = u.name_ar || '';
                 document.getElementById('userNameEn').value = u.name_en || '';
                 document.getElementById('userRole').value = u.role;
@@ -373,7 +377,7 @@
                     window.setDefaultPermissions();
                 }
 
-                title.innerHTML = `<i class="fa-solid fa-user-pen text-indigo-500 mr-2"></i> ${lang === 'ar' ? 'تعديل الحساب:' : 'Edit Account:'} <span class="font-mono text-sm ml-1">@${u.username}</span>`;
+                title.innerHTML = `<i class="fa-solid fa-user-pen text-indigo-500 mr-2"></i> ${lang === 'ar' ? 'تعديل الحساب:' : 'Edit Account:'} <span class="font-mono text-sm ml-1">@${esc(u.username)}</span>`;
             }
         } else {
             window.setDefaultPermissions();
@@ -397,9 +401,9 @@
             selectedPerms.push(cb.value);
         });
 
+        const rawPassword = document.getElementById('userPassword').value.trim();
         const data = {
             username: document.getElementById('userUsername').value.trim(),
-            password: document.getElementById('userPassword').value.trim(),
             name_ar: document.getElementById('userNameAr').value.trim(),
             name_en: document.getElementById('userNameEn').value.trim(),
             role: document.getElementById('userRole').value,
@@ -409,6 +413,12 @@
 
         try {
             if (!navigator.onLine) throw new Error('لا يوجد اتصال بالإنترنت.');
+            if (!id && !rawPassword) throw new Error('Password is required for new users.');
+            if (rawPassword) {
+                data.password = window.clinicAuth
+                    ? await window.clinicAuth.hashPassword(rawPassword)
+                    : rawPassword;
+            }
 
             if (id) {
                 const parsedId = isNaN(Number(id)) ? id : Number(id);
@@ -585,7 +595,7 @@
         }
 
         try {
-            const username = sessionStorage.getItem('clinicUsername');
+            const username = window.clinicAuth ? window.clinicAuth.getCurrentUsername() : sessionStorage.getItem('clinicUsername');
 
             if (!username) { revealNav(); return; }
 

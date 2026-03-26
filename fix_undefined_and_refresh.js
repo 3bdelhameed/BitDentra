@@ -263,15 +263,19 @@
                 if (!name || name === 'undefined') {
                     // دور في cache
                     const pid = data.patient_id || data.patientId;
-                    if (pid) {
-                        const cached = window.cachedPatients || window.allPatientsData || [];
-                        const found = cached.find(p => p.id == pid);
-                        if (found) {
-                            name = found.name || '';
-                            data = { ...data, patient_name: name };
-                        }
+                if (pid) {
+                    const cached = window.cachedPatients || window.allPatientsData || [];
+                    const found = cached.find(p => p.id == pid);
+                    if (found) {
+                        name = found.name || '';
+                        data = { ...data, patient_name: name };
+                    } else {
+                        const searchInput = document.getElementById('appointmentPatientSearch');
+                        const typedName = searchInput ? (searchInput.value || '').trim() : '';
+                        if (typedName) data = { ...data, patient_name: typedName };
                     }
                 }
+            }
             }
             return _orig.call(this, table, data);
         };
