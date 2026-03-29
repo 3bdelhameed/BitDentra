@@ -33,6 +33,62 @@
         { id: 'nav-settings', labelAr: 'الإعدادات', labelEn: 'Settings' }
     ];
 
+    let _usersList = [];
+
+    function findKnownUserById(id) {
+        const targetId = String(id ?? '');
+        return _usersList.find(u => String(u.id) === targetId) || null;
+    }
+
+    function parsePermissions(value) {
+        if (Array.isArray(value)) return value;
+        if (typeof value !== 'string' || !value.trim()) return [];
+        try {
+            const parsed = JSON.parse(value);
+            return Array.isArray(parsed) ? parsed : [];
+        } catch (_) {
+            return [];
+        }
+    }
+
+    function serializeUserForAudit(user) {
+        if (!user || typeof user !== 'object') return null;
+        return {
+            id: user.id ?? null,
+            username: user.username || '',
+            name_ar: user.name_ar || '',
+            name_en: user.name_en || '',
+            role: user.role || '',
+            is_active: typeof user.is_active === 'boolean' ? user.is_active : !!user.is_active,
+            permissions: parsePermissions(user.permissions),
+            created_at: user.created_at || null
+        };
+    }
+
+    function getUserAuditLabel(user, fallbackUsername = '') {
+        const username = user?.username || fallbackUsername || '';
+        if (username) return '@' + username;
+        return user?.id != null ? '#' + user.id : 'user';
+    }
+
+    function getChangedUserFields(beforeUser, afterUser) {
+        const before = serializeUserForAudit(beforeUser) || {};
+        const after = serializeUserForAudit(afterUser) || {};
+        return ['username', 'name_ar', 'name_en', 'role', 'is_active', 'permissions']
+            .filter(key => JSON.stringify(before[key]) !== JSON.stringify(after[key]));
+    }
+
+    async function logUserAudit(actionType, options) {
+        if (typeof window.auditLogEvent !== 'function') return;
+        try {
+            await window.auditLogEvent(actionType, Object.assign({
+                entityTable: 'clinic_users'
+            }, options || {}));
+        } catch (err) {
+            console.warn('[Audit] clinic_users log failed:', err?.message || err);
+        }
+    }
+
     function injectUI() {
         const lang = localStorage.getItem('clinicLang') || 'ar';
         const menuLabel = lang === 'ar' ? 'إدارة المستخدمين' : 'User Management';
@@ -210,8 +266,6 @@
     }
 
     // ── 3. Logic ───────────────────────────────────────────────────
-    let _usersList = [];
-
     window.loadUsersView = async function () {
         if (!isAdmin()) return;
         const loader = document.getElementById('usersLoader');
@@ -395,6 +449,7 @@
         btn.disabled = true;
 
         const id = document.getElementById('userId').value;
+        const beforeUser = id ? serializeUserForAudit(findKnownUserById(id)) : null;
         
         const selectedPerms = [];
         document.querySelectorAll('.user-permission-cb:checked').forEach(cb => {
@@ -423,13 +478,40 @@
             if (id) {
                 const parsedId = isNaN(Number(id)) ? id : Number(id);
                 // ✅ الحفظ المباشر في السيرفر
-                const { error } = await window._sb.from('clinic_users').update(data).eq('id', parsedId);
+                const { data: savedUser, error } = await window._sb
+                    .from('clinic_users')
+                    .update(data)
+                    .eq('id', parsedId)
+                    .select('id, username, name_ar, name_en, role, is_active, permissions, created_at')
+                    .single();
                 if (error) throw error;
+                await logUserAudit('update', {
+                    entityId: savedUser.id,
+                    entityLabel: getUserAuditLabel(savedUser, data.username),
+                    summary: `Updated user ${getUserAuditLabel(savedUser, data.username)}`,
+                    details: {
+                        before: beforeUser,
+                        after: serializeUserForAudit(savedUser),
+                        changed_fields: getChangedUserFields(beforeUser, savedUser)
+                    }
+                });
                 if (typeof showToast === 'function') showToast('تم تعديل البيانات بنجاح', 'success');
             } else {
                 // ✅ الحفظ المباشر في السيرفر
-                const { error } = await window._sb.from('clinic_users').insert(data);
+                const { data: savedUser, error } = await window._sb
+                    .from('clinic_users')
+                    .insert(data)
+                    .select('id, username, name_ar, name_en, role, is_active, permissions, created_at')
+                    .single();
                 if (error) throw error;
+                await logUserAudit('insert', {
+                    entityId: savedUser.id,
+                    entityLabel: getUserAuditLabel(savedUser, data.username),
+                    summary: `Created user ${getUserAuditLabel(savedUser, data.username)}`,
+                    details: {
+                        after: serializeUserForAudit(savedUser)
+                    }
+                });
                 if (typeof showToast === 'function') showToast('تم إضافة المستخدم', 'success');
             }
             if (typeof closeModal === 'function') closeModal('userModal');
@@ -462,6 +544,7 @@
 
             // تحويل الـ ID لنوع Number إذا كان رقماً
             const parsedId = isNaN(Number(id)) ? id : Number(id);
+            const beforeUser = serializeUserForAudit(findKnownUserById(parsedId) || { id: parsedId, username });
             
             console.log('[DeleteUser] Attempting to delete ID:', parsedId);
             
@@ -487,6 +570,18 @@
                     if (updErr) throw updErr;
                     if (!updData || updData.length === 0) throw new Error('فشل إيقاف الحساب.');
                     
+                    const deactivatedUser = serializeUserForAudit(updData[0]);
+                    await logUserAudit('update', {
+                        entityId: parsedId,
+                        entityLabel: getUserAuditLabel(deactivatedUser, username),
+                        summary: `Deactivated user ${getUserAuditLabel(deactivatedUser, username)}`,
+                        details: {
+                            before: beforeUser,
+                            after: deactivatedUser,
+                            changed_fields: getChangedUserFields(beforeUser, deactivatedUser)
+                        }
+                    });
+
                     if (typeof showToast === 'function') {
                         showToast('تم إيقاف الحساب بدلاً من حذفه، لوجود عمليات مسجلة باسمه (فواتير/كشوفات)', 'warning');
                     } else {
@@ -500,6 +595,15 @@
                 throw new Error('لم يتم الحذف! قد يكون هناك مشكلة في صلاحيات (RLS Policy) في قاعدة البيانات.');
             } else {
                 console.log('[DeleteUser] Delete successful', data);
+                const deletedUser = serializeUserForAudit((data && data[0]) || beforeUser || { id: parsedId, username });
+                await logUserAudit('delete', {
+                    entityId: parsedId,
+                    entityLabel: getUserAuditLabel(deletedUser, username),
+                    summary: `Deleted user ${getUserAuditLabel(deletedUser, username)}`,
+                    details: {
+                        before: deletedUser
+                    }
+                });
                 if (typeof showToast === 'function') showToast('تم حذف الحساب بنجاح', 'success');
             }
             

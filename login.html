@@ -192,6 +192,16 @@ function getSB() {
     return _sb;
 }
 function getUserByRole(r) { return _dbUsers.find(u => u.role === r); }
+const USERS_CACHE_KEY = 'clinic_users_cache_v1';
+
+function saveUsersCache(users) {
+    try { localStorage.setItem(USERS_CACHE_KEY, JSON.stringify(users || [])); } catch (_) {}
+}
+
+function loadUsersCache() {
+    try { return JSON.parse(localStorage.getItem(USERS_CACHE_KEY) || '[]'); }
+    catch (_) { return []; }
+}
 
 function setDbStatus(state, msg) {
     const dot = document.getElementById('dbDot');
@@ -203,17 +213,36 @@ function setDbStatus(state, msg) {
 async function loadUsersFromDB() {
     setDbStatus('connecting', 'Connecting to database…');
     const sb = getSB();
-    if (!sb) { setDbStatus('error', 'Cannot reach database'); return; }
+    if (!sb) {
+        const cached = loadUsersCache().filter(u => u && u.is_active !== false);
+        if (cached.length) {
+            _dbUsers = cached;
+            setDbStatus('online', 'Offline cache ready');
+        } else {
+            setDbStatus('error', 'Cannot reach database');
+        }
+        return;
+    }
     try {
-        const { data, error } = await sb.from('clinic_users').select('id, username, password, is_active').eq('is_active', true);
+        const { data, error } = await sb
+            .from('clinic_users')
+            .select('id, username, password, is_active, role, name_ar, name_en')
+            .eq('is_active', true);
         if (error) throw error;
         _dbUsers = data || [];
         if (window.clinicAuth) {
             await window.clinicAuth.migrateLegacyUserPasswords(sb, _dbUsers);
         }
+        saveUsersCache(_dbUsers);
         setDbStatus('online', 'Connected — ready to sign in');
     } catch(e) {
-        setDbStatus('error', 'Database unavailable — cannot sign in');
+        const cached = loadUsersCache().filter(u => u && u.is_active !== false);
+        if (cached.length) {
+            _dbUsers = cached;
+            setDbStatus('online', 'Offline cache ready');
+        } else {
+            setDbStatus('error', 'Database unavailable — cannot sign in');
+        }
         console.warn('[DB]', e.message);
     }
 }
@@ -285,25 +314,42 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
     const btn = document.getElementById('loginBtn'); const s = LANG[loginLang];
     if (!username || !password) { showAlert('alertBox', s.fillAll, 'error'); return; }
     const sb = getSB();
-    if (!sb || !_dbUsers.length) {
+    const canUseCachedUsers = _dbUsers.length > 0;
+    if (!sb && !canUseCachedUsers) {
         showAlert('alertBox', 'Database not available. Check your internet connection.', 'error');
         return;
     }
     btn.classList.add('loading'); btn.disabled = true;
     try {
-        const { data, error } = await sb
-            .from('clinic_users').select('*')
-            .eq('username', username).eq('is_active', true)
-            .single();
-        if (error || !data) throw new Error('invalid');
+        let data = null;
+
+        if (sb && navigator.onLine) {
+            const result = await sb
+                .from('clinic_users').select('id, username, password, is_active, role, name_ar, name_en')
+                .eq('username', username).eq('is_active', true)
+                .single();
+            if (!result.error && result.data) {
+                data = result.data;
+            }
+        }
+
+        if (!data) {
+            data = _dbUsers.find(u => u.username === username && u.is_active !== false) || null;
+        }
+
+        if (!data) throw new Error('invalid');
         const isValid = window.clinicAuth
             ? await window.clinicAuth.verifyPassword(password, data.password)
             : password === data.password;
         if (!isValid) throw new Error('invalid');
-        if (window.clinicAuth && !window.clinicAuth.isStoredPasswordHashed(data.password)) {
+        if (sb && navigator.onLine && window.clinicAuth && !window.clinicAuth.isStoredPasswordHashed(data.password)) {
             const hashedPassword = await window.clinicAuth.hashPassword(password);
             const { error: migrateError } = await sb.from('clinic_users').update({ password: hashedPassword }).eq('id', data.id);
-            if (!migrateError) data.password = hashedPassword;
+            if (!migrateError) {
+                data.password = hashedPassword;
+                _dbUsers = _dbUsers.map(u => String(u.id) === String(data.id) ? { ...u, password: hashedPassword } : u);
+                saveUsersCache(_dbUsers);
+            }
         }
         if (remember) localStorage.setItem('clinicRemember', JSON.stringify({username}));
         else localStorage.removeItem('clinicRemember');
@@ -338,9 +384,11 @@ window.addEventListener('DOMContentLoaded', async ()=>{
 });
 </script>
 <script>
-if('serviceWorker' in navigator){
+if('serviceWorker' in navigator && !/BitDentraAndroid\/\d/.test(navigator.userAgent)){
     window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{});});
 }
 </script>
 </body>
 </html>
+
+

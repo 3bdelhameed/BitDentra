@@ -63,7 +63,8 @@
         patientNotes:    'patient_notes',
         doctors:         'doctors',
         clinicUsers:     'clinic_users',
-        sessionPayments: 'session_payments',
+        session_payments: 'session_payments',
+        audit_logs:      'audit_logs',
     };
 
     // Supabase table name → Dexie name
@@ -225,7 +226,8 @@
             ['patientNotes',    'patient_notes'],
             ['doctors',         'doctors'],
             ['clinicUsers',     'clinic_users'],
-            ['sessionPayments', 'session_payments'],
+            ['session_payments', 'session_payments'],
+            ['audit_logs',      'audit_logs'],
         ];
 
         for (const [dexName, sbName] of pairs) {
@@ -246,26 +248,60 @@
                 delete snake._pending_op;
 
                 try {
-                    // تحقق إذا السجل موجود بالفعل في Supabase (منع duplicate)
-                    // بنبحث بـ created_at + أول حقل تعريفي
-                    const { data: existing } = await window._sb
-                        .from(sbName)
-                        .select('id')
-                        .match(snake)
-                        .limit(1);
-
                     let realId;
-                    if (existing && existing.length > 0) {
-                        // السجل موجود بالفعل، بس حدّث الـ ID المحلي
-                        realId = existing[0].id;
-                    } else {
-                        const { data: inserted, error } = await window._sb
+                    if (sbName === 'tooth_states') {
+                        const patientId = snake.patient_id;
+                        const toothNumber = String(snake.tooth_number || '').trim();
+                        const cleanToothState = { ...snake, patient_id: patientId, tooth_number: toothNumber };
+
+                        const { data: existing, error: lookupError } = await window._sb
                             .from(sbName)
-                            .insert(snake)
-                            .select()
-                            .single();
-                        if (error) throw error;
-                        realId = inserted.id;
+                            .select('id')
+                            .eq('patient_id', patientId)
+                            .eq('tooth_number', toothNumber)
+                            .order('id', { ascending: false })
+                            .limit(1);
+                        if (lookupError) throw lookupError;
+
+                        if (existing && existing.length > 0) {
+                            const { data: updated, error } = await window._sb
+                                .from(sbName)
+                                .update(cleanToothState)
+                                .eq('id', existing[0].id)
+                                .select()
+                                .single();
+                            if (error) throw error;
+                            realId = updated.id;
+                        } else {
+                            const { data: inserted, error } = await window._sb
+                                .from(sbName)
+                                .insert(cleanToothState)
+                                .select()
+                                .single();
+                            if (error) throw error;
+                            realId = inserted.id;
+                        }
+                    } else {
+                        // تحقق إذا السجل موجود بالفعل في Supabase (منع duplicate)
+                        // بنبحث بـ created_at + أول حقل تعريفي
+                        const { data: existing } = await window._sb
+                            .from(sbName)
+                            .select('id')
+                            .match(snake)
+                            .limit(1);
+
+                        if (existing && existing.length > 0) {
+                            // السجل موجود بالفعل، بس حدّث الـ ID المحلي
+                            realId = existing[0].id;
+                        } else {
+                            const { data: inserted, error } = await window._sb
+                                .from(sbName)
+                                .insert(snake)
+                                .select()
+                                .single();
+                            if (error) throw error;
+                            realId = inserted.id;
+                        }
                     }
 
                     // حدّث Dexie بالـ ID الحقيقي

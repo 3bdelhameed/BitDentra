@@ -555,6 +555,9 @@ async function recalcTreatmentPaid(treatmentId) {
         }
 
         window.loadPatientHistory = async function (patientId) {
+            if (typeof window.generateDentalChart === 'function') {
+                try { await window.generateDentalChart(patientId); } catch (_) {}
+            }
             await window.renderSessionPayments(patientId);
         };
 

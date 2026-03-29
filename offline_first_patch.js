@@ -28,13 +28,16 @@
         lab_orders:       'labOrders',
         inventory_log:    'inventoryLog',
         doctors:          'doctors',
-        session_payments: 'session_payments'
+        session_payments: 'session_payments',
+        audit_logs:       'audit_logs'
     };
 
     // ══════════════════════════════════════════════════════════════
     //  QUEUE — localStorage
     // ══════════════════════════════════════════════════════════════
     const QUEUE_KEY = 'clinic_offline_queue_v3';
+    const SESSION_SYNC_DISABLED_KEY = 'clinic_session_sync_disabled_tables';
+    const AUDIT_LOCAL_ONLY_NOTICE_KEY = 'audit_logs_local_only_notice';
 
     function getQueue() {
         try { return JSON.parse(localStorage.getItem(QUEUE_KEY) || '[]'); }
@@ -46,33 +49,448 @@
         catch (e) { console.warn('[Offline] saveQueue error:', e); }
     }
 
-    function addToQueue(action, table, data, id = null) {
+    function getSessionSyncDisabledTables() {
+        try {
+            const parsed = JSON.parse(sessionStorage.getItem(SESSION_SYNC_DISABLED_KEY) || '{}');
+            return parsed && typeof parsed === 'object' ? parsed : {};
+        } catch (_) {
+            return {};
+        }
+    }
+
+    function isSessionSyncDisabled(table) {
+        return !!getSessionSyncDisabledTables()[table];
+    }
+
+    function disableSessionSyncForTable(table, reason = '') {
+        if (!table) return;
+        const current = getSessionSyncDisabledTables();
+        if (!current[table]) {
+            current[table] = {
+                reason: String(reason || ''),
+                disabled_at: new Date().toISOString()
+            };
+            try {
+                sessionStorage.setItem(SESSION_SYNC_DISABLED_KEY, JSON.stringify(current));
+            } catch (_) {}
+        }
+    }
+
+    function shouldKeepTableLocalOnly(table, err) {
+        if (table !== 'audit_logs') return false;
+        const message = String(err?.message || err || '').toLowerCase();
+        const code = String(err?.code || '').toLowerCase();
+        return (
+            code === '42p01' ||
+            code === '42501' ||
+            (message.includes('audit_logs') && (
+                message.includes('schema cache') ||
+                message.includes('does not exist') ||
+                message.includes('relation') ||
+                message.includes('permission denied') ||
+                message.includes('row-level security') ||
+                message.includes('rls') ||
+                message.includes('could not find the table')
+            ))
+        );
+    }
+
+    function notifyLocalOnlyAuditMode() {
+        if (typeof showToast !== 'function') return;
+        try {
+            if (sessionStorage.getItem(AUDIT_LOCAL_ONLY_NOTICE_KEY) === '1') return;
+            sessionStorage.setItem(AUDIT_LOCAL_ONLY_NOTICE_KEY, '1');
+        } catch (_) {}
+        showToast('Audit Log محفوظ محليًا فقط. شغّل create_audit_logs.sql على Supabase لتفعيل مزامنته.', 'warning');
+    }
+
+    function getQueueOpId(op) {
+        return op?.data?.id ?? op?.id ?? null;
+    }
+
+    function getTableLogicalKey(table, row) {
+        if (!row) return '';
+        if (table === 'tooth_states') {
+            return getToothStateKey(row);
+        }
+        return '';
+    }
+
+    function getQueueOpLogicalKey(op) {
+        return op?.logicalKey || getTableLogicalKey(op?.table, op?.data || op);
+    }
+
+    function getQueueDeleteExtra(table, row) {
+        if (table !== 'tooth_states' || !row) return extraOrNull(null);
+        const logicalKey = getTableLogicalKey(table, row);
+        if (!logicalKey) return extraOrNull(null);
+        return {
+            logicalKey,
+            patient_id: row?.patient_id ?? row?.patientId ?? null,
+            tooth_number: String(row?.tooth_number ?? row?.toothNumber ?? '').trim() || null
+        };
+    }
+
+    function extraOrNull(extra) {
+        return extra && Object.keys(extra).length > 0 ? extra : null;
+    }
+
+    function matchesQueueTarget(op, table, id = null, logicalKey = '') {
+        if (!op || op.table !== table) return false;
+        const opId = getQueueOpId(op);
+        if (id != null && opId != null && String(opId) === String(id)) return true;
+        const opLogicalKey = getQueueOpLogicalKey(op);
+        return !!logicalKey && !!opLogicalKey && opLogicalKey === logicalKey;
+    }
+
+    function mergeServerRowsWithPendingLocalRows(table, serverRows, localRows, pendingOps) {
+        const merged = new Map();
+
+        const toIdentityKey = row => {
+            if (!row) return '';
+            const logicalKey = getTableLogicalKey(table, row);
+            if (logicalKey) return `key:${logicalKey}`;
+            if (row.id != null) return `id:${row.id}`;
+            return '';
+        };
+
+        const deleteIds = new Set();
+        const deleteLogicalKeys = new Set();
+
+        for (const op of pendingOps) {
+            if (op.action !== 'delete') continue;
+            const opId = getQueueOpId(op);
+            if (opId != null) deleteIds.add(String(opId));
+            const logicalKey = getQueueOpLogicalKey(op);
+            if (logicalKey) deleteLogicalKeys.add(logicalKey);
+        }
+
+        for (const row of serverRows || []) {
+            const rowId = row?.id;
+            const logicalKey = getTableLogicalKey(table, row);
+            if (rowId != null && deleteIds.has(String(rowId))) continue;
+            if (logicalKey && deleteLogicalKeys.has(logicalKey)) continue;
+            const identityKey = toIdentityKey(row);
+            if (identityKey) merged.set(identityKey, row);
+        }
+
+        for (const row of localRows || []) {
+            const identityKey = toIdentityKey(row);
+            if (!identityKey) continue;
+
+            const rowId = row?.id;
+            const logicalKey = getTableLogicalKey(table, row);
+            const isPendingLocal = !!row?._localOnly || !!row?._pendingSync || pendingOps.some(op => {
+                if (op.action === 'delete') return false;
+                if (rowId != null && getQueueOpId(op) != null && String(getQueueOpId(op)) === String(rowId)) return true;
+                const opLogicalKey = getQueueOpLogicalKey(op);
+                return !!logicalKey && !!opLogicalKey && opLogicalKey === logicalKey;
+            });
+
+            if (!isPendingLocal) continue;
+            merged.set(identityKey, row);
+        }
+
+        return [...merged.values()].sort((a, b) => Number(b?.id || 0) - Number(a?.id || 0));
+    }
+
+    function normalizeLegacyQueueItem(raw) {
+        if (!raw || typeof raw !== 'object') return null;
+        const action = raw.action || raw.type;
+        const table = raw.table;
+        if (!action || !table) return null;
+
+        const normalized = {
+            action,
+            table,
+            data: raw.data ?? null,
+            id: raw.id ?? raw.data?.id ?? null,
+            ts: raw.ts ?? raw.timestamp ?? Date.now()
+        };
+
+        const logicalKey = getTableLogicalKey(table, raw.data || raw);
+        if (logicalKey) {
+            normalized.logicalKey = logicalKey;
+            normalized.patient_id = raw.patient_id ?? raw.data?.patient_id ?? raw.data?.patientId ?? null;
+            normalized.tooth_number = raw.tooth_number ?? raw.data?.tooth_number ?? raw.data?.toothNumber ?? null;
+        }
+
+        if (raw.conflictCols) normalized.conflictCols = raw.conflictCols;
+        return normalized;
+    }
+
+    function migrateLegacyQueues() {
+        const legacyKeys = ['clinic_offline_queue'];
+        let migrated = 0;
+
+        legacyKeys.forEach(key => {
+            let rawQueue = [];
+            try { rawQueue = JSON.parse(localStorage.getItem(key) || '[]'); }
+            catch (_) { rawQueue = []; }
+            if (!Array.isArray(rawQueue) || rawQueue.length === 0) return;
+
+            const normalized = rawQueue
+                .map(normalizeLegacyQueueItem)
+                .filter(Boolean)
+                .sort((a, b) => Number(a.ts || 0) - Number(b.ts || 0));
+
+            for (const op of normalized) {
+                addToQueue(op.action, op.table, op.data, op.id, extraOrNull({
+                    logicalKey: op.logicalKey,
+                    patient_id: op.patient_id,
+                    tooth_number: op.tooth_number,
+                    conflictCols: op.conflictCols
+                }));
+                migrated++;
+            }
+
+            try { localStorage.removeItem(key); } catch (_) {}
+        });
+
+        if (migrated > 0) {
+            console.log(`[Offline] Migrated ${migrated} operations from legacy offline queue`);
+        }
+    }
+
+    function addToQueue(action, table, data, id = null, extra = null) {
         let q = getQueue();
 
-        if (action === 'delete' && id) {
-            q = q.filter(op => !(op.table === table && String(op.id) === String(id)));
-            q.push({ action: 'delete', table, data: null, id, ts: Date.now() });
-        } else if (action === 'update' && id) {
+        if (action === 'delete' && (id != null || extra?.logicalKey)) {
+            const logicalKey = extra?.logicalKey || '';
+            const hadUnsyncedLocalInsert = q.some(op =>
+                op.action === 'insert' &&
+                matchesQueueTarget(op, table, id, logicalKey)
+            );
+            const hadUnsyncedLocalUpsert = q.some(op =>
+                op.action === 'upsert' &&
+                op.data?._localOnly &&
+                matchesQueueTarget(op, table, id, logicalKey)
+            );
+
+            q = q.filter(op => !matchesQueueTarget(op, table, id, logicalKey));
+
+            const shouldKeepRemoteDelete = table === 'tooth_states' && !!logicalKey;
+            if (shouldKeepRemoteDelete || !(hadUnsyncedLocalInsert || hadUnsyncedLocalUpsert)) {
+                q.push({ action: 'delete', table, data: null, id, ts: Date.now(), ...(extra || {}) });
+            }
+        } else if (action === 'update' && id != null) {
             const existingIdx = q.findIndex(op =>
                 op.action === 'update' && op.table === table && String(op.id) === String(id)
             );
             if (existingIdx >= 0) {
                 q[existingIdx].data = { ...q[existingIdx].data, ...data };
                 q[existingIdx].ts   = Date.now();
+                if (extra) Object.assign(q[existingIdx], extra);
             } else {
-                q.push({ action, table, data, id, ts: Date.now() });
+                q.push({ action, table, data, id, ts: Date.now(), ...(extra || {}) });
+            }
+        } else if (action === 'upsert' && data) {
+            const patientId = String(data.patient_id ?? data.patientId ?? '');
+            const toothNumber = String(data.tooth_number ?? data.toothNumber ?? '');
+            const existingIdx = (
+                table === 'tooth_states' && patientId && toothNumber
+            ) ? q.findIndex(op =>
+                op.table === table &&
+                op.action === 'upsert' &&
+                String(op.data?.patient_id ?? op.data?.patientId ?? '') === patientId &&
+                String(op.data?.tooth_number ?? op.data?.toothNumber ?? '') === toothNumber
+            ) : -1;
+
+            if (existingIdx >= 0) {
+                q[existingIdx] = {
+                    ...q[existingIdx],
+                    data: { ...q[existingIdx].data, ...data },
+                    id: id ?? q[existingIdx].id ?? null,
+                    ts: Date.now(),
+                    ...(extra || {})
+                };
+            } else {
+                q.push({ action, table, data, id, ts: Date.now(), ...(extra || {}) });
             }
         } else {
-            q.push({ action, table, data, id, ts: Date.now() });
+            q.push({ action, table, data, id, ts: Date.now(), ...(extra || {}) });
         }
 
         saveQueue(q);
         updateBadge();
     }
 
+    function getToothStateKey(row) {
+        const patientId = String(row?.patient_id ?? row?.patientId ?? '').trim();
+        const toothNumber = String(row?.tooth_number ?? row?.toothNumber ?? '').trim();
+        if (!patientId || !toothNumber) return '';
+        return `${patientId}::${toothNumber}`;
+    }
+
+    function getToothStatePriority(row) {
+        if (!row) return -1;
+        if (row._pendingSync) return 3;
+        if (row._localOnly) return 1;
+        return 2;
+    }
+
+    function choosePreferredToothStateRow(a, b) {
+        const scoreA = getToothStatePriority(a);
+        const scoreB = getToothStatePriority(b);
+        if (scoreA !== scoreB) return scoreA > scoreB ? a : b;
+        return Number(a?.id || 0) >= Number(b?.id || 0) ? a : b;
+    }
+
+    async function cleanupToothStateDuplicates(patientId = null, toothNumber = null) {
+        const store = getDexieStore('tooth_states');
+        if (!store) return 0;
+
+        let rows = [];
+        try {
+            rows = await store.toArray();
+        } catch (_) {
+            return 0;
+        }
+
+        const filtered = rows.filter(row => {
+            if (patientId != null && String(row?.patient_id ?? row?.patientId ?? '') !== String(patientId)) return false;
+            if (toothNumber != null && String(row?.tooth_number ?? row?.toothNumber ?? '') !== String(toothNumber)) return false;
+            return !!getToothStateKey(row);
+        });
+
+        const keepByKey = new Map();
+        const deleteIds = [];
+
+        for (const row of filtered) {
+            const key = getToothStateKey(row);
+            const existing = keepByKey.get(key);
+            if (!existing) {
+                keepByKey.set(key, row);
+                continue;
+            }
+
+            const keep = choosePreferredToothStateRow(existing, row);
+            const drop = keep === existing ? row : existing;
+            keepByKey.set(key, keep);
+            if (drop?.id != null) deleteIds.push(drop.id);
+        }
+
+        const uniqueDeleteIds = [...new Set(deleteIds.map(String))]
+            .map(id => filtered.find(row => String(row.id) === id)?.id)
+            .filter(id => id != null);
+
+        if (uniqueDeleteIds.length > 0) {
+            try { await store.bulkDelete(uniqueDeleteIds); } catch (_) {}
+        }
+
+        return uniqueDeleteIds.length;
+    }
+
+    async function recoverPendingToothStateQueue() {
+        const store = getDexieStore('tooth_states');
+        if (!store) return 0;
+
+        let rows = [];
+        try {
+            rows = await store.toArray();
+        } catch (_) {
+            return 0;
+        }
+
+        let q = getQueue();
+        let recovered = 0;
+
+        for (const row of rows) {
+            if (!row?._pendingSync) continue;
+
+            const key = getToothStateKey(row);
+            if (!key) continue;
+
+            const [patientId, toothNumber] = key.split('::');
+            const exists = q.some(op =>
+                op.table === 'tooth_states' &&
+                op.action === 'upsert' &&
+                String(op.data?.patient_id ?? op.data?.patientId ?? '').trim() === patientId &&
+                String(op.data?.tooth_number ?? op.data?.toothNumber ?? '').trim() === toothNumber
+            );
+            if (exists) continue;
+
+            q.push({
+                action: 'upsert',
+                table: 'tooth_states',
+                data: {
+                    ...row,
+                    patient_id: row?.patient_id ?? row?.patientId,
+                    tooth_number: toothNumber,
+                    _localOnly: !!row?._localOnly,
+                    _pendingSync: true,
+                    _pendingOp: 'upsert'
+                },
+                id: row?.id ?? null,
+                ts: Date.now(),
+                conflictCols: 'patient_id,tooth_number'
+            });
+            recovered++;
+        }
+
+        if (recovered > 0) {
+            saveQueue(q);
+            updateBadge();
+            console.log(`[Offline] Recovered ${recovered} pending tooth_states operations from Dexie`);
+        }
+
+        return recovered;
+    }
+
     // ══════════════════════════════════════════════════════════════
     //  DEXIE HELPERS
     // ══════════════════════════════════════════════════════════════
+    async function recoverLocalOnlyAuditQueue() {
+        if (isSessionSyncDisabled('audit_logs')) return 0;
+
+        const store = getDexieStore('audit_logs');
+        if (!store) return 0;
+
+        let rows = [];
+        try {
+            rows = await store.toArray();
+        } catch (_) {
+            return 0;
+        }
+
+        let q = getQueue();
+        let recovered = 0;
+
+        for (const row of rows) {
+            if (!row?._localOnly || row?._pendingSync) continue;
+
+            const exists = q.some(op =>
+                op.table === 'audit_logs' &&
+                op.action === 'insert' &&
+                String(getQueueOpId(op) ?? '') === String(row.id ?? '')
+            );
+            if (exists) continue;
+
+            q.push({
+                action: 'insert',
+                table: 'audit_logs',
+                data: {
+                    ...row,
+                    id: row.id,
+                    _localOnly: true,
+                    _pendingSync: false,
+                    _pendingOp: null
+                },
+                id: row.id ?? null,
+                ts: Date.now()
+            });
+            recovered++;
+        }
+
+        if (recovered > 0) {
+            saveQueue(q);
+            updateBadge();
+            console.log(`[Offline] Recovered ${recovered} local-only audit log operations`);
+        }
+
+        return recovered;
+    }
+
     function getDexieStore(table) {
         const dStore = TABLE_TO_DEXIE[table];
         if (!dStore) return null;
@@ -170,6 +588,91 @@
         try { await store.delete(id); } catch (e) { /* silent */ }
     }
 
+    async function keepQueueOpLocalOnly(op, reason = '') {
+        if (!op || op.table !== 'audit_logs') return false;
+
+        if (reason) {
+            disableSessionSyncForTable(op.table, reason);
+        }
+
+        if (op.action === 'delete') {
+            const targetId = op.id ?? op.data?.id ?? null;
+            if (targetId != null) {
+                await dexieDelete(op.table, targetId);
+            }
+            notifyLocalOnlyAuditMode();
+            return true;
+        }
+
+        const recordId = op?.data?.id ?? op?.id ?? Date.now();
+        const store = getDexieStore(op.table);
+        let existing = null;
+        if (store && recordId != null) {
+            try { existing = await store.get(recordId); } catch (_) {}
+        }
+
+        await dexieUpsert(op.table, {
+            ...(existing || {}),
+            ...(op.data || {}),
+            id: recordId,
+            _localOnly: true,
+            _pendingSync: false,
+            _pendingOp: null
+        });
+
+        notifyLocalOnlyAuditMode();
+        return true;
+    }
+
+    async function syncToothStateToSupabase(data) {
+        if (!window._sb) throw new Error('supabase_not_ready');
+
+        const patientId = data?.patient_id ?? data?.patientId;
+        const toothNumber = String(data?.tooth_number ?? data?.toothNumber ?? '').trim();
+        if (patientId == null || !toothNumber) {
+            throw new Error('tooth_state_missing_keys');
+        }
+
+        const cleanData = { ...data, patient_id: patientId, tooth_number: toothNumber };
+        delete cleanData.id;
+        delete cleanData.patientId;
+        delete cleanData.toothNumber;
+        delete cleanData._localOnly;
+        delete cleanData._pendingSync;
+        delete cleanData._pendingOp;
+        delete cleanData._pending_sync;
+        delete cleanData._pending_op;
+
+        const { data: existingRows, error: lookupError } = await window._sb
+            .from('tooth_states')
+            .select('id')
+            .eq('patient_id', patientId)
+            .eq('tooth_number', toothNumber)
+            .order('id', { ascending: false })
+            .limit(1);
+        if (lookupError) throw lookupError;
+
+        const existingId = existingRows && existingRows[0] ? existingRows[0].id : null;
+        if (existingId) {
+            const { data: updatedRow, error: updateError } = await window._sb
+                .from('tooth_states')
+                .update(cleanData)
+                .eq('id', existingId)
+                .select()
+                .single();
+            if (updateError) throw updateError;
+            return updatedRow;
+        }
+
+        const { data: insertedRow, error: insertError } = await window._sb
+            .from('tooth_states')
+            .insert(cleanData)
+            .select()
+            .single();
+        if (insertError) throw insertError;
+        return insertedRow;
+    }
+
     /**
      * حفظ Supabase response في Dexie بدون مسح التعديلات المحلية المعلقة
      */
@@ -181,15 +684,28 @@
                 .filter(op => op.table === table && op.id)
                 .map(op => String(op.id))
         );
+        const pendingLogicalKeys = new Set(
+            pendingQueue
+                .filter(op => op.table === table)
+                .map(op => getQueueOpLogicalKey(op))
+                .filter(Boolean)
+        );
         const hasPendingInserts = pendingQueue.some(op => op.table === table && op.action === 'insert');
         const supabaseIds = new Set(supabaseRows.filter(r => r.id).map(r => String(r.id)));
         const store = getDexieStore(table);
 
         if (hasPendingInserts) {
-            const safeRows = supabaseRows.filter(row => row.id && !pendingIds.has(String(row.id)));
+            const safeRows = supabaseRows.filter(row =>
+                row.id &&
+                !pendingIds.has(String(row.id)) &&
+                !pendingLogicalKeys.has(getTableLogicalKey(table, row))
+            );
             await dexieUpsert(table, safeRows);
         } else {
-            const safeRows = supabaseRows.filter(row => !row.id || !pendingIds.has(String(row.id)));
+            const safeRows = supabaseRows.filter(row =>
+                !row.id ||
+                (!pendingIds.has(String(row.id)) && !pendingLogicalKeys.has(getTableLogicalKey(table, row)))
+            );
             await dexieUpsert(table, safeRows);
 
             if (store && supabaseIds.size > 0) {
@@ -198,8 +714,10 @@
                     const toDelete = localRows
                         .filter(r => r.id
                             && !r._localOnly
+                            && !r._pendingSync
                             && !supabaseIds.has(String(r.id))
-                            && !pendingIds.has(String(r.id)))
+                            && !pendingIds.has(String(r.id))
+                            && !pendingLogicalKeys.has(getTableLogicalKey(table, r)))
                         .map(r => r.id);
                     if (toDelete.length > 0) {
                         await store.bulkDelete(toDelete);
@@ -207,6 +725,10 @@
                     }
                 } catch (e) { /* silent */ }
             }
+        }
+
+        if (table === 'tooth_states') {
+            try { await cleanupToothStateDuplicates(); } catch (_) {}
         }
     }
 
@@ -219,6 +741,9 @@
 
     async function syncQueue() {
         if (_isSyncing || !navigator.onLine) return;
+        await recoverPendingToothStateQueue();
+        await recoverLocalOnlyAuditQueue();
+
 
         // ✅ FIX: debounce — لو السينك خلص من أقل من 3 ثواني، تجاهل
         const now = Date.now();
@@ -246,6 +771,7 @@
 
         const failed  = [];
         let   synced  = 0;
+        let   localOnlySkipped = 0;
 
         // ✅ FIX: خريطة تحويل الـ tempIds للـ real IDs بعد الـ insert
         // مثال: { 'patients': { 1703123456789: 42 } }
@@ -271,6 +797,14 @@
         }
 
         for (const op of q) {
+            if (isSessionSyncDisabled(op.table)) {
+                const skipped = await keepQueueOpLocalOnly(op);
+                if (skipped) {
+                    localOnlySkipped++;
+                    continue;
+                }
+            }
+
             try {
                 if (op.action === 'insert') {
                     let opData = op.data || {};
@@ -282,31 +816,35 @@
 
                     // ✅ FIX: تحقق أولاً إن السجل مش موجود بالفعل في Supabase (منع duplicate)
                     let inserted = null;
-                    const keyFields = Object.fromEntries(
-                        Object.entries(cleanData).filter(([k, v]) =>
-                            v !== null && v !== undefined && !k.startsWith('_') &&
-                            ['treatment_id','patient_id','amount','paid_at','session_num'].includes(k)
-                        )
-                    );
-                    if (Object.keys(keyFields).length >= 2) {
-                        try {
-                            const { data: existing } = await window._sb
-                                .from(op.table).select('id').match(keyFields).limit(1);
-                            if (existing && existing.length > 0) {
-                                inserted = existing[0];
-                                console.log(`[Offline] ℹ️ Record already exists in ${op.table}, skipping insert`);
-                            }
-                        } catch (_) {}
-                    }
+                    if (op.table === 'tooth_states') {
+                        inserted = await syncToothStateToSupabase(cleanData);
+                    } else {
+                        const keyFields = Object.fromEntries(
+                            Object.entries(cleanData).filter(([k, v]) =>
+                                v !== null && v !== undefined && !k.startsWith('_') &&
+                                ['treatment_id','patient_id','amount','paid_at','session_num'].includes(k)
+                            )
+                        );
+                        if (Object.keys(keyFields).length >= 2) {
+                            try {
+                                const { data: existing } = await window._sb
+                                    .from(op.table).select('id').match(keyFields).limit(1);
+                                if (existing && existing.length > 0) {
+                                    inserted = existing[0];
+                                    console.log(`[Offline] ℹ️ Record already exists in ${op.table}, skipping insert`);
+                                }
+                            } catch (_) {}
+                        }
 
-                    if (!inserted) {
-                        const { data: sbInserted, error } = await window._sb
-                            .from(op.table)
-                            .insert(cleanData)
-                            .select()
-                            .single();
-                        if (error) throw error;
-                        inserted = sbInserted;
+                        if (!inserted) {
+                            const { data: sbInserted, error } = await window._sb
+                                .from(op.table)
+                                .insert(cleanData)
+                                .select()
+                                .single();
+                            if (error) throw error;
+                            inserted = sbInserted;
+                        }
                     }
 
                     if (inserted && inserted.id) {
@@ -318,7 +856,15 @@
 
                             // ✅ حدّث الـ Dexie: احذف الـ temp record وضيف الـ real record
                             await dexieDelete(op.table, _localId);
-                            await dexieUpsert(op.table, { ...inserted, _localOnly: false });
+                            await dexieUpsert(op.table, {
+                                ...inserted,
+                                _localOnly: false,
+                                _pendingSync: false,
+                                _pendingOp: null
+                            });
+                            if (op.table === 'tooth_states') {
+                                await cleanupToothStateDuplicates(inserted.patient_id, inserted.tooth_number);
+                            }
 
                             // ✅ حدّث أي records في Dexie بتشاور على الـ tempId
                             // مثال: treatments بتشاور على patient_id القديم
@@ -340,9 +886,17 @@
                                     }
                                 } catch(_) {}
                             }
-                        } else {
+                        } else if (inserted) {
                             await dexieDelete(op.table, _localId);
-                            await dexieUpsert(op.table, { ...inserted, _localOnly: false });
+                            await dexieUpsert(op.table, {
+                                ...inserted,
+                                _localOnly: false,
+                                _pendingSync: false,
+                                _pendingOp: null
+                            });
+                            if (op.table === 'tooth_states') {
+                                await cleanupToothStateDuplicates(inserted.patient_id, inserted.tooth_number);
+                            }
                         }
 
                         // ✅ FIX: حدّث الـ in-memory cache في session_payments.js
@@ -371,24 +925,84 @@
 
                 } else if (op.action === 'update') {
                     const { _localOnly, _pendingSync, _pendingOp, id: _ignoreId, ...cleanUpdateData } = op.data || {};
+                    const remoteId = idRemap[op.table]?.[String(op.id)] || op.id;
                     const { error } = await window._sb
                         .from(op.table)
                         .update(cleanUpdateData)
-                        .eq('id', op.id);
+                        .eq('id', remoteId);
                     if (error) throw error;
-                    await dexieUpsert(op.table, { ...cleanUpdateData, id: op.id, _localOnly: false });
+                    if (String(remoteId) !== String(op.id)) {
+                        await dexieDelete(op.table, op.id);
+                    }
+                    await dexieUpsert(op.table, {
+                        ...cleanUpdateData,
+                        id: remoteId,
+                        _localOnly: false,
+                        _pendingSync: false,
+                        _pendingOp: null
+                    });
+
+                } else if (op.action === 'upsert') {
+                    let opData = remapIds(op.data || {});
+                    const { id: _localId, _localOnly, _pendingSync, _pendingOp, ...cleanUpsertData } = opData;
+                    const upserted = op.table === 'tooth_states'
+                        ? await syncToothStateToSupabase(cleanUpsertData)
+                        : await (async () => {
+                            const { data, error } = await window._sb
+                                .from(op.table)
+                                .upsert(cleanUpsertData, { onConflict: op.conflictCols || 'patient_id,tooth_number' })
+                                .select()
+                                .single();
+                            if (error) throw error;
+                            return data;
+                        })();
+
+                    if (_localId && upserted && upserted.id && String(_localId) !== String(upserted.id)) {
+                        if (!idRemap[op.table]) idRemap[op.table] = {};
+                        idRemap[op.table][String(_localId)] = upserted.id;
+                        await dexieDelete(op.table, _localId);
+                    }
+                    await dexieUpsert(op.table, {
+                        ...upserted,
+                        _localOnly: false,
+                        _pendingSync: false,
+                        _pendingOp: null
+                    });
+                    if (op.table === 'tooth_states') {
+                        await cleanupToothStateDuplicates(upserted.patient_id, upserted.tooth_number);
+                    }
 
                 } else if (op.action === 'delete') {
-                    const { error } = await window._sb
-                        .from(op.table)
-                        .delete()
-                        .eq('id', op.id);
-                    if (error) throw error;
-                    await dexieDelete(op.table, op.id);
+                    if (op.table === 'tooth_states' && (op.logicalKey || (op.patient_id != null && op.tooth_number != null))) {
+                        const patientId = op.patient_id ?? op.data?.patient_id ?? op.data?.patientId ?? null;
+                        const toothNumber = String(op.tooth_number ?? op.data?.tooth_number ?? op.data?.toothNumber ?? '').trim();
+                        const { error } = await window._sb
+                            .from(op.table)
+                            .delete()
+                            .eq('patient_id', patientId)
+                            .eq('tooth_number', toothNumber);
+                        if (error) throw error;
+                    } else {
+                        const remoteId = idRemap[op.table]?.[String(op.id)] || op.id;
+                        const { error } = await window._sb
+                            .from(op.table)
+                            .delete()
+                            .eq('id', remoteId);
+                        if (error) throw error;
+                        await dexieDelete(op.table, op.id);
+                        if (String(remoteId) !== String(op.id)) {
+                            await dexieDelete(op.table, remoteId);
+                        }
+                    }
                 }
 
                 synced++;
             } catch (e) {
+                if (shouldKeepTableLocalOnly(op.table, e)) {
+                    await keepQueueOpLocalOnly(op, e?.message || String(e || ''));
+                    localOnlySkipped++;
+                    continue;
+                }
                 console.warn(`[Offline] ❌ Sync failed (${op.action} ${op.table}):`, e.message);
                 failed.push(op);
             }
@@ -412,6 +1026,11 @@
             if (typeof window.renderSessionPayments === 'function' && window.currentProfilePatientId) {
                 setTimeout(() => window.renderSessionPayments(window.currentProfilePatientId), 300);
             }
+        }
+
+        if (localOnlySkipped > 0) {
+            console.warn(`[Offline] Kept ${localOnlySkipped} audit log operations locally only`);
+            notifyLocalOnlyAuditMode();
         }
 
         if (failed.length > 0) {
@@ -468,12 +1087,11 @@
 
                 if (arrFromServer.length > 0) safeDexieSync(table, arrFromServer).catch(() => {});
 
-                // إخفاء الـ pending deletes
-                const pendingDeletes = getQueue().filter(op => op.table === table && op.action === 'delete' && op.id != null);
                 let arr = arrFromServer;
-                if (pendingDeletes.length > 0) {
-                    const idsToHide = new Set(pendingDeletes.map(o => String(o.id)));
-                    arr = arr.filter(r => !idsToHide.has(String(r.id)));
+                const pendingOps = getQueue().filter(op => op.table === table);
+                if (pendingOps.length > 0) {
+                    const localRows = await dexieGetAll(table, filters);
+                    arr = mergeServerRowsWithPendingLocalRows(table, arrFromServer, localRows, pendingOps);
                 }
 
                 // ✅ v3.2: لو الـ Supabase رجّع نتيجة فاضية بسبب filter خاطئ أو مش موجود
@@ -526,16 +1144,40 @@
                 } catch(e) {}
             }
 
-            // ✅ FIX: offline إذا مفيش نت أو Supabase مش جاهز
-            if (!navigator.onLine || !sbOk || !window._sb) {
-                const tempId = Date.now();
-                const record = { ...data, id: tempId, _localOnly: true };
+            async function saveLocalInsert(queueForSync) {
+                const tempId = data?.id ?? Date.now();
+                const record = {
+                    ...data,
+                    id: tempId,
+                    _localOnly: true,
+                    _pendingSync: false,
+                    _pendingOp: null
+                };
                 await dexieUpsert(table, record);
                 lsBackup(record);
-                addToQueue('insert', table, { ...data, id: tempId });
-                if (typeof showToast === 'function') showToast('💾 حُفظ محلياً — سيُزامَن عند عودة الاتصال', 'warning');
+                if (queueForSync) {
+                    addToQueue('insert', table, { ...data, id: tempId });
+                }
                 updateBadge();
-                return { ...data, id: tempId, _offline: true };
+                return {
+                    ...data,
+                    id: tempId,
+                    _localOnly: true,
+                    ...(queueForSync ? { _queued: true } : { _offline: true })
+                };
+            }
+
+            if (isSessionSyncDisabled(table)) {
+                const localOnly = await saveLocalInsert(false);
+                if (table === 'audit_logs') notifyLocalOnlyAuditMode();
+                return localOnly;
+            }
+
+            // ✅ FIX: offline إذا مفيش نت أو Supabase مش جاهز
+            if (!navigator.onLine || !sbOk || !window._sb) {
+                const queuedLocal = await saveLocalInsert(true);
+                if (typeof showToast === 'function') showToast('💾 حُفظ محلياً — سيُزامَن عند عودة الاتصال', 'warning');
+                return { ...queuedLocal, _offline: true };
             }
 
             // ── أون لاين: جرّب Supabase مباشرةً بدون إضافة للـ queue
@@ -559,18 +1201,19 @@
                 return inserted;
 
             } catch (e) {
+                if (shouldKeepTableLocalOnly(table, e)) {
+                    disableSessionSyncForTable(table, e?.message || String(e || ''));
+                    const localOnly = await saveLocalInsert(false);
+                    notifyLocalOnlyAuditMode();
+                    return localOnly;
+                }
                 // فشل → دلوقتي نضيفه للـ queue كـ fallback
                 if (e.message !== 'insert_timeout') {
                     console.warn('[Offline] dbInsert failed online, queuing:', e.message);
                 }
-                const tempId = Date.now();
-                const record = { ...data, id: tempId, _localOnly: true };
-                await dexieUpsert(table, record);
-                lsBackup(record);
-                addToQueue('insert', table, { ...data, id: tempId });
+                const queuedLocal = await saveLocalInsert(true);
                 if (typeof showToast === 'function') showToast('💾 حُفظ محلياً — سيُزامَن عند عودة الاتصال', 'warning');
-                updateBadge();
-                return { ...data, id: tempId, _queued: true };
+                return queuedLocal;
             }
         };
         window.dbInsert._v3Wrapped = true;
@@ -646,6 +1289,15 @@
             }
 
             // ✅ FIX: احذف من Dexie فوراً
+            let deleteExtra = null;
+            if (table === 'tooth_states' && id != null) {
+                try {
+                    const store = getDexieStore(table);
+                    const existing = store ? await store.get(id) : null;
+                    deleteExtra = getQueueDeleteExtra(table, existing);
+                } catch (_) {}
+            }
+
             await dexieDelete(table, id);
 
             const sbOk = window._sbReady
@@ -654,7 +1306,7 @@
 
             if (!navigator.onLine || !sbOk || !window._sb) {
                 console.log(`[Offline] queuing DELETE ${table} id=${id}`);
-                addToQueue('delete', table, null, id);
+                addToQueue('delete', table, null, id, deleteExtra);
                 if (typeof showToast === 'function') {
                     showToast('💾 تم الحذف محلياً — سيُزامن لاحقاً', 'warning');
                 }
@@ -664,7 +1316,17 @@
 
             try {
                 // ✅ FIX: timeout 8 ثواني
-                const deletePromise = window._sb.from(table).delete().eq('id', id);
+                const deletePromise = (
+                    table === 'tooth_states' &&
+                    deleteExtra?.patient_id != null &&
+                    deleteExtra?.tooth_number
+                )
+                    ? window._sb
+                        .from(table)
+                        .delete()
+                        .eq('patient_id', deleteExtra.patient_id)
+                        .eq('tooth_number', deleteExtra.tooth_number)
+                    : window._sb.from(table).delete().eq('id', id);
                 const timeoutPromise = new Promise((_, rej) =>
                     setTimeout(() => rej(new Error('delete_timeout')), 8000)
                 );
@@ -674,7 +1336,7 @@
                 if (e.message !== 'delete_timeout') {
                     console.warn('[Offline] dbDelete failed, queued:', e.message);
                 }
-                addToQueue('delete', table, null, id);
+                addToQueue('delete', table, null, id, deleteExtra);
                 if (typeof showToast === 'function') {
                     showToast('💾 خطأ أثناء الحذف — سيتم إعادة المحاولة', 'warning');
                 }
@@ -696,6 +1358,8 @@
         if (!orig || orig._offlineV3Done) return;
 
         window.dbUpsert = async function (table, data, conflictCols) {
+            let localId = data?.id ?? null;
+            let localOnly = false;
             // ✅ FIX: للـ tooth_states ابحث عن record موجود وحدّثه بدل put جديد
             try {
                 const dStore = TABLE_TO_DEXIE[table] || table;
@@ -704,26 +1368,48 @@
                     if (table === 'tooth_states') {
                         const patId  = data.patient_id || data.patientId;
                         const toothN = data.tooth_number || data.toothNumber;
+                        await cleanupToothStateDuplicates(patId, toothN);
                         const all    = await store.toArray();
                         const existing = all.find(r =>
                             String(r.patient_id || r.patientId) === String(patId) &&
                             String(r.tooth_number || r.toothNumber) === String(toothN)
                         );
                         if (existing) {
-                            await store.update(existing.id, data);
+                            localId = existing.id;
+                            localOnly = !!existing._localOnly;
+                            await store.update(existing.id, {
+                                ...data,
+                                _localOnly: localOnly,
+                                _pendingSync: true,
+                                _pendingOp: 'upsert'
+                            });
                         } else {
-                            await store.put({ ...data });
+                            localId = await store.put({
+                                ...data,
+                                _localOnly: true,
+                                _pendingSync: true,
+                                _pendingOp: 'upsert'
+                            });
+                            localOnly = true;
                         }
                     } else {
-                        await store.put(data);
+                        localId = await store.put({
+                            ...data,
+                            _pendingSync: true,
+                            _pendingOp: 'upsert'
+                        });
                     }
                 }
             } catch (e) { /* silent */ }
 
+            const queuedData = localId != null
+                ? { ...data, id: localId, _localOnly: localOnly, _pendingSync: true, _pendingOp: 'upsert' }
+                : { ...data, _localOnly: localOnly, _pendingSync: true, _pendingOp: 'upsert' };
+
             if (!navigator.onLine) {
-                addToQueue('insert', table, data);
+                addToQueue('upsert', table, queuedData, localId, { conflictCols });
                 updateBadge();
-                return { data, _offline: true };
+                return { data: queuedData, _offline: true };
             }
 
             // ✅ FIX: ابعت لـ Supabase في الخلفية بدون await — الـ UI يتحدث فوراً
@@ -733,17 +1419,52 @@
 
             if (sbOk && window._sb) {
                 orig(table, data, conflictCols)
-                    .then(() => {})
+                    .then(async (result) => {
+                        if (result && (result._offline || result._queued)) {
+                            addToQueue('upsert', table, queuedData, localId, { conflictCols });
+                            updateBadge();
+                            return;
+                        }
+                        const dStore = TABLE_TO_DEXIE[table] || table;
+                        const store = window.db && window.db[dStore];
+                        if (!store || store._noopProxy) return;
+
+                        const remoteId = result?.id ?? localId;
+                        if (localId != null && remoteId != null && String(localId) !== String(remoteId)) {
+                            try { await store.delete(localId); } catch (_) {}
+                        }
+
+                        if (remoteId != null) {
+                            try {
+                                await store.put({
+                                    ...(result || data),
+                                    id: remoteId,
+                                    _localOnly: false,
+                                    _pendingSync: false,
+                                    _pendingOp: null
+                                });
+                            } catch (_) {}
+                        } else if (localId != null) {
+                            try {
+                                await store.update(localId, {
+                                    _localOnly: false,
+                                    _pendingSync: false,
+                                    _pendingOp: null
+                                });
+                            } catch (_) {}
+                        }
+                        updateBadge();
+                    })
                     .catch(() => {
-                        addToQueue('insert', table, data);
+                        addToQueue('upsert', table, queuedData, localId, { conflictCols });
                         updateBadge();
                     });
             } else {
-                addToQueue('insert', table, data);
+                addToQueue('upsert', table, queuedData, localId, { conflictCols });
                 updateBadge();
             }
 
-            return { data, _localFirst: true };
+            return { data: queuedData, _localFirst: true };
         };
         window.dbUpsert._v3Wrapped = true;
         window.dbUpsert._offlineV3Done = true;
@@ -896,6 +1617,8 @@
                     <i class="fa-solid fa-cloud-check" style="font-size:10px"></i> Cloud Sync
                 </span>`);
         }
+
+        if (window._renderSyncCenter) window._renderSyncCenter();
     }
 
     function injectUI() {
@@ -1059,6 +1782,8 @@
             waited++;
         }
 
+        migrateLegacyQueues();
+
         // ✅ FIX: استرجع أي بيانات محفوظة في localStorage backups لـ Dexie
         // (في حالة الصفحة اتفتحت من جديد بعد حفظ أوف لاين)
         try {
@@ -1078,6 +1803,8 @@
         wrapDbUpdate();
         wrapDbDelete();
         wrapDbUpsert();
+        await cleanupToothStateDuplicates();
+        await recoverPendingToothStateQueue();
         injectUI();
         patchSessionPaymentsOffline();
 
@@ -1141,6 +1868,204 @@
         localStorage.removeItem(QUEUE_KEY);
         updateBadge();
         if (typeof showToast === 'function') showToast('تم مسح الـ queue', 'warning');
+    };
+
+    function formatSyncTime(ts) {
+        if (!ts) return 'Never yet';
+        try { return new Date(ts).toLocaleString(); }
+        catch (_) { return String(ts); }
+    }
+
+    function summarizeSyncOp(op) {
+        const data = op?.data || {};
+        const parts = [];
+        const patientId = data.patient_id || data.patientId;
+        const toothNumber = data.tooth_number || data.toothNumber;
+        const procedure = data.procedure || data.item || data.name || '';
+        const amount = data.amount != null ? data.amount : null;
+        const date = data.date || data.paid_at || data.paidAt || '';
+
+        if (patientId != null) parts.push(`patient ${patientId}`);
+        if (toothNumber) parts.push(`tooth ${toothNumber}`);
+        if (procedure) parts.push(String(procedure));
+        if (amount != null) parts.push(`amount ${amount}`);
+        if (date) parts.push(String(date));
+
+        return parts.length ? parts.join(' | ') : 'No extra details';
+    }
+
+    function injectSyncCenter() {
+        if (document.getElementById('syncCenterModal')) return;
+
+        const style = document.createElement('style');
+        style.id = 'syncCenterStyles';
+        style.textContent = `
+            #syncCenterModal .sync-kpis { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+            #syncCenterModal .sync-kpi { border:1px solid #e5e7eb; border-radius:14px; padding:10px 12px; background:#f8fafc; }
+            #syncCenterModal .sync-kpi-label { font-size:11px; color:#64748b; font-weight:700; }
+            #syncCenterModal .sync-kpi-value { margin-top:4px; font-size:14px; font-weight:800; color:#0f172a; }
+            #syncCenterModal .sync-chip-row { display:flex; flex-wrap:wrap; gap:8px; }
+            #syncCenterModal .sync-chip { border-radius:999px; padding:4px 10px; font-size:11px; font-weight:700; border:1px solid #e5e7eb; background:white; color:#334155; }
+            #syncCenterModal .sync-list { max-height:320px; overflow:auto; border:1px solid #e5e7eb; border-radius:16px; background:#fff; }
+            #syncCenterModal .sync-item { padding:12px 14px; border-bottom:1px solid #f1f5f9; }
+            #syncCenterModal .sync-item:last-child { border-bottom:none; }
+            #syncCenterModal .sync-title { display:flex; align-items:center; justify-content:space-between; gap:10px; font-size:12px; font-weight:800; color:#0f172a; }
+            #syncCenterModal .sync-sub { margin-top:4px; font-size:11px; color:#64748b; line-height:1.5; }
+            #syncCenterModal .sync-actions { display:flex; gap:10px; flex-wrap:wrap; margin-top:14px; }
+        `;
+        document.head.appendChild(style);
+
+        document.body.insertAdjacentHTML('beforeend', `
+            <div id="syncCenterModal" class="modal-base">
+                <div class="modal-box max-w-2xl">
+                    <div class="flex justify-between items-center mb-4 border-b pb-3">
+                        <div>
+                            <h3 class="font-bold text-gray-800 flex items-center gap-2">
+                                <i class="fa-solid fa-cloud-arrow-up text-blue-500"></i> Sync Center
+                            </h3>
+                            <p class="text-xs text-gray-400 mt-1">Pending offline operations, network state, and manual retry tools.</p>
+                        </div>
+                        <button onclick="closeModal('syncCenterModal')" class="text-gray-300 hover:text-red-400 text-xl w-7 h-7 flex items-center justify-center">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+
+                    <div class="sync-kpis mb-4">
+                        <div class="sync-kpi">
+                            <div class="sync-kpi-label">Connection</div>
+                            <div class="sync-kpi-value" id="syncCenterConnection">--</div>
+                        </div>
+                        <div class="sync-kpi">
+                            <div class="sync-kpi-label">Supabase</div>
+                            <div class="sync-kpi-value" id="syncCenterSupabase">--</div>
+                        </div>
+                        <div class="sync-kpi">
+                            <div class="sync-kpi-label">Pending Ops</div>
+                            <div class="sync-kpi-value" id="syncCenterPending">0</div>
+                        </div>
+                        <div class="sync-kpi">
+                            <div class="sync-kpi-label">Last Sync</div>
+                            <div class="sync-kpi-value" id="syncCenterLastSync">--</div>
+                        </div>
+                    </div>
+
+                    <div class="sync-chip-row mb-4" id="syncCenterSummary"></div>
+                    <div class="sync-list" id="syncCenterList"></div>
+
+                    <div class="sync-actions">
+                        <button id="syncCenterRetryBtn" onclick="retryOfflineSyncNow()" class="btn btn-blue text-xs">
+                            <i class="fa-solid fa-rotate"></i> Retry Now
+                        </button>
+                        <button id="syncCenterRefreshBtn" onclick="refreshSyncCenterFromCloud()" class="btn btn-outline text-xs">
+                            <i class="fa-solid fa-cloud-arrow-down"></i> Refresh From Cloud
+                        </button>
+                        <button onclick="clearOfflineQueue()" class="btn btn-outline text-xs text-red-500 border-red-200">
+                            <i class="fa-solid fa-trash-can"></i> Clear Pending Queue
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `);
+    }
+
+    function renderSyncCenter() {
+        const listEl = document.getElementById('syncCenterList');
+        const summaryEl = document.getElementById('syncCenterSummary');
+        if (!listEl || !summaryEl) return;
+
+        const q = getQueue();
+        const sbOk = !!(window._sbReady && (typeof window._sbReady === 'function' ? window._sbReady() : window._sbReady));
+        const byAction = q.reduce((acc, op) => {
+            const key = op.action || 'unknown';
+            acc[key] = (acc[key] || 0) + 1;
+            return acc;
+        }, {});
+        const byTable = q.reduce((acc, op) => {
+            const key = op.table || 'unknown';
+            acc[key] = (acc[key] || 0) + 1;
+            return acc;
+        }, {});
+
+        const connEl = document.getElementById('syncCenterConnection');
+        const sbEl = document.getElementById('syncCenterSupabase');
+        const pendingEl = document.getElementById('syncCenterPending');
+        const lastSyncEl = document.getElementById('syncCenterLastSync');
+        const retryBtn = document.getElementById('syncCenterRetryBtn');
+        const refreshBtn = document.getElementById('syncCenterRefreshBtn');
+
+        if (connEl) connEl.textContent = navigator.onLine ? (_isSyncing ? 'Syncing...' : 'Online') : 'Offline';
+        if (sbEl) sbEl.textContent = sbOk ? 'Ready' : 'Not ready';
+        if (pendingEl) pendingEl.textContent = String(q.length);
+        if (lastSyncEl) lastSyncEl.textContent = formatSyncTime(_lastSyncTime);
+        if (retryBtn) retryBtn.disabled = _isSyncing || !q.length || !navigator.onLine;
+        if (refreshBtn) refreshBtn.disabled = !navigator.onLine || !sbOk;
+
+        summaryEl.innerHTML = [
+            `<span class="sync-chip">Queue: ${q.length}</span>`,
+            `<span class="sync-chip">Actions: ${Object.entries(byAction).map(([k, v]) => `${k} ${v}`).join(' | ') || 'none'}</span>`,
+            `<span class="sync-chip">Tables: ${Object.entries(byTable).map(([k, v]) => `${k} ${v}`).join(' | ') || 'none'}</span>`
+        ].join('');
+
+        if (!q.length) {
+            listEl.innerHTML = `
+                <div class="sync-item">
+                    <div class="sync-title">
+                        <span><i class="fa-solid fa-circle-check text-green-500 mr-1"></i> Everything is synced</span>
+                    </div>
+                    <div class="sync-sub">No pending offline operations were found.</div>
+                </div>`;
+            return;
+        }
+
+        listEl.innerHTML = q.map((op, index) => `
+            <div class="sync-item">
+                <div class="sync-title">
+                    <span>#${index + 1} ${String(op.action || '').toUpperCase()} -> ${op.table || 'unknown'}</span>
+                    <span class="text-gray-400 font-semibold">${formatSyncTime(op.ts)}</span>
+                </div>
+                <div class="sync-sub">${summarizeSyncOp(op)}</div>
+                ${op.id != null ? `<div class="sync-sub">Local id: ${op.id}</div>` : ''}
+            </div>
+        `).join('');
+    }
+
+    window._renderSyncCenter = renderSyncCenter;
+
+    window.showOfflineQueue = function () {
+        injectSyncCenter();
+        renderSyncCenter();
+        if (typeof openModal === 'function') openModal('syncCenterModal');
+        else document.getElementById('syncCenterModal')?.classList.add('open');
+    };
+    window.openSyncCenter = window.showOfflineQueue;
+
+    window.retryOfflineSyncNow = async function () {
+        const btn = document.getElementById('syncCenterRetryBtn');
+        if (btn) btn.disabled = true;
+        try {
+            await syncQueue();
+            if (navigator.onLine) {
+                await safeRefreshFromSupabase();
+                refreshCurrentView();
+            }
+        } catch (e) {
+            console.warn('[Offline] retryOfflineSyncNow failed:', e.message);
+        } finally {
+            renderSyncCenter();
+        }
+    };
+
+    window.refreshSyncCenterFromCloud = async function () {
+        const btn = document.getElementById('syncCenterRefreshBtn');
+        if (btn) btn.disabled = true;
+        try {
+            await safeRefreshFromSupabase();
+            refreshCurrentView();
+        } catch (e) {
+            console.warn('[Offline] refreshSyncCenterFromCloud failed:', e.message);
+        } finally {
+            renderSyncCenter();
+        }
     };
 
     window._offlineDebug = () => ({

@@ -1,5 +1,5 @@
 // ✅ غيّر الرقم هنا كل ما تعمل تحديث لأي ملف JS
-const CACHE_NAME = 'clinic-app-v9';
+const CACHE_NAME = 'clinic-app-v15';
 
 const LOCAL_FILES = [
     'login.html',
@@ -8,6 +8,9 @@ const LOCAL_FILES = [
     'app.js',
     'manifest.json',
     'supabase-config.js',
+    'local_db.js',
+    'dental-chart.js',
+    'session_payments_patch.js',
     'startup_preload.js',
     'offline_first_patch.js',
     'offline_sync_patch.js',
@@ -22,6 +25,20 @@ const LOCAL_FILES = [
     'fix_tooth_display.js',
     'logo_patch.js',
     'payment_update.js',
+    'fix_undefined_and_refresh.js',
+    'med_history_patch.js',
+    'user_management.js',
+    'offline_profile_fix.js',
+    'procedures_catalog.js',
+    'patient_child_feature.js',
+    'user_header_patch.js',
+    'notifications_fix.js',
+    'easy_wins.js',
+    'patient_powerups.js',
+    'profile_header_fix.js',
+    'icon.png',
+    'logo.png',
+    'logo1.png',
 ];
 
 const CDN_PATTERNS = [
@@ -68,6 +85,7 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
     const { request } = event;
     const url = request.url;
+    const requestUrl = new URL(url);
 
     if (request.method !== 'GET') return;
     if (url.startsWith('chrome-extension://')) return;
@@ -75,8 +93,12 @@ self.addEventListener('fetch', event => {
 
     const isLocal = LOCAL_FILES.some(f => url.endsWith('/' + f) || url.endsWith(f + '?') || url.endsWith(f));
     const isCDN   = CDN_PATTERNS.some(p => url.includes(p));
+    const isSameOriginAsset =
+        requestUrl.origin === self.location.origin &&
+        (request.mode === 'navigate' ||
+         ['document', 'script', 'style', 'image', 'font', 'manifest'].includes(request.destination));
 
-    if (isLocal) {
+    if (isLocal || isSameOriginAsset) {
         // Network-first للـ JS files عشان التحديثات تتحمل فوراً
         // لو النت قطع → fallback للـ cache
         event.respondWith(

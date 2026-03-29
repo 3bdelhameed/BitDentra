@@ -2024,6 +2024,7 @@
                     <div id="treatmentPatientResults" class="autocomplete-results"></div>
                     <input type="hidden" id="treatmentPatientId">
                 </div>
+                <div id="treatmentPatientContextHint" class="hidden text-xs text-blue-700 bg-blue-50 border border-blue-100 rounded-xl px-3 py-2.5"></div>
                 <input type="hidden" id="treatmentToothNumber" value="">
                 <div id="treatmentToothPickerContainer">
                     <label class="text-xs font-semibold text-gray-500 block mb-1">
@@ -2247,12 +2248,15 @@
     <script src="startup_preload.js"></script>
     <script src="doctors_and_patient_fix.js"></script>
     <script src="user_management.js"></script>
+    <script src="audit_log.js"></script>
     <script src="offline_profile_fix.js"></script>
     <script src="procedures_catalog.js"></script>
     <script src="patient_child_feature.js"></script>
     <script src="user_header_patch.js"></script>
     <script src="notifications_fix.js"></script>
     <script src="easy_wins.js"></script>
+    <script src="patient_powerups.js"></script>
+    <script src="profile_header_fix.js"></script>
 
     <!-- ══ REPORT TABS ══ -->
     <script>
@@ -2288,6 +2292,8 @@
                 lab: 'nav-lab',
                 doctors: 'nav-doctors',
                 reminders: 'nav-reminders',
+                users: 'nav-users',
+                audit: 'nav-audit',
                 settings: 'nav-settings',
             };
 
@@ -2343,7 +2349,7 @@
     });
 </script>
     <script>
-        if ('serviceWorker' in navigator) {
+        if ('serviceWorker' in navigator && !/BitDentraAndroid\/\d/.test(navigator.userAgent)) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('sw.js')
                     .then(() => console.log('[SW] Registered ✓'))
@@ -2354,3 +2360,5 @@
 
 </body>
 </html>
+
+

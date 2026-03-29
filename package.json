@@ -8,7 +8,10 @@
   "private": true,
   "scripts": {
     "start": "electron .",
-    "build:win": "electron-builder --win portable"
+    "build:win": "electron-builder --win portable",
+    "android:prepare": "node scripts/prepare-android-assets.cjs",
+    "android:buildDebug": "npm run android:prepare && .\\android\\gradlew.bat assembleDebug",
+    "android:buildRelease": "npm run android:prepare && .\\android\\gradlew.bat assembleRelease"
   },
   "build": {
     "appId": "com.bitdentra.desktop",
@@ -16,6 +19,12 @@
     "files": [
       "**/*",
       "!dist{,/**}",
+      "!release{,/**}",
+      "!release-*{,/**}",
+      "!android{,/**}",
+      "!.gradle{,/**}",
+      "!.gradle-user{,/**}",
+      "!scripts{,/**}",
       "!node_modules/.cache{,/**}"
     ],
     "directories": {

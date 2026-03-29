@@ -40,7 +40,8 @@ const TABLE_MAP = {
     lab_orders:       'labOrders',
     clinic_settings:  'clinicSettings',
     clinic_users:     'clinicUsers',
-session_payments: 'session_payments',
+    session_payments: 'session_payments',
+    audit_logs:       'audit_logs',
     doctors:          'doctors',
 };
 
@@ -66,6 +67,54 @@ function camelToSnake(obj) {
 function getDexTable(sbTable) {
     const name = TABLE_MAP[sbTable];
     return (name && typeof db !== 'undefined' && db[name]) ? db[name] : null;
+}
+
+async function saveToothStateRow(data) {
+    const patientId = data?.patient_id ?? data?.patientId;
+    const toothNumber = String(data?.tooth_number ?? data?.toothNumber ?? '').trim();
+
+    if (patientId == null || !toothNumber) {
+        throw new Error('[tooth_states] patient_id and tooth_number are required');
+    }
+
+    const cleanData = { ...data, patient_id: patientId, tooth_number: toothNumber };
+    delete cleanData.id;
+    delete cleanData.patientId;
+    delete cleanData.toothNumber;
+    delete cleanData._localOnly;
+    delete cleanData._pendingSync;
+    delete cleanData._pendingOp;
+    delete cleanData._pending_sync;
+    delete cleanData._pending_op;
+
+    const { data: existingRows, error: lookupError } = await _sb
+        .from('tooth_states')
+        .select('id')
+        .eq('patient_id', patientId)
+        .eq('tooth_number', toothNumber)
+        .order('id', { ascending: false })
+        .limit(1);
+    if (lookupError) throw lookupError;
+
+    const existingId = existingRows && existingRows[0] ? existingRows[0].id : null;
+    if (existingId) {
+        const { data: updatedRow, error: updateError } = await _sb
+            .from('tooth_states')
+            .update(cleanData)
+            .eq('id', existingId)
+            .select()
+            .single();
+        if (updateError) throw updateError;
+        return updatedRow;
+    }
+
+    const { data: insertedRow, error: insertError } = await _sb
+        .from('tooth_states')
+        .insert(cleanData)
+        .select()
+        .single();
+    if (insertError) throw insertError;
+    return insertedRow;
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -249,11 +298,20 @@ async function dbDelete(table, id) {
 async function dbUpsert(table, data, conflictCol) {
     if (_sbReady) {
         try {
-            const { data: row, error } = await _sb
-                .from(table)
-                .upsert(data, { onConflict: conflictCol })
-                .select()
-                .single();
+            let row = null;
+            let error = null;
+
+            if (table === 'tooth_states') {
+                row = await saveToothStateRow(data);
+            } else {
+                const result = await _sb
+                    .from(table)
+                    .upsert(data, { onConflict: conflictCol })
+                    .select()
+                    .single();
+                row = result.data;
+                error = result.error;
+            }
             if (!error) {
                 const t = getDexTable(table);
                 if (t) {
@@ -283,11 +341,11 @@ async function dbUpsert(table, data, conflictCol) {
     if (existing) {
         await t.update(existing.id, { ...camel, _pendingSync: true });
         scheduleSyncRetry();
-        return { ...camel, id: existing.id };
+        return { ...camel, id: existing.id, _offline: true };
     }
     const id = await t.add({ ...camel, _pendingSync: true });
     scheduleSyncRetry();
-    return { ...camel, id };
+    return { ...camel, id, _offline: true };
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -321,7 +379,8 @@ async function uploadPendingRecords() {
         ['patientNotes',  'patient_notes'],
         ['doctors',       'doctors'],
         ['clinicUsers',   'clinic_users'],
-        ['sessionPayments','session_payments'],
+        ['session_payments','session_payments'],
+        ['audit_logs',    'audit_logs'],
     ];
 
     let uploaded = 0;
@@ -340,8 +399,13 @@ async function uploadPendingRecords() {
             delete snake._pending_sync;
 
             try {
-                const { data, error } = await _sb.from(sbName).insert(snake).select().single();
-                if (error) throw error;
+                const data = sbName === 'tooth_states'
+                    ? await saveToothStateRow(snake)
+                    : await (async () => {
+                        const { data: insertedRow, error } = await _sb.from(sbName).insert(snake).select().single();
+                        if (error) throw error;
+                        return insertedRow;
+                    })();
                 await db[dexName].delete(localId);
                 try { await db[dexName].add({ ...row, id: data.id, _pendingSync: false }); } catch (_) {}
                 uploaded++;
@@ -372,7 +436,7 @@ async function uploadPendingRecords() {
 function startRealtimeListeners() {
     if (!_sbReady) return;
 
-    function syncToDexie(table, payload) {
+    async function syncToDexie(table, payload) {
         const dex = getDexTable(table);
         if (!dex) return;
         try {
@@ -380,12 +444,33 @@ function startRealtimeListeners() {
             if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
                 const row = payload.new || payload.record || {};
                 const camel = snakeToCamel ? snakeToCamel(row) : row;
-                // preserve pending flag if already exists
-                dex.put({ ...camel, _pendingSync: false }).catch(()=>{});
+                let existing = null;
+                if (camel.id != null) {
+                    existing = await dex.get(camel.id).catch(() => null);
+                }
+                if (!existing && table === 'tooth_states') {
+                    const patientId = camel.patientId ?? row.patient_id;
+                    const toothNumber = String(camel.toothNumber ?? row.tooth_number ?? '').trim();
+                    existing = await dex
+                        .where('patientId')
+                        .equals(patientId)
+                        .and(r => String(r.toothNumber ?? r.tooth_number ?? '') === toothNumber)
+                        .first()
+                        .catch(() => null);
+                }
+                if (existing?._pendingSync || existing?._localOnly) return;
+                if (existing?.id != null && camel.id != null && String(existing.id) !== String(camel.id)) {
+                    await dex.delete(existing.id).catch(() => {});
+                }
+                await dex.put({ ...camel, _pendingSync: false, _pendingOp: null, _localOnly: false }).catch(()=>{});
             } else if (payload.eventType === 'DELETE') {
                 const row = payload.old || payload.record || {};
                 const camel = snakeToCamel ? snakeToCamel(row) : row;
-                if (camel.id) dex.delete(camel.id).catch(()=>{});
+                if (camel.id != null) {
+                    const existing = await dex.get(camel.id).catch(() => null);
+                    if (existing?._pendingSync || existing?._localOnly) return;
+                    await dex.delete(camel.id).catch(()=>{});
+                }
             }
         } catch (_) { }
     }
@@ -394,14 +479,14 @@ function startRealtimeListeners() {
         'patients', 'appointments', 'treatments', 'prescriptions',
         'expenses', 'invoices', 'lab_orders', 'inventory', 'inventory_log',
         'tooth_states', 'patient_notes', 'doctors', 'clinic_users',
-        'session_payments',
+        'session_payments', 'audit_logs',
     ];
     tables.forEach(table => {
         _sb.channel(`db-${table}`)
-            .on('postgres_changes', { event: '*', schema: 'public', table }, payload => {
+            .on('postgres_changes', { event: '*', schema: 'public', table }, async payload => {
                 console.log(`[Realtime] ${table} → ${payload.eventType}`);
                 // ensure local cache stays in sync
-                syncToDexie(table, payload);
+                await syncToDexie(table, payload);
                 refreshViewForTable(table);
             })
             .subscribe(status => {
@@ -433,8 +518,9 @@ function refreshViewForTable(table) {
         },
         patient_notes: () => { if (currentProfilePatientId && isViewActive('profileView')) loadPatientNotes(currentProfilePatientId); },
         doctors:       () => { if (isViewActive('doctorsView') && window.loadDoctors) loadDoctors(); if (isViewActive('dashboardView')) updateDashboard(); },
-        clinic_users:  () => { if (isViewActive('usersView') && window.loadClinicUsers) loadClinicUsers(); },
+        clinic_users:  () => { if (isViewActive('usersView') && window.loadUsersView) window.loadUsersView(); },
         session_payments: () => { if (currentProfilePatientId && isViewActive('profileView')) loadPatientHistory(currentProfilePatientId); },
+        audit_logs:    () => { if (isViewActive('auditView') && window.loadAuditLogView) window.loadAuditLogView(); },
     };
     if (map[table]) map[table]();
 }
@@ -451,7 +537,12 @@ function isViewActive(viewId) {
         return _origFetch(input, init).then(resp => {
             try {
                 const url = typeof input === 'string' ? input : input.url || '';
-                if (url.includes('/rest/v1/tooth_states') && resp.status === 400) {
+                const method = String(
+                    init?.method ||
+                    (typeof input === 'object' && input ? input.method : '') ||
+                    'GET'
+                ).toUpperCase();
+                if (method === 'GET' && url.includes('/rest/v1/tooth_states') && resp.status === 400) {
                     console.warn('[SupabaseFetch] ignored tooth_states 400 response');
                     // swallow error by returning a successful response clone
                     const clone = resp.clone();
@@ -524,7 +615,8 @@ async function migrateLocalToSupabase() {
         ['expenses','expenses'],['prescriptions','prescriptions'],
         ['inventory','inventory'],['labOrders','lab_orders'],
         ['doctors','doctors'],['clinicUsers','clinic_users'],
-        ['sessionPayments','session_payments'],
+        ['session_payments','session_payments'],
+        ['audit_logs','audit_logs'],
     ];
     let count = 0;
     for (const [dexName, sbName] of pairs) {

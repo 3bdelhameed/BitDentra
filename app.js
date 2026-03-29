@@ -214,6 +214,64 @@ const TRANSLATIONS = {
 
 let currentLang = localStorage.getItem('clinicLang') || 'en';
 
+Object.assign(TRANSLATIONS.en, {
+    'nav.inventory': 'Inventory',
+    'nav.lab': 'Lab Orders',
+    'nav.doctors': 'Doctors',
+    'search.global': 'Search patient...',
+    'patients.viewTitle': 'Patient Directory',
+    'appts.viewTitle': 'All Appointments',
+    'common.clear': 'Clear',
+    'cal.todayBtn': 'Today',
+    'table.date': 'Date',
+    'table.time': 'Time',
+    'table.patient': 'Patient',
+    'table.doctor': 'Doctor',
+    'table.status': 'Status',
+    'table.actions': 'Actions',
+    'rx.viewTitle': 'Prescriptions',
+    'rx.newBtn': 'New Prescription',
+    'exp.viewTitle': 'Expenses',
+    'exp.newBtn': 'New Expense',
+    'rep.viewTitle': 'Reports & Analytics',
+    'rep.exportExcel': 'Export Excel',
+    'rep.backupJson': 'Backup JSON',
+    'inventory.viewTitle': 'Inventory'
+});
+
+Object.assign(TRANSLATIONS.ar, {
+    'nav.inventory': 'المخزن',
+    'nav.lab': 'طلبات المعمل',
+    'nav.doctors': 'الأطباء',
+    'search.global': 'بحث عن مريض...',
+    'patients.viewTitle': 'سجل المرضى',
+    'appts.viewTitle': 'كل المواعيد',
+    'common.clear': 'مسح',
+    'cal.todayBtn': 'اليوم',
+    'table.date': 'التاريخ',
+    'table.time': 'الوقت',
+    'table.patient': 'المريض',
+    'table.doctor': 'الطبيب',
+    'table.status': 'الحالة',
+    'table.actions': 'إجراءات',
+    'rx.viewTitle': 'الوصفات الطبية',
+    'rx.newBtn': 'وصفة جديدة',
+    'exp.viewTitle': 'المصروفات',
+    'exp.newBtn': 'مصروف جديد',
+    'rep.viewTitle': 'التقارير والإحصائيات',
+    'rep.exportExcel': 'تصدير Excel',
+    'rep.backupJson': 'نسخة احتياطية JSON',
+    'inventory.viewTitle': 'المخزن'
+});
+
+Object.assign(TRANSLATIONS.en, {
+    'profile.whatsapp': 'WhatsApp'
+});
+
+Object.assign(TRANSLATIONS.ar, {
+    'profile.whatsapp': '\u0648\u0627\u062A\u0633\u0627\u0628'
+});
+
 function t(key) {
     return TRANSLATIONS[currentLang][key] || TRANSLATIONS['en'][key] || key;
 }
@@ -230,6 +288,14 @@ function setLanguage(lang) {
 
 function refreshAllUI() {
     const isAr = currentLang === 'ar';
+    const setText = (selector, key) => {
+        const el = document.querySelector(selector);
+        if (el) el.textContent = t(key);
+    };
+    const setHtml = (selector, html) => {
+        const el = document.querySelector(selector);
+        if (el) el.innerHTML = html;
+    };
 
     // RTL / LTR layout
     document.documentElement.dir = isAr ? 'rtl' : 'ltr';
@@ -264,6 +330,12 @@ function refreshAllUI() {
         const el = document.getElementById(id);
         if (el) el.placeholder = ph;
     });
+    const globalSearch = document.getElementById('globalSearchInput');
+    if (globalSearch) globalSearch.placeholder = t('search.global');
+    const appointmentSearch = document.getElementById('appointmentPatientSearch');
+    if (appointmentSearch) appointmentSearch.placeholder = isAr ? 'ابحث عن المرضى...' : 'Search patients...';
+    const treatmentSearch = document.getElementById('treatmentPatientSearch');
+    if (treatmentSearch) treatmentSearch.placeholder = isAr ? 'ابحث عن المرضى...' : 'Search patients...';
 
     // Select options with data-t-val
     const genderSel = document.getElementById('patientGender');
@@ -276,6 +348,30 @@ function refreshAllUI() {
     // Update lang toggle button
     const langBtn = document.getElementById('langToggleBtn');
     if (langBtn) langBtn.innerHTML = isAr ? '🌐 EN' : '🌐 عربي';
+
+    setText('#nav-inventory span', 'nav.inventory');
+    setText('#nav-lab span', 'nav.lab');
+    setText('#nav-doctors span', 'nav.doctors');
+    setHtml('#patientsView h2', `<i class="fa-solid fa-users text-blue-500"></i> ${t('patients.viewTitle')}`);
+    setHtml('#appointmentsView h2', `<i class="fa-solid fa-clipboard-list text-blue-500"></i> ${t('appts.viewTitle')}`);
+    setText('#appointmentsView .btn-gray.text-xs', 'common.clear');
+    setHtml('#appointmentsView .btn-green', `<i class="fa-solid fa-plus"></i> ${t('appts.new')}`);
+    setText('#appointmentsView thead th:nth-child(1)', 'table.date');
+    setText('#appointmentsView thead th:nth-child(2)', 'table.time');
+    setText('#appointmentsView thead th:nth-child(3)', 'table.patient');
+    setText('#appointmentsView thead th:nth-child(4)', 'table.doctor');
+    setText('#appointmentsView thead th:nth-child(5)', 'table.status');
+    setText('#appointmentsView thead th:nth-child(6)', 'table.actions');
+    setHtml('#calendarView h2', `<i class="fa-solid fa-calendar-days text-blue-500"></i> ${t('cal.title')}`);
+    setText('#calendarView .btn-outline.text-xs.ml-1', 'cal.todayBtn');
+    setHtml('#prescriptionsView h2', `<i class="fa-solid fa-prescription-bottle-medical text-indigo-500"></i> ${t('rx.viewTitle')}`);
+    setHtml('#prescriptionsView .btn', `<i class="fa-solid fa-plus"></i> ${t('rx.newBtn')}`);
+    setHtml('#expensesView h2', `<i class="fa-solid fa-file-invoice-dollar text-red-500"></i> ${t('exp.viewTitle')}`);
+    setHtml('#expensesView .btn-red', `<i class="fa-solid fa-plus"></i> ${t('exp.newBtn')}`);
+    setHtml('#reportsView h2', `<i class="fa-solid fa-chart-bar text-blue-500"></i> ${t('rep.viewTitle')}`);
+    setHtml('#reportsView .btn-green.text-xs', `<i class="fa-solid fa-file-excel"></i> ${t('rep.exportExcel')}`);
+    setHtml('#reportsView .btn-outline.text-xs', `<i class="fa-solid fa-download"></i> ${t('rep.backupJson')}`);
+    setHtml('#inventoryView h2', `<i class="fa-solid fa-boxes-stacked text-blue-500"></i> ${t('inventory.viewTitle')}`);
 
     // Re-render current active view
     updateDashboard();
@@ -355,6 +451,25 @@ db.version(5).stores({
     session_payments: '++id, treatment_id, patient_id, amount, session_num, date, note',
     procedureCatalog: '++id, name, category, isActive'
 }).upgrade(tx => {});
+db.version(6).stores({
+    patients:         '++id, name, phone, createdAt',
+    appointments:     '++id, patientId, patientName, date, time, doctor, status, complaint',
+    treatments:       '++id, patientId, patientName, toothNumber, toothCondition, procedure, totalCost, paid, notes, date',
+    expenses:         '++id, item, category, amount, date',
+    prescriptions:    '++id, patientId, patientName, diagnosis, meds, instructions, date',
+    xrays:            '++id, patientId, imageBase64, date',
+    toothStates:      '++id, patientId, toothNumber, condition',
+    patientNotes:     '++id, patientId, notes',
+    invoices:         '++id, patientId, patientName, date, dueDate, items, total, paid, notes, status',
+    inventory:        '++id, name, category, qty, minQty, unit, unitCost, supplier, expiry, lastRestock',
+    labOrders:        '++id, patientId, patientName, labName, workType, status, dueDate, cost, paidToLab, teeth, material, shade, priority, notes, createdAt',
+    inventoryLog:     '++id, itemId, type, qtyChange, date',
+    pendingOps:       '++id, operation, table, timestamp',
+    doctors:          '++id, name_ar, name_en, specialty, is_active, commission_pct',
+    session_payments: '++id, treatment_id, patient_id, amount, session_num, date, note',
+    procedureCatalog: '++id, name, category, isActive',
+    audit_logs:       '++id, actor_user_id, actor_username, action_type, entity_table, entity_id, created_at, view_name'
+}).upgrade(tx => {});
 
 // ── 2. STATE ─────────────────────────────
 let currentProfilePatientId = null;
@@ -413,10 +528,11 @@ function showToast(msg, type = 'success') {
 // ── 5. NAVIGATION ────────────────────────
 const viewIds = ['dashboardView','patientsView','profileView','appointmentsView',
                  'calendarView','prescriptionsView','expensesView','reportsView','invoicesView',
-                 'remindersView','inventoryView','labView','settingsView','usersView'];
-const navIds  = ['nav-dashboard','nav-patients',null,
-                 'nav-appointments','nav-calendar','nav-prescriptions',
-                 'nav-expenses','nav-reports','nav-settings'];
+                 'remindersView','inventoryView','labView','doctorsView','settingsView','usersView','auditView'];
+const navIds  = ['nav-dashboard','nav-patients','nav-appointments','nav-calendar',
+                 'nav-prescriptions','nav-invoices','nav-expenses','nav-reports',
+                 'nav-inventory','nav-lab','nav-doctors','nav-reminders',
+                 'nav-settings','nav-users','nav-audit'];
 
 // ── ROLE HELPERS ─────────────────────────
 function getCurrentRole() {
@@ -451,6 +567,10 @@ function applyRoleUI() {
 
 function switchView(viewName) {
     const role = getCurrentRole();
+    if (viewName === 'audit' && role !== 'admin') {
+        showToast('⛔ غير مصرح', 'error');
+        return;
+    }
     if (role !== 'admin' && role !== 'doctor') {
         if (DOCTOR_ONLY_VIEWS.includes(viewName)) {
             const navId = { expenses:'nav-expenses', reports:'nav-reports', settings:'nav-settings', invoices:'nav-invoices' }[viewName];
@@ -483,8 +603,10 @@ function switchView(viewName) {
         reminders:     ['remindersView',   'nav-reminders',   'Reminders',         checkReminders],
         inventory:     ['inventoryView',   'nav-inventory',   'Inventory 📦',      loadInventory],
         lab:           ['labView',         'nav-lab',         'Lab Orders 🔬',     loadLabOrders],
+        doctors:       ['doctorsView',     'nav-doctors',     'Doctors & Commissions', function(){ if(typeof window.loadDoctors==='function') window.loadDoctors(); }],
         settings:      ['settingsView',    'nav-settings',    'Settings',          loadSettingsForm],
         users:         ['usersView',       'nav-users',       'User Management',   function(){ if(typeof window.loadUsersView==='function') window.loadUsersView(); }],
+        audit:         ['auditView',       'nav-audit',       'Audit Log',         function(){ if(typeof window.loadAuditLogView==='function') window.loadAuditLogView(); }],
     };
 
     const entry = map[viewName];
@@ -502,6 +624,67 @@ function toggleSidebar() {
 }
 
 // ── 6. MODALS ────────────────────────────
+function getActiveProfilePatientContext() {
+    const profileView = document.getElementById('profileView');
+    if (!profileView?.classList.contains('active') || !currentProfilePatientId) return null;
+
+    const patientId = parseInt(currentProfilePatientId, 10);
+    if (!Number.isFinite(patientId) || patientId <= 0) return null;
+
+    return {
+        id: patientId,
+        name: document.getElementById('profileName')?.innerText?.trim() || ''
+    };
+}
+
+function syncTreatmentPatientContext(toothNum = null) {
+    const modal = document.getElementById('addTreatmentModal');
+    const container = document.getElementById('treatmentPatientContainer');
+    const searchEl = document.getElementById('treatmentPatientSearch');
+    const hiddenIdEl = document.getElementById('treatmentPatientId');
+    const resultsEl = document.getElementById('treatmentPatientResults');
+    const hintEl = document.getElementById('treatmentPatientContextHint');
+    if (!modal || !container || !searchEl || !hiddenIdEl) return;
+
+    const patientContext = getActiveProfilePatientContext();
+    const hasPatientContext = !!patientContext;
+
+    delete modal.dataset.patientContextId;
+    delete modal.dataset.patientContextName;
+
+    searchEl.disabled = false;
+    searchEl.value = '';
+    searchEl.title = '';
+    searchEl.classList.remove('bg-gray-50', 'text-gray-500', 'cursor-not-allowed');
+    hiddenIdEl.value = '';
+    if (resultsEl) resultsEl.innerHTML = '';
+    if (hintEl) {
+        hintEl.textContent = '';
+        hintEl.classList.add('hidden');
+    }
+
+    if (hasPatientContext) {
+        modal.dataset.patientContextId = String(patientContext.id);
+        modal.dataset.patientContextName = patientContext.name || '';
+        searchEl.value = patientContext.name || '';
+        searchEl.disabled = true;
+        searchEl.title = currentLang === 'ar'
+            ? 'سيتم إضافة العلاج للمريض المفتوح حالياً'
+            : 'Treatment will be added to the currently opened patient';
+        searchEl.classList.add('bg-gray-50', 'text-gray-500', 'cursor-not-allowed');
+        hiddenIdEl.value = String(patientContext.id);
+
+        if (hintEl) {
+            hintEl.textContent = currentLang === 'ar'
+                ? `سيتم حفظ العلاج في ملف: ${patientContext.name || ('#' + patientContext.id)}`
+                : `This treatment will be saved for: ${patientContext.name || ('#' + patientContext.id)}`;
+            hintEl.classList.remove('hidden');
+        }
+    }
+
+    container.style.display = toothNum && hasPatientContext ? 'none' : 'block';
+}
+
 function openModal(modalId, toothNum = null) {
     if (modalId === 'createInvoiceModal') {
         loadPatientsDropdown().then(() => {
@@ -551,12 +734,11 @@ function openModal(modalId, toothNum = null) {
         if (toothNum) {
             document.getElementById('treatmentModalTitle').innerText = `Treatment — Tooth #${toothNum}`;
             document.getElementById('treatmentToothNumber').value = toothNum;
-            document.getElementById('treatmentPatientContainer').style.display = 'none';
         } else {
             document.getElementById('treatmentModalTitle').innerText = 'Record Treatment & Payment';
             document.getElementById('treatmentToothNumber').value = '';
-            document.getElementById('treatmentPatientContainer').style.display = 'block';
         }
+        syncTreatmentPatientContext(toothNum);
     }
 }
 
@@ -696,6 +878,62 @@ document.addEventListener('click', e => {
 // FIX: New Patient — يحفظ is_pregnant و is_breastfeeding كـ boolean
 //      ويجمع الـ checkboxes في medical_history
 // ══════════════════════════════════════════
+function syncPatientCaches(patient) {
+    if (!patient) return;
+
+    const basePatients = (Array.isArray(allPatientsData) && allPatientsData.length)
+        ? allPatientsData
+        : (Array.isArray(window.allPatientsData) && window.allPatientsData.length)
+            ? window.allPatientsData
+            : (Array.isArray(window._appCache?.patients) ? window._appCache.patients : []);
+    const nextPatients = [...basePatients];
+    const existingIndex = nextPatients.findIndex(p => String(p?.id) === String(patient.id));
+
+    if (existingIndex >= 0) {
+        nextPatients[existingIndex] = { ...nextPatients[existingIndex], ...patient };
+    } else {
+        nextPatients.push(patient);
+    }
+
+    allPatientsData = nextPatients;
+    window.allPatientsData = nextPatients;
+    window.cachedPatients = nextPatients;
+
+    if (window._appCache) {
+        window._appCache.patients = nextPatients;
+        window._appCache.loaded = true;
+        window._appCache.loadedAt = Date.now();
+    }
+
+    if (typeof loadPatientsDropdown === 'function') {
+        loadPatientsDropdown().catch(() => {});
+    }
+}
+
+function removePatientFromCaches(patientId) {
+    const basePatients = (Array.isArray(allPatientsData) && allPatientsData.length)
+        ? allPatientsData
+        : (Array.isArray(window.allPatientsData) && window.allPatientsData.length)
+            ? window.allPatientsData
+            : (Array.isArray(window._appCache?.patients) ? window._appCache.patients : []);
+    const nextPatients = basePatients
+        .filter(p => String(p?.id) !== String(patientId));
+
+    allPatientsData = nextPatients;
+    window.allPatientsData = nextPatients;
+    window.cachedPatients = nextPatients;
+
+    if (window._appCache) {
+        window._appCache.patients = nextPatients;
+        window._appCache.loaded = true;
+        window._appCache.loadedAt = Date.now();
+    }
+
+    if (typeof loadPatientsDropdown === 'function') {
+        loadPatientsDropdown().catch(() => {});
+    }
+}
+
 document.getElementById('newPatientForm').addEventListener('submit', async e => {
     e.preventDefault();
 
@@ -714,7 +952,7 @@ document.getElementById('newPatientForm').addEventListener('submit', async e => 
     const isPregnant      = document.getElementById('patientPregnant')?.checked || false;
     const isBreastfeeding = document.getElementById('patientBreastfeeding')?.checked || false;
 
-    await dbInsert('patients', {
+    const patientPayload = {
         name:             document.getElementById('patientName').value.trim(),
         phone:            document.getElementById('patientPhone').value.trim(),
         age:              parseInt(document.getElementById('patientAge').value) || null,
@@ -723,7 +961,9 @@ document.getElementById('newPatientForm').addEventListener('submit', async e => 
         is_pregnant:      isPregnant,
         is_breastfeeding: isBreastfeeding,
         created_at:       today()
-    });
+    };
+    const insertedPatient = await dbInsert('patients', patientPayload);
+    syncPatientCaches(insertedPatient || patientPayload);
 
     e.target.reset();
 
@@ -776,19 +1016,29 @@ document.getElementById('newAppointmentForm').addEventListener('submit', async e
 // New Treatment
 document.getElementById('newTreatmentForm').addEventListener('submit', async e => {
     e.preventDefault();
+    const treatmentModal = document.getElementById('addTreatmentModal');
     const toothNumber = document.getElementById('treatmentToothNumber').value;
     let patientId, patientName;
 
-    if (toothNumber && currentProfilePatientId) {
-        patientId   = currentProfilePatientId;
-        patientName = document.getElementById('profileName').innerText;
+    const lockedPatientId = parseInt(treatmentModal?.dataset.patientContextId || '', 10);
+    const lockedPatientName = treatmentModal?.dataset.patientContextName || '';
+
+    if (Number.isFinite(lockedPatientId) && lockedPatientId > 0) {
+        patientId = lockedPatientId;
+        patientName = lockedPatientName || document.getElementById('profileName')?.innerText?.trim() || '';
     } else {
-        const sel   = document.getElementById('treatmentPatientId');
-        patientId   = parseInt(sel.value);
+        const sel = document.getElementById('treatmentPatientId');
+        const searchEl = document.getElementById('treatmentPatientSearch');
+        patientId = parseInt(sel?.value || '', 10);
         if (sel && sel.value) {
             const p = (window.cachedPatients || []).find(x => x.id === patientId);
-            patientName = p ? p.name : '';
+            patientName = p ? p.name : (searchEl?.value.trim() || '');
         }
+    }
+
+    if (!Number.isFinite(patientId) || patientId <= 0 || !patientName) {
+        showToast(currentLang === 'ar' ? 'اختر المريض أولاً من القائمة' : 'Please select a patient first', 'error');
+        return;
     }
 
     const cost = parseFloat(document.getElementById('treatmentTotalCost').value) || 0;
@@ -927,29 +1177,6 @@ window.openPatientProfile = async function(id) {
 
 // ── 10. PATIENT HISTORY ──────────────────
 async function loadPatientHistory(patientId) {
-    // also refresh dental chart any time history is reloaded
-    if (typeof window.generateDentalChart === 'function') {
-        try {
-            const yearFilter = yearSelect ? yearSelect.value : '';
-            if (yearFilter) {
-                // build override map using treatments of that year only
-                const yearStates = {};
-                display.forEach(tr => {
-                    const tnum = tr.tooth_number || tr.toothNumber;
-                    const tcond = tr.tooth_condition || tr.toothCondition;
-                    if (tnum && tcond) {
-                        let cond = tcond;
-                        if (cond === 'crown') cond = 'crown_work';
-                        if (cond === 'root') cond = 'root_canal';
-                        yearStates[tnum] = cond;
-                    }
-                });
-                window.generateDentalChart(patientId, yearStates);
-            } else {
-                window.generateDentalChart(patientId);
-            }
-        } catch(e) { console.warn('[loadPatientHistory] chart refresh failed', e); }
-    }
     const treatments = await dbGetAll('treatments', { patient_id: patientId });
 
     // populate year filter dropdown using all available treatment years
@@ -970,6 +1197,27 @@ async function loadPatientHistory(patientId) {
     const yearFilter = yearSelect ? yearSelect.value : '';
     if (yearFilter) {
         display = treatments.filter(tr => (tr.date||'').startsWith(yearFilter));
+    }
+
+    if (typeof window.generateDentalChart === 'function') {
+        try {
+            if (yearFilter) {
+                const yearStates = {};
+                display.forEach(tr => {
+                    const tnum = tr.tooth_number || tr.toothNumber;
+                    const tcond = tr.tooth_condition || tr.toothCondition;
+                    if (tnum && tcond) {
+                        let cond = tcond;
+                        if (cond === 'crown') cond = 'crown_work';
+                        if (cond === 'root') cond = 'root_canal';
+                        yearStates[tnum] = cond;
+                    }
+                });
+                window.generateDentalChart(patientId, yearStates);
+            } else {
+                window.generateDentalChart(patientId);
+            }
+        } catch(e) { console.warn('[loadPatientHistory] chart refresh failed', e); }
     }
 
     let totalC = 0, totalP = 0;
@@ -1005,10 +1253,34 @@ async function loadPatientHistory(patientId) {
 
 window.deleteTreatment = async function(id, patientId) {
     if (!confirm('Delete this treatment record?')) return;
-    await dbDelete('treatments', id);
-    loadPatientHistory(patientId);
-    updateDashboard();
-    showToast(t('toast.deleted'), 'error');
+    try {
+        const linkedPayments = await dbGetAll('session_payments', { treatment_id: id });
+        for (const payment of linkedPayments) {
+            const paymentId = payment?.id;
+            if (paymentId == null) continue;
+            if (window._spCacheRemove) {
+                try { window._spCacheRemove(paymentId); } catch (_) {}
+            }
+            await dbDelete('session_payments', paymentId);
+        }
+
+        try {
+            const key = 'sp_pending_payments';
+            const ls = JSON.parse(localStorage.getItem(key) || '[]');
+            localStorage.setItem(
+                key,
+                JSON.stringify(ls.filter(p => String(p.treatment_id ?? p.treatmentId ?? '') !== String(id)))
+            );
+        } catch (_) {}
+
+        await dbDelete('treatments', id);
+        await loadPatientHistory(patientId);
+        await updateDashboard();
+        showToast(t('toast.deleted'), 'error');
+    } catch (e) {
+        console.error('[deleteTreatment] failed:', e);
+        showToast('❌ ' + (e.message || 'Delete failed'), 'error');
+    }
 };
 
 // ── 11. PATIENT NOTES ────────────────────
@@ -1162,6 +1434,7 @@ window.filterPatients = async function() {
 window.deletePatient = async function(id) {
     if (!confirm(t('confirm.deletePatient'))) return;
     await dbDelete('patients', id);
+    removePatientFromCaches(id);
     loadAllPatients();
     updateDashboard();
     showToast(t('toast.deleted'), 'error');
@@ -1296,8 +1569,16 @@ async function renderCalendar() {
 }
 
 window.showCalDay = async function(dateStr) {
+    const esc = window.escapeHtml || ((value) => String(value ?? ''));
     let appts = await dbGetAll('appointments');
     appts = appts.filter(a => a.date === dateStr);
+    appts = await Promise.all(appts.map(async a => {
+        if (!a.doctor || a.doctor === 'undefined' || (!isNaN(a.doctor) && String(a.doctor).length < 6)) {
+            a.doctor = await getDoctorName(a.doctor);
+        }
+        return a;
+    }));
+    appts.sort((a, b) => (a.time || '').localeCompare(b.time || ''));
     const detail = document.getElementById('calDayDetail');
     const title  = document.getElementById('calDayTitle');
     const list   = document.getElementById('calDayAppts');
@@ -1316,6 +1597,32 @@ window.showCalDay = async function(dateStr) {
         return `<div class="flex items-center justify-between py-2 border-b border-gray-50 text-sm">
             <div><span class="font-bold text-blue-600 mr-2">${a.time}</span><span class="font-semibold">${a.patient_name||a.patientName||''}</span><span class="text-gray-400 ml-2 text-xs">${a.doctor}</span>${a.complaint ? `<span class="text-gray-400 ml-2 text-xs">— ${a.complaint}</span>` : ''}</div>
             <span class="badge ${sc}">${t('appts.' + a.status.toLowerCase())}</span>
+        </div>`;
+    }).join('') + `<button onclick="prefillApptDate('${dateStr}')" class="btn btn-green text-xs mt-3"><i class="fa-solid fa-plus"></i> ${t('cal.addAppt')}</button>`;
+    list.innerHTML = appts.map(a => {
+        const sc = { Waiting:'bg-orange-100 text-orange-600', Inside:'bg-blue-100 text-blue-600', Examined:'bg-green-100 text-green-600', Cancelled:'bg-red-100 text-red-600' }[a.status] || 'bg-gray-100 text-gray-600';
+        const patientName = esc(a.patient_name || a.patientName || '');
+        const doctorName = esc(a.doctor || a.doctor_name || '—');
+        const complaint = esc(a.complaint || '');
+        const patientId = a.patient_id || a.patientId || '';
+        const patientMarkup = patientId
+            ? `<button type="button" onclick="openPatientProfile(${patientId})" class="font-semibold text-gray-900 hover:text-blue-600 text-start">${patientName}</button>`
+            : `<span class="font-semibold text-gray-900">${patientName}</span>`;
+        return `<div class="flex items-start justify-between gap-3 py-3 border-b border-gray-50 text-sm">
+            <div class="min-w-0 flex-1">
+                <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <span class="font-bold text-blue-600">${esc(a.time || '')}</span>
+                    ${patientMarkup}
+                </div>
+                <div class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-400">
+                    <span class="inline-flex items-center gap-1">
+                        <i class="fa-solid fa-user-doctor"></i>
+                        <span>${doctorName}</span>
+                    </span>
+                    ${a.complaint ? `<span class="text-gray-300">•</span><span>${complaint}</span>` : ''}
+                </div>
+            </div>
+            <span class="badge ${sc} shrink-0">${t('appts.' + a.status.toLowerCase())}</span>
         </div>`;
     }).join('') + `<button onclick="prefillApptDate('${dateStr}')" class="btn btn-green text-xs mt-3"><i class="fa-solid fa-plus"></i> ${t('cal.addAppt')}</button>`;
 };

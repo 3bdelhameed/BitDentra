@@ -566,23 +566,23 @@ document.addEventListener('DOMContentLoaded', function () {
 // ══════════════════════════════════════════════════════════════════
 (function patchSwitchView() {
     const _orig = window.switchView;
+    if (!_orig || _orig._doctorsModulePatched) return;
     window.switchView = function (viewName) {
-        if (viewName === 'doctors') {
-            // امسح كل الـ active في الـ sidebar
+        const result = typeof _orig === 'function' ? _orig(viewName) : undefined;
+
+        if (viewName === 'doctors' && !document.getElementById('doctorsView')?.classList.contains('active')) {
             document.querySelectorAll('aside .sidebar-link').forEach(el => el.classList.remove('active'));
-            // فعّل doctors
             document.getElementById('nav-doctors')?.classList.add('active');
-            // فعّل الـ view
             document.querySelectorAll('.view-section').forEach(v => v.classList.remove('active'));
             document.getElementById('doctorsView')?.classList.add('active');
-            // العنوان
             const title = document.getElementById('headerTitle');
-            if (title) title.textContent = 'الدكاتره والعمولات';
+            if (title) title.textContent = 'Doctors & Commissions';
             loadDoctors();
-            return;
         }
-        if (typeof _orig === 'function') _orig(viewName);
+
+        return result;
     };
+    window.switchView._doctorsModulePatched = true;
 })();
 
 // ══════════════════════════════════════════════════════════════════

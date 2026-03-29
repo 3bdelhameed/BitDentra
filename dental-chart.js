@@ -337,7 +337,14 @@ function buildWisdom(col, fy, s) {
 // ══════════════════════════════════════════════════════════════════
 //  MAIN CHART RENDERER
 // ══════════════════════════════════════════════════════════════════
-async function generateDentalChart(patientId) {
+function getToothStateRenderPriority(row) {
+    if (!row) return -1;
+    if (row._pendingSync) return 3;
+    if (row._localOnly) return 1;
+    return 2;
+}
+
+async function generateDentalChart(patientId, overrideStateMap = null) {
     const upper = [18,17,16,15,14,13,12,11,21,22,23,24,25,26,27,28];
     const lower = [48,47,46,45,44,43,42,41,31,32,33,34,35,36,37,38];
 
@@ -349,13 +356,29 @@ async function generateDentalChart(patientId) {
         states = await db.toothStates.where('patientId').equals(patientId).toArray();
     }
 
+    const hasOverride = overrideStateMap && typeof overrideStateMap === 'object';
     const stateMap = {};
     const surfaceMap = {};
-    states.forEach(s => {
-        const num = s.tooth_number || s.toothNumber;
-        stateMap[num] = s.condition;
-        surfaceMap[num] = s.surfaces || {};
-    });
+
+    if (hasOverride) {
+        Object.entries(overrideStateMap).forEach(([num, condition]) => {
+            if (!num || !condition) return;
+            stateMap[String(num)] = condition;
+            surfaceMap[String(num)] = {};
+        });
+    } else {
+        [...states]
+            .sort((a, b) =>
+                getToothStateRenderPriority(b) - getToothStateRenderPriority(a) ||
+                Number(b?.id || 0) - Number(a?.id || 0)
+            )
+            .forEach(s => {
+            const num = s.tooth_number || s.toothNumber;
+            if (!num || stateMap[num] !== undefined) return;
+            stateMap[num] = s.condition;
+            surfaceMap[num] = s.surfaces || {};
+        });
+    }
 
     function buildTooth(num) {
         const cond = stateMap[num] || 'healthy';
@@ -421,8 +444,10 @@ window.toothAction = async function(action) {
     if (action === 'clear') {
         if (window.dbGetAll) {
             const existing = await dbGetAll('tooth_states', { patient_id: patientId });
-            const row = existing.find(r => (r.tooth_number||r.toothNumber) == toothNum);
-            if (row) await dbDelete('tooth_states', row.id);
+            const rows = existing.filter(r => (r.tooth_number||r.toothNumber) == toothNum);
+            for (const row of rows) {
+                await dbDelete('tooth_states', row.id);
+            }
         } else {
             const ex = await db.toothStates.where('patientId').equals(patientId)
                 .and(t => t.toothNumber == toothNum).first();
