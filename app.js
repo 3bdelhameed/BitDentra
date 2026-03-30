@@ -473,6 +473,7 @@ db.version(6).stores({
 
 // ── 2. STATE ─────────────────────────────
 let currentProfilePatientId = null;
+window.currentProfilePatientId = null;
 let calendarYear = new Date().getFullYear();
 let calendarMonth = new Date().getMonth();
 let selectedToothNum = null;
@@ -934,6 +935,314 @@ function removePatientFromCaches(patientId) {
     }
 }
 
+function normalizePatientLookupName(name) {
+    return String(name || '').trim().replace(/\s+/g, ' ').toLowerCase();
+}
+
+function buildPatientLookup(patients = []) {
+    const byId = new Map();
+    const byName = new Map();
+    patients.forEach(patient => {
+        const idKey = String(patient?.id ?? '').trim();
+        const nameKey = normalizePatientLookupName(patient?.name);
+        if (idKey) byId.set(idKey, patient);
+        if (nameKey && !byName.has(nameKey)) byName.set(nameKey, patient);
+    });
+    return { byId, byName };
+}
+
+function resolvePatientFromLookup(rawPid, rawName, patientLookup) {
+    const idKey = String(rawPid ?? '').trim();
+    const nameKey = normalizePatientLookupName(rawName);
+    return patientLookup.byId.get(idKey) || patientLookup.byName.get(nameKey) || null;
+}
+
+function padDatePart(value) {
+    return String(value).padStart(2, '0');
+}
+
+function formatLocalDate(date = new Date()) {
+    if (!(date instanceof Date) || Number.isNaN(date.getTime())) return '';
+    return `${date.getFullYear()}-${padDatePart(date.getMonth() + 1)}-${padDatePart(date.getDate())}`;
+}
+
+function formatLocalMonth(date = new Date()) {
+    if (!(date instanceof Date) || Number.isNaN(date.getTime())) return '';
+    return `${date.getFullYear()}-${padDatePart(date.getMonth() + 1)}`;
+}
+
+function normalizeDateOnly(value) {
+    if (!value) return '';
+    if (value instanceof Date) return formatLocalDate(value);
+
+    const str = String(value).trim();
+    if (!str) return '';
+
+    const directMatch = str.match(/^(\d{4}-\d{2}-\d{2})/);
+    if (directMatch) return directMatch[1];
+
+    const parsed = new Date(str);
+    return Number.isNaN(parsed.getTime()) ? '' : formatLocalDate(parsed);
+}
+
+function toMoneyNumber(value) {
+    const num = parseFloat(value);
+    return Number.isFinite(num) ? num : 0;
+}
+
+function buildMissingPatientLabel(rawName) {
+    const cleanName = String(rawName || '').trim();
+    if (cleanName) return cleanName;
+    return currentLang === 'ar' ? 'مريض غير مرتبط' : 'Unlinked patient';
+}
+
+function normalizeSessionPaymentsForReports(payments = []) {
+    return payments.reduce((list, payment) => {
+        const treatmentId = payment?.treatment_id ?? payment?.treatmentId ?? null;
+        const patientId = payment?.patient_id ?? payment?.patientId ?? null;
+        const paidAt = normalizeDateOnly(payment?.paid_at ?? payment?.paidAt ?? payment?.date);
+        list.push({
+            ...payment,
+            amount: toMoneyNumber(payment?.amount),
+            treatment_id: treatmentId,
+            treatmentId,
+            patient_id: patientId,
+            patientId,
+            paid_at: paidAt,
+            paidAt
+        });
+        return list;
+    }, []);
+}
+
+function hydrateTreatmentsForReports(treatments = [], sessionPayments = []) {
+    const paymentsByTreatment = new Map();
+    sessionPayments.forEach(payment => {
+        const treatmentKey = String(payment?.treatment_id ?? payment?.treatmentId ?? '').trim();
+        if (!treatmentKey) return;
+        const bucket = paymentsByTreatment.get(treatmentKey) || [];
+        bucket.push(payment);
+        paymentsByTreatment.set(treatmentKey, bucket);
+    });
+
+    const normalizedTreatments = treatments.map(tr => {
+        const treatmentKey = String(tr?.id ?? '').trim();
+        const linkedPayments = treatmentKey ? (paymentsByTreatment.get(treatmentKey) || []) : [];
+        const paid = linkedPayments.length
+            ? linkedPayments.reduce((sum, payment) => sum + toMoneyNumber(payment?.amount), 0)
+            : toMoneyNumber(tr?.paid);
+        return {
+            ...tr,
+            paid
+        };
+    });
+
+    return { treatments: normalizedTreatments, paymentsByTreatment };
+}
+
+function buildReportCollectionEntries(treatments = [], sessionPayments = [], paymentsByTreatment = new Map()) {
+    const treatmentMap = new Map();
+    treatments.forEach(tr => {
+        const key = String(tr?.id ?? '').trim();
+        if (key) treatmentMap.set(key, tr);
+    });
+
+    const entries = [];
+
+    sessionPayments.forEach(payment => {
+        const amount = toMoneyNumber(payment?.amount);
+        const date = normalizeDateOnly(payment?.paid_at ?? payment?.paidAt ?? payment?.date);
+        if (!amount || !date) return;
+
+        const treatmentKey = String(payment?.treatment_id ?? payment?.treatmentId ?? '').trim();
+        const treatment = treatmentMap.get(treatmentKey) || null;
+        const patientId = treatment?.patient_id ?? treatment?.patientId ?? payment?.patient_id ?? payment?.patientId ?? null;
+        const patientName = treatment?.patient_name ?? treatment?.patientName ?? buildMissingPatientLabel(payment?.patient_name ?? payment?.patientName);
+
+        entries.push({
+            id: payment?.id != null ? `sp:${payment.id}` : `sp:${treatmentKey}:${date}:${entries.length}`,
+            date,
+            amount,
+            treatmentId: treatment?.id ?? payment?.treatment_id ?? payment?.treatmentId ?? null,
+            patientId,
+            patientName,
+            procedure: treatment?.procedure || '',
+            toothNumber: treatment?.tooth_number ?? treatment?.toothNumber ?? null,
+            notes: payment?.notes ?? payment?.note ?? null,
+            sessionNum: payment?.session_num ?? payment?.sessionNum ?? null,
+            source: 'session_payment',
+            orphanPatient: !!treatment?._reportOrphan
+        });
+    });
+
+    treatments.forEach(tr => {
+        const treatmentKey = String(tr?.id ?? '').trim();
+        const linkedPayments = treatmentKey ? (paymentsByTreatment.get(treatmentKey) || []) : [];
+        const paid = toMoneyNumber(tr?.paid);
+        const date = normalizeDateOnly(tr?.date);
+        if (!paid || linkedPayments.length || !date) return;
+
+        entries.push({
+            id: tr?.id != null ? `legacy:${tr.id}` : `legacy:${date}:${entries.length}`,
+            date,
+            amount: paid,
+            treatmentId: tr?.id ?? null,
+            patientId: tr?.patient_id ?? tr?.patientId ?? null,
+            patientName: tr?.patient_name ?? tr?.patientName ?? buildMissingPatientLabel(''),
+            procedure: tr?.procedure || '',
+            toothNumber: tr?.tooth_number ?? tr?.toothNumber ?? null,
+            notes: tr?.notes ?? null,
+            sessionNum: null,
+            source: 'legacy_treatment_paid',
+            orphanPatient: !!tr?._reportOrphan
+        });
+    });
+
+    return entries.sort((a, b) =>
+        (b.date || '').localeCompare(a.date || '') ||
+        String(b.id || '').localeCompare(String(a.id || ''))
+    );
+}
+
+function sumCollectionAmounts(entries = []) {
+    return entries.reduce((sum, entry) => sum + toMoneyNumber(entry?.amount), 0);
+}
+
+function sanitizeTreatmentsForReports(treatments, patients) {
+    const patientLookup = buildPatientLookup(patients);
+    let orphanCount = 0;
+    const sanitized = treatments.reduce((list, tr) => {
+        const rawPid = tr?.patient_id ?? tr?.patientId;
+        const rawName = tr?.patient_name ?? tr?.patientName ?? '';
+        const matchedPatient = resolvePatientFromLookup(rawPid, rawName, patientLookup);
+        if (!matchedPatient?.id) {
+            orphanCount++;
+            const fallbackId = String(rawPid ?? '').trim() || `orphan:${normalizePatientLookupName(rawName) || tr?.id || orphanCount}`;
+            const fallbackName = buildMissingPatientLabel(rawName);
+            list.push({
+                ...tr,
+                patient_id: fallbackId,
+                patientId: fallbackId,
+                patient_name: fallbackName,
+                patientName: fallbackName,
+                _reportOrphan: true
+            });
+            return list;
+        }
+        const patientName = matchedPatient.name || rawName || '';
+        list.push({
+            ...tr,
+            patient_id: matchedPatient.id,
+            patientId: matchedPatient.id,
+            patient_name: patientName,
+            patientName: patientName
+        });
+        return list;
+    }, []);
+    return { treatments: sanitized, orphanCount };
+}
+
+async function getCleanReportCollections() {
+    const [patients, rawTreatments, expenses, appointments, rawSessionPayments] = await Promise.all([
+        dbGetAll('patients'),
+        dbGetAll('treatments'),
+        dbGetAll('expenses'),
+        dbGetAll('appointments'),
+        dbGetAll('session_payments').catch(() => [])
+    ]);
+    const treatmentAudit = sanitizeTreatmentsForReports(rawTreatments, patients);
+    const sessionPayments = normalizeSessionPaymentsForReports(rawSessionPayments);
+    const hydratedTreatments = hydrateTreatmentsForReports(treatmentAudit.treatments, sessionPayments);
+    const collectionEntries = buildReportCollectionEntries(
+        hydratedTreatments.treatments,
+        sessionPayments,
+        hydratedTreatments.paymentsByTreatment
+    );
+    const reportAudit = {
+        rawTreatments: rawTreatments.length,
+        validTreatments: hydratedTreatments.treatments.length,
+        orphanTreatments: treatmentAudit.orphanCount,
+        rawSessionPayments: rawSessionPayments.length,
+        collectionEntries: collectionEntries.length
+    };
+    window._reportsAudit = reportAudit;
+    if (reportAudit.orphanTreatments > 0) {
+        console.warn(`[Reports] Kept ${reportAudit.orphanTreatments} orphan treatment rows out of ${reportAudit.rawTreatments} using fallback patient labels.`);
+    }
+    return {
+        patients,
+        treatments: hydratedTreatments.treatments,
+        expenses,
+        appointments,
+        sessionPayments,
+        collectionEntries,
+        reportAudit
+    };
+}
+
+async function deleteRowsForPatient(table, patientId) {
+    const rows = await dbGetAll(table, { patient_id: patientId });
+    for (const row of rows) {
+        if (row?.id == null) continue;
+        await dbDelete(table, row.id);
+    }
+}
+
+async function deletePatientCascade(patientId) {
+    const treatments = await dbGetAll('treatments', { patient_id: patientId });
+    const treatmentIds = new Set(
+        treatments
+            .map(tr => tr?.id)
+            .filter(id => id != null)
+            .map(id => String(id))
+    );
+
+    const payments = await dbGetAll('session_payments');
+    const linkedPayments = payments.filter(payment => {
+        const paymentPatientId = payment?.patient_id ?? payment?.patientId;
+        const treatmentId = payment?.treatment_id ?? payment?.treatmentId;
+        return String(paymentPatientId ?? '') === String(patientId) || treatmentIds.has(String(treatmentId ?? ''));
+    });
+    const deletedPaymentIds = new Set();
+
+    for (const payment of linkedPayments) {
+        const paymentId = payment?.id;
+        if (paymentId == null || deletedPaymentIds.has(String(paymentId))) continue;
+        deletedPaymentIds.add(String(paymentId));
+        if (window._spCacheRemove) {
+            try { window._spCacheRemove(paymentId); } catch (_) {}
+        }
+        await dbDelete('session_payments', paymentId);
+    }
+
+    try {
+        const key = 'sp_pending_payments';
+        const ls = JSON.parse(localStorage.getItem(key) || '[]');
+        localStorage.setItem(
+            key,
+            JSON.stringify(ls.filter(payment => {
+                const paymentId = payment?.id;
+                const paymentPatientId = payment?.patient_id ?? payment?.patientId;
+                const treatmentId = payment?.treatment_id ?? payment?.treatmentId;
+                if (paymentId != null && deletedPaymentIds.has(String(paymentId))) return false;
+                if (String(paymentPatientId ?? '') === String(patientId)) return false;
+                if (treatmentIds.has(String(treatmentId ?? ''))) return false;
+                return true;
+            }))
+        );
+    } catch (_) {}
+
+    for (const treatment of treatments) {
+        if (treatment?.id == null) continue;
+        await dbDelete('treatments', treatment.id);
+    }
+
+    const relatedTables = ['appointments', 'prescriptions', 'xrays', 'patient_notes', 'tooth_states', 'invoices', 'lab_orders'];
+    for (const table of relatedTables) {
+        await deleteRowsForPatient(table, patientId);
+    }
+}
+
 document.getElementById('newPatientForm').addEventListener('submit', async e => {
     e.preventDefault();
 
@@ -1115,6 +1424,7 @@ document.getElementById('newPrescriptionForm').addEventListener('submit', async 
 // ── 8. PATIENT PROFILE ───────────────────
 window.openPatientProfile = async function(id) {
     currentProfilePatientId = id;
+    window.currentProfilePatientId = id;
     let patient;
     const esc = window.escapeHtml || ((value) => String(value ?? ''));
     if (window._sbReady && (typeof window._sbReady === 'function' ? window._sbReady() : window._sbReady)) {
@@ -1145,8 +1455,8 @@ window.openPatientProfile = async function(id) {
 
     document.getElementById('profileInfoCards').innerHTML = `
         <div class="stat-card"><div><p class="text-xs text-gray-400">Registered</p><p class="font-bold text-sm">${esc(pCreatedAt)}</p></div></div>
-        <div class="stat-card"><div><p class="text-xs text-gray-400">Treatments</p><p class="font-bold text-sm">${treatments.length}</p></div></div>
-        <div class="stat-card"><div><p class="text-xs text-gray-400">Total Paid</p><p class="font-bold text-sm text-green-600">${totalP} ${getCurrency()}</p></div></div>
+        <div class="stat-card"><div><p class="text-xs text-gray-400">Treatments</p><p id="profileTreatmentsCount" class="font-bold text-sm">${treatments.length}</p></div></div>
+        <div class="stat-card"><div><p class="text-xs text-gray-400">Total Paid</p><p id="profileTopPaid" class="font-bold text-sm text-green-600">${totalP.toFixed(2)} ${getCurrency()}</p></div></div>
         <div class="stat-card border-l-4 ${debt > 0 ? 'border-l-red-400' : 'border-l-green-400'}"><div><p class="text-xs text-gray-400">Balance</p><p class="font-bold text-sm ${debt > 0 ? 'text-red-500' : 'text-green-600'}">${debt > 0 ? debt + ' ' + getCurrency() : 'Settled ✓'}</p></div></div>
     `;
 
@@ -1433,8 +1743,13 @@ window.filterPatients = async function() {
 
 window.deletePatient = async function(id) {
     if (!confirm(t('confirm.deletePatient'))) return;
+    await deletePatientCascade(id);
     await dbDelete('patients', id);
     removePatientFromCaches(id);
+    if (String(currentProfilePatientId || '') === String(id)) {
+        currentProfilePatientId = null;
+        window.currentProfilePatientId = null;
+    }
     loadAllPatients();
     updateDashboard();
     showToast(t('toast.deleted'), 'error');
@@ -1818,10 +2133,11 @@ function currentMonthRange() {
     return { from: `${y}-${m}-01`, to: `${y}-${m}-${String(last).padStart(2,'0')}` };
 }
 
-function buildProfitTable(revenue, ratios, curr) {
+function buildProfitTableLegacy(revenue, ratios, curr) {
     const mat    = revenue * ratios.material / 100;
     const dev    = revenue * ratios.devices  / 100;
     const oth    = revenue * ratios.others   / 100;
+    const totalExp = mat + dev + oth;
     const net    = revenue - mat - dev - oth;
     const netPct = 100 - ratios.material - ratios.devices - ratios.others;
     const fmt    = n => Number.isInteger(n) ? n : n.toFixed(1);
@@ -1831,30 +2147,54 @@ function buildProfitTable(revenue, ratios, curr) {
             <span class="text-gray-500">${icon} ${label} <span class="text-gray-300">(${pct}%)</span></span>
             <span class="font-semibold ${cls}">${fmt(amount)} ${curr}</span>
         </div>`;
-    return `<div class="space-y-0.5">
-        ${row('الإيراد', '💰', 100, revenue, 'text-gray-800 font-bold')}
+    return `<div class="space-y-3">
+        <div class="flex justify-between items-center rounded-xl border border-emerald-100 bg-white/80 px-3 py-2.5">
+            <span class="text-xs font-bold text-gray-700"><i class="fa-solid fa-circle-check text-emerald-500"></i> صافي الربح <span class="text-gray-300 font-normal">(${fmt(netPct)}%)</span></span>
+            <span class="font-black text-base ${nc}">${fmt(net)} ${curr}</span>
+        </div>
+        <div class="space-y-0.5">
+        ${row('إجمالي الإيراد', '💰', 100, net, `font-bold ${nc}`)}
         ${row('استهلاك المواد',   '🧪', ratios.material, mat, 'text-orange-500')}
         ${row('استهلاك الأجهزة', '⚙️', ratios.devices,  dev, 'text-purple-500')}
         ${row('مصاريف أخرى',     '📦', ratios.others,   oth, 'text-rose-400')}
         <div class="flex justify-between items-center mt-2 pt-2 border-t-2 border-dashed border-gray-200">
-            <span class="text-xs font-bold text-gray-700"><i class="fa-solid fa-circle-check text-emerald-500"></i> صافي الربح <span class="text-gray-300 font-normal">(${fmt(netPct)}%)</span></span>
-            <span class="font-black text-sm ${nc}">${fmt(net)} ${curr}</span>
+            <span class="text-xs font-bold text-gray-700">🧾 إجمالي المصاريف <span class="text-gray-300 font-normal">(${fmt(100 - netPct)}%)</span></span>
+            <span class="font-black text-sm text-rose-500">${fmt(totalExp)} ${curr}</span>
+        </div>
         </div>
     </div>`;
 }
 
-async function renderDailyProfitCard(treatments) {
+async function renderDailyProfitCard(treatments = null, collectionEntries = null) {
     const el = document.getElementById('dailyProfitCard');
     if (!el) return;
+    const cleanData = await getCleanReportCollections();
+    const sourceCollections = Array.isArray(collectionEntries)
+        ? collectionEntries
+        : cleanData.collectionEntries;
+    const sourceExpenses = cleanData.expenses || [];
     const curr   = getCurrency();
     const ratios = getProfitRatios();
-    const today  = new Date().toISOString().split('T')[0];
+    const todayStr = today();
     const { from, to } = currentMonthRange();
 
-    const dailyRev   = treatments.filter(tr => tr.date === today)
-                                 .reduce((s,tr) => s+(parseFloat(tr.paid)||0), 0);
-    const monthlyRev = treatments.filter(tr => tr.date >= from && tr.date <= to)
-                                 .reduce((s,tr) => s+(parseFloat(tr.paid)||0), 0);
+    const dailyGross = sourceCollections
+        .filter(entry => entry.date === todayStr)
+        .reduce((sum, entry) => sum + toMoneyNumber(entry.amount), 0);
+    const monthlyGross = sourceCollections
+        .filter(entry => entry.date >= from && entry.date <= to)
+        .reduce((sum, entry) => sum + toMoneyNumber(entry.amount), 0);
+
+    const dailyActualExp = sourceExpenses
+        .filter(e => normalizeDateOnly(e.date) === todayStr)
+        .reduce((sum, e) => sum + toMoneyNumber(e.amount), 0);
+    const monthlyActualExp = sourceExpenses
+        .filter(e => { const d = normalizeDateOnly(e.date); return d >= from && d <= to; })
+        .reduce((sum, e) => sum + toMoneyNumber(e.amount), 0);
+
+    // النسب تُحسب على الصافي (بعد خصم المصاريف الفعلية)
+    const dailyRev   = Math.max(0, dailyGross   - dailyActualExp);
+    const monthlyRev = Math.max(0, monthlyGross - monthlyActualExp);
 
     el.innerHTML = `
     <div class="bg-white rounded-xl border border-gray-100 p-5 mb-5">
@@ -1908,16 +2248,24 @@ async function renderDailyProfitCard(treatments) {
         <!-- Two columns -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div class="rounded-xl border border-emerald-100 bg-emerald-50/40 p-4">
-                <div class="flex items-center gap-2 mb-3">
+                <div class="flex items-center gap-2 mb-2">
                     <span class="text-xs font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">📅 اليوم</span>
-                    <span class="text-xs text-gray-400">${today}</span>
+                    <span class="text-xs text-gray-400">${todayStr}</span>
+                </div>
+                <div class="flex justify-between text-xs text-gray-400 mb-1 px-1">
+                    <span>💵 إجمالي المحصّل: <span class="font-semibold text-gray-600">${dailyGross.toLocaleString()} ${curr}</span></span>
+                    <span>🧾 مصاريف فعلية: <span class="font-semibold text-rose-400">${dailyActualExp.toLocaleString()} ${curr}</span></span>
                 </div>
                 ${buildProfitTable(dailyRev, ratios, curr)}
             </div>
             <div class="rounded-xl border border-blue-100 bg-blue-50/40 p-4">
-                <div class="flex items-center gap-2 mb-3">
+                <div class="flex items-center gap-2 mb-2">
                     <span class="text-xs font-bold text-blue-700 bg-blue-100 px-2 py-0.5 rounded-full">📆 الشهر الحالي</span>
                     <span class="text-xs text-gray-400">${from} ← ${to}</span>
+                </div>
+                <div class="flex justify-between text-xs text-gray-400 mb-1 px-1">
+                    <span>💵 إجمالي المحصّل: <span class="font-semibold text-gray-600">${monthlyGross.toLocaleString()} ${curr}</span></span>
+                    <span>🧾 مصاريف فعلية: <span class="font-semibold text-rose-400">${monthlyActualExp.toLocaleString()} ${curr}</span></span>
                 </div>
                 ${buildProfitTable(monthlyRev, ratios, curr)}
             </div>
@@ -1948,7 +2296,7 @@ window.applyProfitRatios = async function() {
     showToast('تم حفظ النسب وتحديث التقرير ✓');
     const p = document.getElementById('profitSettingsPanel');
     if (p) p.style.display = 'none';
-    const treatments = await dbGetAll('treatments');
+    const { treatments } = await getCleanReportCollections();
     renderDailyProfitCard(treatments);
 };
 
@@ -1956,12 +2304,9 @@ window.applyProfitRatios = async function() {
 
 async function loadReports() {
     const curr = getCurrency();
-    const treatments   = await dbGetAll('treatments');
-    const expenses     = await dbGetAll('expenses');
-    const patients     = await dbGetAll('patients');
-    const appointments = await dbGetAll('appointments');
-    renderReportKpis(treatments, expenses, patients, appointments);
-    renderCharts();
+    const { treatments, expenses, patients, appointments, collectionEntries } = await getCleanReportCollections();
+    renderReportKpis(treatments, expenses, patients, appointments, collectionEntries);
+    renderCharts(treatments, collectionEntries);
 
     // inject placeholder if missing then render profit card
     if (!document.getElementById('dailyProfitCard')) {
@@ -1970,15 +2315,15 @@ async function loadReports() {
         ph.id = 'dailyProfitCard';
         if (kpis && kpis.parentNode) kpis.parentNode.insertBefore(ph, kpis.nextSibling);
     }
-    await renderDailyProfitCard(treatments);
+    await renderDailyProfitCard(treatments, collectionEntries);
 
-    let totalRevenue = 0, totalPaid = 0, totalDebt = 0, totalExpenses = 0;
+    let totalRevenue = 0, totalDebt = 0, totalExpenses = 0;
     treatments.forEach(tr => {
-        totalRevenue += parseFloat(tr.total_cost||tr.totalCost)||0;
-        totalPaid    += parseFloat(tr.paid)||0;
+        totalRevenue += toMoneyNumber(tr.total_cost || tr.totalCost);
     });
+    const totalPaid = sumCollectionAmounts(collectionEntries);
     totalDebt = totalRevenue - totalPaid;
-    expenses.forEach(e => { totalExpenses += parseFloat(e.amount)||0; });
+    expenses.forEach(e => { totalExpenses += toMoneyNumber(e.amount); });
 
     document.getElementById('financialReport').innerHTML = `
         <div class="flex justify-between text-sm border-b pb-2"><span class="text-gray-500">${t('rep.totalRevenue')}</span><span class="font-bold text-gray-800">${totalRevenue} ${curr}</span></div>
@@ -1998,12 +2343,21 @@ async function loadReports() {
     `;
 
     const debtMap = {};
+    const patientIds = new Set(patients.map(patient => String(patient?.id ?? '').trim()).filter(Boolean));
     treatments.forEach(tr => {
-        const pid  = tr.patient_id || tr.patientId;
-        const name = tr.patient_name || tr.patientName;
-        if (!debtMap[pid]) debtMap[pid] = { name, cost: 0, paid: 0, id: pid };
-        debtMap[pid].cost += parseFloat(tr.total_cost||tr.totalCost)||0;
-        debtMap[pid].paid += parseFloat(tr.paid)||0;
+        const pid = String(tr.patient_id || tr.patientId || `orphan:${tr.id ?? Math.random()}`);
+        const name = tr.patient_name || tr.patientName || buildMissingPatientLabel('');
+        if (!debtMap[pid]) {
+            debtMap[pid] = {
+                name,
+                cost: 0,
+                paid: 0,
+                id: pid,
+                missingPatient: !!tr._reportOrphan || !patientIds.has(pid)
+            };
+        }
+        debtMap[pid].cost += toMoneyNumber(tr.total_cost || tr.totalCost);
+        debtMap[pid].paid += toMoneyNumber(tr.paid);
     });
     const debtors = Object.values(debtMap).filter(d => d.cost - d.paid > 0).sort((a,b) => (b.cost-b.paid)-(a.cost-a.paid));
 
@@ -2016,7 +2370,7 @@ async function loadReports() {
             <thead><tr class="text-gray-400 text-xs uppercase border-b"><th class="text-left pb-2">${t('rep.debtor')}</th><th class="text-right pb-2">${t('rep.debtAmt')}</th></tr></thead>
             <tbody>${debtors.map(d => `
                 <tr class="border-b border-gray-50">
-                    <td class="py-2 cursor-pointer hover:text-blue-600 font-semibold" onclick="openPatientProfile(${d.id})">${d.name}</td>
+                    <td class="py-2 ${d.missingPatient ? 'text-gray-500' : 'cursor-pointer hover:text-blue-600'} font-semibold" ${d.missingPatient ? '' : `onclick="openPatientProfile(${Number(d.id)})"`}>${d.name}${d.missingPatient ? ' · Missing record' : ''}</td>
                     <td class="py-2 text-right text-red-500 font-bold">${d.cost - d.paid} ${curr}</td>
                 </tr>`).join('')}
             </tbody>
@@ -2052,10 +2406,61 @@ window.saveSettings = function() { showToast('Settings are managed by BitMaster.
 window.uploadLogo = function() { showToast('Logo is managed by BitMaster.', 'info'); };
 window.removeLogo = function() { showToast('Logo is managed by BitMaster.', 'info'); };
 
-window.confirmDeleteAll = function() {
+async function purgeAllClinicData() {
+    const coreTables = [
+        'session_payments',
+        'lab_orders',
+        'invoices',
+        'xrays',
+        'patient_notes',
+        'tooth_states',
+        'prescriptions',
+        'appointments',
+        'treatments',
+        'expenses',
+        'inventory_log',
+        'inventory',
+        'patients'
+    ];
+
+    for (const table of coreTables) {
+        let rows = [];
+        try {
+            rows = await dbGetAll(table);
+        } catch (_) {}
+        for (const row of rows) {
+            if (row?.id == null) continue;
+            await dbDelete(table, row.id);
+        }
+    }
+
+    try { localStorage.removeItem('sp_pending_payments'); } catch (_) {}
+    try { localStorage.removeItem('clinic_offline_queue_v3'); } catch (_) {}
+    try { localStorage.removeItem('clinic_offline_queue'); } catch (_) {}
+    try { localStorage.removeItem('syncQueue_v1'); } catch (_) {}
+    try { if (db.pendingOps) await db.pendingOps.clear(); } catch (_) {}
+
+    allPatientsData = [];
+    window.allPatientsData = [];
+    window.cachedPatients = [];
+    currentProfilePatientId = null;
+    window.currentProfilePatientId = null;
+    if (window._appCache) window._appCache.loaded = false;
+
+    try { await db.delete(); } catch (_) {}
+}
+
+window.confirmDeleteAll = async function() {
     if (!confirm(t('confirm.deleteAll'))) return;
     if (!confirm(t('confirm.deleteAll2'))) return;
-    db.delete().then(() => { showToast(t('toast.allDeleted'), 'error'); setTimeout(() => location.reload(), 1500); });
+    const sbReady = window._sbReady ? (typeof window._sbReady === 'function' ? window._sbReady() : !!window._sbReady) : !!window._sb;
+    if (!navigator.onLine || !sbReady) {
+        showToast('Delete All requires an online Supabase connection to fully remove clinic data.', 'error');
+        return;
+    }
+    await purgeAllClinicData();
+    showToast(t('toast.allDeleted'), 'error');
+    setTimeout(() => location.reload(), 1500);
 };
 
 // ── 20. BACKUP ───────────────────────────
@@ -2125,16 +2530,15 @@ async function updateDashboard() {
     const todayStr     = today();
     const curr         = getCurrency();
     const esc          = window.escapeHtml || ((value) => String(value ?? ''));
-    const patients     = await dbGetAll('patients');
-    const appointments = await dbGetAll('appointments');
-    const treatments   = await dbGetAll('treatments');
-    const expenses     = await dbGetAll('expenses');
+    const { patients, appointments, expenses, collectionEntries } = await getCleanReportCollections();
 
     document.getElementById('totalPatientsCount').innerText = patients.length;
 
-    let dailyRevenue = 0, dailyExpense = 0;
-    treatments.forEach(tr => { if (tr.date === todayStr) dailyRevenue += parseFloat(tr.paid)||0; });
-    expenses.forEach(e    => { if (e.date === todayStr)  dailyExpense += parseFloat(e.amount)||0; });
+    let dailyExpense = 0;
+    const dailyRevenue = collectionEntries
+        .filter(entry => entry.date === todayStr)
+        .reduce((sum, entry) => sum + toMoneyNumber(entry.amount), 0);
+    expenses.forEach(e => { if (normalizeDateOnly(e.date) === todayStr) dailyExpense += toMoneyNumber(e.amount); });
     const net = dailyRevenue - dailyExpense;
 
     document.getElementById('todayRevenue').innerText  = `${dailyRevenue} ${curr}`;
@@ -2189,24 +2593,22 @@ async function updateDashboard() {
 }
 
 // ── 21.2 TODAY REVENUE MODAL ─────────────
-window.showTodayRevenueModal = async function() {
+window._showTodayRevenueModalLegacy = async function() {
     const todayStr = today();
     const curr     = getCurrency();
     // استخدم الـ cache لو متاح (أسرع) وإلا اقرأ من DB
-    const c = window._appCache;
-    const treatments = (c && c.loaded && c.treatments) ? c.treatments : await dbGetAll('treatments');
-    const todayTr  = treatments.filter(tr => tr.date === todayStr && parseFloat(tr.paid||0) > 0);
+    const { collectionEntries } = await getCleanReportCollections();
+    const todayTr  = collectionEntries.filter(entry => entry.date === todayStr && toMoneyNumber(entry.amount) > 0);
     const body     = document.getElementById('todayRevenueModalBody');
     const totalEl  = document.getElementById('todayRevenueModalTotal');
-    let sum = 0;
-    todayTr.forEach(tr => { sum += parseFloat(tr.paid)||0; });
+    const sum = sumCollectionAmounts(todayTr);
     totalEl.innerText = `${sum} ${curr}`;
     if (todayTr.length === 0) {
         body.innerHTML = `<div class="text-center py-10 text-gray-300"><i class="fa-solid fa-receipt text-5xl mb-3 block opacity-30"></i><p class="text-sm">لا توجد إيرادات اليوم</p></div>`;
     } else {
         const byPatient = {};
         todayTr.forEach(tr => {
-            const pid = tr.patient_id || tr.patientId;
+            const pid = String(tr.patientId ?? `missing:${tr.patientName}`);
             const pname = tr.patient_name || tr.patientName || 'غير معروف';
             if (!byPatient[pid]) byPatient[pid] = { name: pname, id: pid, treatments: [] };
             byPatient[pid].treatments.push(tr);
@@ -2235,7 +2637,7 @@ window.showTodayExpensesModal = async function() {
     // استخدم الـ cache لو متاح
     const c = window._appCache;
     const expenses = (c && c.loaded && c.expenses) ? c.expenses : await dbGetAll('expenses');
-    const todayExp = expenses.filter(e => e.date === todayStr);
+    const todayExp = expenses.filter(e => normalizeDateOnly(e.date) === todayStr);
     const body     = document.getElementById('todayExpensesModalBody');
     const totalEl  = document.getElementById('todayExpensesModalTotal');
     let sum = 0;
@@ -2282,13 +2684,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
 window.renderMonthlyReport = async function() {
     // استخدم الـ cache لو متاح
-    const c = window._appCache;
-    const treatments = (c && c.loaded && c.treatments) ? c.treatments : await dbGetAll('treatments');
-    const expenses   = (c && c.loaded && c.expenses)   ? c.expenses   : await dbGetAll('expenses');
+    const { collectionEntries, expenses } = await getCleanReportCollections();
     const curr       = getCurrency();
     const yearsSet   = new Set();
-    treatments.forEach(tr => { const y=(tr.date||'').slice(0,4); if(y) yearsSet.add(y); });
-    expenses.forEach(e  => { const y=(e.date||'').slice(0,4);  if(y) yearsSet.add(y); });
+    collectionEntries.forEach(entry => { const y = (entry.date || '').slice(0, 4); if (y) yearsSet.add(y); });
+    expenses.forEach(e => { const y = normalizeDateOnly(e.date).slice(0, 4); if (y) yearsSet.add(y); });
     const years = [...yearsSet].sort((a,b)=>b-a);
     const sel = document.getElementById('monthlyReportYear');
     if (sel) {
@@ -2302,39 +2702,43 @@ window.renderMonthlyReport = async function() {
         : ['January','February','March','April','May','June','July','August','September','October','November','December'];
     const monthData = MONTHS.map((month, m) => {
         const mStr = `${selectedYear}-${String(m+1).padStart(2,'0')}`;
-        const rev  = treatments.filter(tr=>(tr.date||'').startsWith(mStr)).reduce((s,tr)=>s+(parseFloat(tr.paid)||0),0);
-        const exp  = expenses.filter(e=>(e.date||'').startsWith(mStr)).reduce((s,e)=>s+(parseFloat(e.amount)||0),0);
+        const rev  = collectionEntries.filter(entry => (entry.date || '').startsWith(mStr)).reduce((sum, entry) => sum + toMoneyNumber(entry.amount), 0);
+        const exp  = expenses.filter(e => normalizeDateOnly(e.date).startsWith(mStr)).reduce((sum, e) => sum + toMoneyNumber(e.amount), 0);
         return { month, rev, exp, net: rev-exp };
     });
     const totalRev = monthData.reduce((s,d)=>s+d.rev,0);
     const totalExp = monthData.reduce((s,d)=>s+d.exp,0);
-    const maxRev   = Math.max(...monthData.map(d=>d.rev), 1);
+    const totalNet = totalRev - totalExp;
+    const totalProfitPct = totalRev > 0 ? Math.round(totalNet / totalRev * 100) : 0;
     document.getElementById('monthlyReportBody').innerHTML = `
     <div class="overflow-x-auto"><table class="w-full text-sm">
         <thead><tr class="bg-slate-50 text-gray-400 text-xs uppercase border-b">
-            <th class="text-right px-4 py-3">الشهر</th>
-            <th class="text-right px-4 py-3 text-green-600">الإيراد</th>
-            <th class="text-right px-4 py-3 text-red-400">المصروف</th>
-            <th class="text-right px-4 py-3 text-blue-600">صافي الربح</th>
-            <th class="px-4 py-3 w-36">نسبة الإيراد</th>
+            <th class="text-left px-4 py-3">الشهر</th>
+            <th class="text-left px-4 py-3 text-green-600">الإيراد</th>
+            <th class="text-left px-4 py-3 text-red-400">المصروف</th>
+            <th class="text-left px-4 py-3 text-blue-600">صافي الربح</th>
+            <th class="px-4 py-3 w-36">نسبة الربح</th>
         </tr></thead>
         <tbody>${monthData.map(d => {
-            const pct = Math.round(d.rev/maxRev*100);
-            const hasData = d.rev>0||d.exp>0;
+            const profitPct = d.rev > 0 ? Math.round(d.net / d.rev * 100) : 0;
+            const barPct    = Math.max(0, Math.min(100, profitPct));
+            const hasData   = d.rev > 0 || d.exp > 0;
+            const barColor  = profitPct >= 50 ? 'bg-green-400' : profitPct >= 0 ? 'bg-yellow-400' : 'bg-red-400';
+            const pctColor  = profitPct >= 0 ? 'text-gray-500' : 'text-red-400';
             return `<tr class="border-b border-gray-50 ${hasData?'hover:bg-blue-50':'opacity-40'} transition">
                 <td class="px-4 py-3 font-semibold text-gray-700">${d.month}</td>
                 <td class="px-4 py-3 text-green-600 font-semibold">${d.rev>0?d.rev.toLocaleString()+' '+curr:'—'}</td>
                 <td class="px-4 py-3 text-red-400">${d.exp>0?d.exp.toLocaleString()+' '+curr:'—'}</td>
                 <td class="px-4 py-3 font-bold ${d.net>=0?'text-green-600':'text-red-500'}">${hasData?d.net.toLocaleString()+' '+curr:'—'}</td>
-                <td class="px-4 py-3"><div class="flex items-center gap-2"><div class="flex-1 bg-gray-100 rounded-full h-2 overflow-hidden"><div class="h-2 rounded-full ${d.rev>0?'bg-green-400':'bg-gray-200'}" style="width:${pct}%"></div></div><span class="text-[11px] text-gray-400 w-8">${pct}%</span></div></td>
+                <td class="px-4 py-3"><div class="flex items-center gap-2"><div class="flex-1 bg-gray-100 rounded-full h-2 overflow-hidden"><div class="h-2 rounded-full ${hasData?barColor:'bg-gray-200'}" style="width:${barPct}%"></div></div><span class="text-[11px] ${hasData?pctColor:'text-gray-300'} w-8">${hasData?profitPct+'%':'0%'}</span></div></td>
             </tr>`;
         }).join('')}</tbody>
         <tfoot><tr class="bg-slate-50 font-bold border-t-2 border-gray-200">
             <td class="px-4 py-3 text-gray-700">الإجمالي</td>
             <td class="px-4 py-3 text-green-700">${totalRev.toLocaleString()} ${curr}</td>
             <td class="px-4 py-3 text-red-500">${totalExp.toLocaleString()} ${curr}</td>
-            <td class="px-4 py-3 ${(totalRev-totalExp)>=0?'text-green-700':'text-red-500'}">${(totalRev-totalExp).toLocaleString()} ${curr}</td>
-            <td></td>
+            <td class="px-4 py-3 ${totalNet>=0?'text-green-700':'text-red-500'}">${totalNet.toLocaleString()} ${curr}</td>
+            <td class="px-4 py-3"><span class="text-xs font-bold ${totalProfitPct>=0?'text-green-600':'text-red-500'}">${totalProfitPct}%</span></td>
         </tr></tfoot>
     </table></div>`;
 };
@@ -2705,7 +3109,7 @@ window.toggleLanguage = function() {
 
 // ── 22. HELPERS ──────────────────────────
 function today() {
-    return new Date().toISOString().split('T')[0];
+    return formatLocalDate(new Date());
 }
 
 function logout() {
@@ -2958,7 +3362,9 @@ window.checkReminders = async function() {
     const appts = await dbGetAll('appointments');
     const now = new Date();
     const todayStr = today();
-    const tomorrowStr = new Date(now.getTime() + 86400000).toISOString().split('T')[0];
+    const tomorrowDate = new Date(now);
+    tomorrowDate.setDate(now.getDate() + 1);
+    const tomorrowStr = formatLocalDate(tomorrowDate);
 
     const todayAppts    = appts.filter(a => a.date === todayStr && a.status !== 'Cancelled');
     const tomorrowAppts = appts.filter(a => a.date === tomorrowStr && a.status !== 'Cancelled');
@@ -2996,10 +3402,7 @@ window.checkReminders = async function() {
 window.exportExcel = async function() {
     if (typeof XLSX === 'undefined') { showToast('Excel library loading, try again', 'error'); return; }
     const curr = getCurrency();
-    const patients     = await dbGetAll('patients');
-    const treatments   = await dbGetAll('treatments');
-    const appointments = await dbGetAll('appointments');
-    const expenses     = await dbGetAll('expenses');
+    const { patients, treatments, appointments, expenses } = await getCleanReportCollections();
     const invoices     = await dbGetAll('invoices');
 
     const wb = XLSX.utils.book_new();
@@ -3084,8 +3487,23 @@ window.exportExcel = async function() {
 let revenueChartInstance = null;
 let treatmentChartInstance = null;
 
-async function renderCharts() {
-    const treatments = await dbGetAll('treatments');
+function getTreatmentBreakdownLabel(tr) {
+    const procedure = String(tr?.procedure || '').trim().replace(/\s+/g, ' ');
+    if (procedure) return procedure;
+
+    const condition = String(tr?.tooth_condition || tr?.toothCondition || '')
+        .trim()
+        .replace(/_/g, ' ')
+        .replace(/\s+/g, ' ');
+    if (condition) return condition;
+
+    return currentLang === 'ar' ? 'غير محدد' : 'Unspecified';
+}
+
+async function renderCharts(treatments = null, collectionEntries = null) {
+    const reportCollections = await getCleanReportCollections();
+    const sourceTreatments = Array.isArray(treatments) ? treatments : reportCollections.treatments;
+    const sourceCollections = Array.isArray(collectionEntries) ? collectionEntries : reportCollections.collectionEntries;
 
     const months = [];
     const revenueData = [];
@@ -3093,12 +3511,14 @@ async function renderCharts() {
     for (let i = 5; i >= 0; i--) {
         const d = new Date();
         d.setMonth(d.getMonth() - i);
-        const key = d.toISOString().slice(0, 7);
+        const key = formatLocalMonth(d);
         const label = d.toLocaleString('default', { month: 'short', year: '2-digit' });
         months.push(label);
-        const monthTreats = treatments.filter(tr => (tr.date||'').startsWith(key));
+        const monthTreats = sourceTreatments.filter(tr => (tr.date||'').startsWith(key));
         revenueData.push(monthTreats.reduce((s,tr) => s+(parseFloat(tr.total_cost||tr.totalCost)||0), 0));
-        paidData.push(monthTreats.reduce((s,tr) => s+(parseFloat(tr.paid)||0), 0));
+        paidData.push(sourceCollections
+            .filter(entry => (entry.date || '').startsWith(key))
+            .reduce((sum, entry) => sum + toMoneyNumber(entry.amount), 0));
     }
 
     const isDark = document.body.classList.contains('dark');
@@ -3122,33 +3542,53 @@ async function renderCharts() {
     }
 
     const procCount = {};
-    treatments.forEach(tr => {
-        const p = (tr.procedure || 'Other').split(' ')[0];
-        procCount[p] = (procCount[p]||0) + 1;
+    sourceTreatments.forEach(tr => {
+        const label = getTreatmentBreakdownLabel(tr);
+        procCount[label] = (procCount[label] || 0) + 1;
     });
     const sorted = Object.entries(procCount).sort((a,b)=>b[1]-a[1]).slice(0,7);
+    const hasTreatmentData = sorted.length > 0;
+    const treatmentLabels = hasTreatmentData
+        ? sorted.map(entry => entry[0])
+        : [currentLang === 'ar' ? 'لا توجد علاجات' : 'No treatments'];
+    const treatmentValues = hasTreatmentData ? sorted.map(entry => entry[1]) : [1];
     const tCanvas = document.getElementById('treatmentChart');
     if (tCanvas) {
         if (treatmentChartInstance) treatmentChartInstance.destroy();
         treatmentChartInstance = new Chart(tCanvas, {
             type: 'doughnut',
             data: {
-                labels: sorted.map(e=>e[0]),
+                labels: treatmentLabels,
                 datasets: [{
-                    data: sorted.map(e=>e[1]),
-                    backgroundColor: ['#2563eb','#22c55e','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#ec4899'],
+                    data: treatmentValues,
+                    backgroundColor: hasTreatmentData
+                        ? ['#2563eb','#22c55e','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#ec4899']
+                        : ['#cbd5e1'],
                     borderWidth: 2, borderColor: isDark ? '#1e293b' : '#ffffff'
                 }]
             },
-            options: { responsive:true, plugins:{ legend:{position:'right',labels:{color:textColor,font:{size:11},boxWidth:12}} } }
+            options: {
+                responsive:true,
+                plugins:{
+                    legend:{
+                        position:'right',
+                        labels:{color:textColor,font:{size:11},boxWidth:12}
+                    },
+                    tooltip:{
+                        enabled: hasTreatmentData
+                    }
+                }
+            }
         });
     }
 }
 
-function renderReportKpis(treatments, expenses, patients, appointments) {
+function renderReportKpis(treatments, expenses, patients, appointments, collectionEntries = null) {
     const curr = getCurrency();
     const totalRevenue = treatments.reduce((s,tr)=>s+(parseFloat(tr.total_cost||tr.totalCost)||0),0);
-    const totalPaid    = treatments.reduce((s,tr)=>s+(parseFloat(tr.paid)||0),0);
+    const totalPaid    = Array.isArray(collectionEntries)
+        ? sumCollectionAmounts(collectionEntries)
+        : treatments.reduce((s,tr)=>s+(parseFloat(tr.paid)||0),0);
     const totalExp     = expenses.reduce((s,e)=>s+(parseFloat(e.amount)||0),0);
     const netProfit    = totalPaid - totalExp;
     const kpis = [
@@ -3166,6 +3606,96 @@ function renderReportKpis(treatments, expenses, patients, appointments) {
 }
 
 // ── 23. INIT ─────────────────────────────
+function buildProfitTable(revenue, ratios, curr) {
+    const mat = revenue * ratios.material / 100;
+    const dev = revenue * ratios.devices / 100;
+    const oth = revenue * ratios.others / 100;
+    const totalExp = mat + dev + oth;
+    const net = revenue - totalExp;
+    const netPct = 100 - ratios.material - ratios.devices - ratios.others;
+    const fmt = n => Number.isInteger(n) ? n : n.toFixed(1);
+    const nc = net >= 0 ? 'text-emerald-600' : 'text-red-500';
+    const L = (ar, en) => currentLang === 'ar' ? ar : en;
+    const row = (label, icon, pct, amount, cls) => `
+        <div class="flex justify-between items-center text-xs py-1.5 border-b border-gray-100 last:border-0">
+            <span class="text-gray-500">${icon} ${label} <span class="text-gray-300">(${pct}%)</span></span>
+            <span class="font-semibold ${cls}">${fmt(amount)} ${curr}</span>
+        </div>`;
+    return `<div class="space-y-3">
+        <div class="flex justify-between items-center rounded-xl border border-emerald-100 bg-white/80 px-3 py-2.5">
+            <span class="text-xs font-bold text-gray-700"><i class="fa-solid fa-circle-check text-emerald-500"></i> ${L('صافي الربح', 'Net Profit')} <span class="text-gray-300 font-normal">(${fmt(netPct)}%)</span></span>
+            <span class="font-black text-base ${nc}">${fmt(net)} ${curr}</span>
+        </div>
+        <div class="space-y-0.5">
+        ${row(L('صافي الإيراد (الأساس)', 'Net Revenue (Base)'), '💰', 100, revenue, 'font-bold text-gray-700')}
+        ${row(L('استهلاك المواد', 'Materials'), '🧪', ratios.material, mat, 'text-orange-500')}
+        ${row(L('استهلاك الأجهزة', 'Devices'), '⚙️', ratios.devices, dev, 'text-purple-500')}
+        ${row(L('مصاريف أخرى', 'Other Costs'), '📦', ratios.others, oth, 'text-rose-400')}
+        <div class="flex justify-between items-center mt-2 pt-2 border-t-2 border-dashed border-gray-200">
+            <span class="text-xs font-bold text-gray-700">🧾 ${L('إجمالي المصاريف', 'Total Expenses')} <span class="text-gray-300 font-normal">(${fmt(100 - netPct)}%)</span></span>
+            <span class="font-black text-sm text-rose-500">${fmt(totalExp)} ${curr}</span>
+        </div>
+        </div>
+    </div>`;
+}
+
+window.showTodayRevenueModal = async function() {
+    const todayStr = today();
+    const curr = getCurrency();
+    const { collectionEntries } = await getCleanReportCollections();
+    const todayEntries = collectionEntries.filter(entry => entry.date === todayStr && toMoneyNumber(entry.amount) > 0);
+    const body = document.getElementById('todayRevenueModalBody');
+    const totalEl = document.getElementById('todayRevenueModalTotal');
+    const missingLabel = currentLang === 'ar' ? 'سجل مفقود' : 'Missing record';
+
+    totalEl.innerText = `${sumCollectionAmounts(todayEntries)} ${curr}`;
+
+    if (!todayEntries.length) {
+        body.innerHTML = `<div class="text-center py-10 text-gray-300"><i class="fa-solid fa-receipt text-5xl mb-3 block opacity-30"></i><p class="text-sm">${currentLang === 'ar' ? 'لا توجد إيرادات اليوم' : 'No revenue recorded today'}</p></div>`;
+        document.getElementById('todayRevenueModal').classList.add('open');
+        return;
+    }
+
+    const byPatient = {};
+    todayEntries.forEach(entry => {
+        const key = String(entry.patientId ?? `missing:${entry.patientName}`);
+        if (!byPatient[key]) {
+            byPatient[key] = {
+                id: entry.patientId,
+                name: entry.patientName || buildMissingPatientLabel(''),
+                orphanPatient: !!entry.orphanPatient,
+                entries: []
+            };
+        }
+        byPatient[key].entries.push(entry);
+    });
+
+    body.innerHTML = `<div class="space-y-3 max-h-80 overflow-y-auto pr-1">${Object.values(byPatient).map(patient => {
+        const patientTotal = patient.entries.reduce((sum, entry) => sum + toMoneyNumber(entry.amount), 0);
+        const canOpenProfile = patient.id != null && !patient.orphanPatient && !Number.isNaN(Number(patient.id));
+        return `<div class="rounded-xl border border-gray-100 overflow-hidden">
+            <div class="flex items-center justify-between px-4 py-2.5 bg-green-50 border-b border-green-100 ${canOpenProfile ? 'cursor-pointer hover:bg-green-100 transition' : ''}" ${canOpenProfile ? `onclick="openPatientProfile(${Number(patient.id)}); closeModal('todayRevenueModal');"` : ''}>
+                <div class="flex items-center gap-2">
+                    <div class="w-7 h-7 rounded-lg bg-green-200 text-green-700 flex items-center justify-center text-xs font-bold">${(patient.name || '?').charAt(0)}</div>
+                    <span class="font-semibold text-sm text-gray-800">${patient.name}${patient.orphanPatient ? ` · ${missingLabel}` : ''}</span>
+                </div>
+                <span class="font-black text-green-600 text-sm">${patientTotal} ${curr}</span>
+            </div>
+            ${patient.entries.map(entry => {
+                const label = entry.procedure || (currentLang === 'ar' ? 'دفعة' : 'Payment');
+                const tooth = entry.toothNumber ? ` <span class="text-blue-400">#${entry.toothNumber}</span>` : '';
+                const session = entry.sessionNum ? ` <span class="text-gray-400">· ${currentLang === 'ar' ? 'جلسة' : 'Session'} ${entry.sessionNum}</span>` : '';
+                return `<div class="flex justify-between items-center px-4 py-2 text-xs text-gray-600 border-b border-gray-50 last:border-0 bg-white">
+                    <span><i class="fa-solid fa-tooth text-blue-300 mr-1"></i>${label}${tooth}${session}</span>
+                    <span class="font-semibold text-green-600">${toMoneyNumber(entry.amount)} ${curr}</span>
+                </div>`;
+            }).join('')}
+        </div>`;
+    }).join('')}</div>`;
+
+    document.getElementById('todayRevenueModal').classList.add('open');
+};
+
 window.onload = async function() {
     if (window.clinicAuth && !window.clinicAuth.isAuthenticated()) {
         window.location.replace('login.html');

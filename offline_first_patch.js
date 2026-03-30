@@ -1094,16 +1094,6 @@
                     arr = mergeServerRowsWithPendingLocalRows(table, arrFromServer, localRows, pendingOps);
                 }
 
-                // ✅ v3.2: لو الـ Supabase رجّع نتيجة فاضية بسبب filter خاطئ أو مش موجود
-                // جرّب الـ Dexie كـ fallback
-                if (arr.length === 0 && filters) {
-                    const dexieRows = await dexieGetAll(table, filters);
-                    if (dexieRows.length > 0) {
-                        console.log(`[Offline] Supabase returned 0 rows for ${table}, using Dexie (${dexieRows.length} rows)`);
-                        return dexieRows;
-                    }
-                }
-
                 return arr;
             } catch (err) {
                 console.warn(`[Offline] Supabase unavailable (${table}), using Dexie`);

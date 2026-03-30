@@ -125,6 +125,7 @@
             const result = await current(id);
             refreshProfileHeader(id);
             syncProfileFinancialCards();
+            setTimeout(() => refreshProfileHeader(id), 210);
             setTimeout(() => refreshProfileHeader(id), 320);
             setTimeout(syncProfileFinancialCards, 320);
             return result;

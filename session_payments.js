@@ -11,6 +11,12 @@
     'use strict';
 
     const sleep = ms => new Promise(r => setTimeout(r, ms));
+    const pad2 = n => String(n).padStart(2, '0');
+    const getLocalToday = () => {
+        const d = new Date();
+        return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+    };
+    const getTodayDate = () => (typeof window.today === 'function' ? window.today() : getLocalToday());
 
     // ✅ IN-MEMORY CACHE — على window عشان يفضل موجود بعد أي re-render
     if (!window._spPaymentsCache) window._spPaymentsCache = [];
@@ -37,24 +43,72 @@
         );
     }
 
+    function getSessionPaymentsStore() {
+        return window.db &&
+            ((!window.db.session_payments?._noopProxy && window.db.session_payments) ||
+             (!window.db.sessionPayments?._noopProxy  && window.db.sessionPayments));
+    }
+
+    function getPaymentCacheKey(record) {
+        if (!record) return '';
+        if (record.id != null && String(record.id).trim() !== '') return `id:${record.id}`;
+
+        const treatmentId = record.treatment_id ?? record.treatmentId ?? '';
+        const patientId = record.patient_id ?? record.patientId ?? '';
+        const sessionNum = record.session_num ?? record.sessionNum ?? '';
+        const paidAt = record.paid_at ?? record.paidAt ?? '';
+        const amount = parseFloat(record.amount) || 0;
+        const notes = record.notes ?? record.note ?? '';
+
+        return `tmp:${treatmentId}|${patientId}|${sessionNum}|${paidAt}|${amount}|${notes}`;
+    }
+
+    function _replaceCache(records = []) {
+        const byKey = new Map();
+        records.filter(Boolean).forEach(record => {
+            const key = getPaymentCacheKey(record);
+            if (key) byKey.set(key, record);
+        });
+        _paymentsCache.length = 0;
+        byKey.forEach(record => _paymentsCache.push(record));
+    }
+
+    async function refreshPaymentsCache() {
+        const merged = [];
+        let hasPrimarySource = false;
+
+        try {
+            const store = getSessionPaymentsStore();
+            if (store) {
+                const all = await store.toArray();
+                merged.push(...all);
+                hasPrimarySource = true;
+            }
+        } catch (e) {
+            console.warn('[SP] refreshPaymentsCache Dexie error:', e);
+        }
+
+        try {
+            const ls = JSON.parse(localStorage.getItem('sp_pending_payments') || '[]');
+            if (Array.isArray(ls) && ls.length) merged.push(...ls);
+        } catch (e) {}
+
+        if (!hasPrimarySource && merged.length === 0) return null;
+
+        _replaceCache(merged);
+        return _paymentsCache;
+    }
+
     // ── تملى الـ cache من Dexie عند الفتح ────────────────────────
     async function _initCache() {
         try {
-            const store = window.db &&
-                ((!window.db.session_payments?._noopProxy && window.db.session_payments) ||
-                 (!window.db.sessionPayments?._noopProxy  && window.db.sessionPayments));
-            if (store) {
-                const all = await store.toArray();
-                all.forEach(r => _cacheAdd(r));
-                console.log(`[SP] Cache loaded: ${all.length} payments from Dexie`);
+            const refreshed = await refreshPaymentsCache();
+            if (refreshed) {
+                console.log(`[SP] Cache loaded: ${refreshed.length} payments from Dexie`);
             }
         } catch(e) {}
 
         // كمان اضم من localStorage fallback
-        try {
-            const ls = JSON.parse(localStorage.getItem('sp_pending_payments') || '[]');
-            ls.forEach(r => _cacheAdd(r));
-        } catch(e) {}
     }
 
     // ── انتظر DB ثم ابدأ الـ cache ────────────────────────────────
@@ -74,6 +128,21 @@
             await sleep(100);
         }
         return true;
+    }
+
+    function isSupabaseReady() {
+        return typeof window._sbReady === 'function'
+            ? !!window._sbReady()
+            : !!window._sbReady;
+    }
+
+    function getCurrentProfilePatientIdSafe() {
+        try {
+            if (window.currentProfilePatientId != null) return window.currentProfilePatientId;
+            return typeof currentProfilePatientId !== 'undefined' ? currentProfilePatientId : null;
+        } catch (_) {
+            return null;
+        }
     }
 
     // ─── ✅ جيب treatments من Dexie مباشرة (أوف لاين آمن) ──────────
@@ -96,21 +165,56 @@
         }
     }
 
+    function replacePaymentsForPatient(patientId, records = []) {
+        const keep = _paymentsCache.filter(payment => {
+            const paymentPatientId = payment.patient_id ?? payment.patientId;
+            return String(paymentPatientId ?? '') !== String(patientId);
+        });
+        _replaceCache([...keep, ...records]);
+    }
+
+    async function getLiveTreatments(patientId) {
+        if (isSupabaseReady() && typeof window.dbGetAll === 'function') {
+            try {
+                return await window.dbGetAll('treatments', { patient_id: patientId });
+            } catch (e) {
+                console.warn('[SP] getLiveTreatments remote error:', e);
+            }
+        }
+        return getDexieTreatments(patientId);
+    }
+
+    async function getLivePayments(patientId) {
+        if (isSupabaseReady() && typeof window.dbGetAll === 'function') {
+            try {
+                const rows = await window.dbGetAll('session_payments', { patient_id: patientId });
+                replacePaymentsForPatient(patientId, rows);
+                return rows;
+            } catch (e) {
+                console.warn('[SP] getLivePayments remote error:', e);
+            }
+        }
+        return getPaymentsByPatient(patientId);
+    }
+
     // ─── ✅ جيب دفعات — cache أولاً ثم Dexie ──────────────────────
     async function getDexiePayments(filters = {}) {
         // ── 1. لو الـ cache فيه بيانات — استخدمه مباشرة ──────────
+        const refreshed = await refreshPaymentsCache();
+        if (refreshed) {
+            return _cacheFilter(filters);
+        }
+
         if (_paymentsCache.length > 0) {
             return _cacheFilter(filters);
         }
 
         // ── 2. Cache فاضي — جرّب Dexie ────────────────────────────
         try {
-            const store = window.db &&
-                ((!window.db.session_payments?._noopProxy && window.db.session_payments) ||
-                 (!window.db.sessionPayments?._noopProxy  && window.db.sessionPayments));
+            const store = getSessionPaymentsStore();
             if (store) {
                 const all = await store.toArray();
-                all.forEach(r => _cacheAdd(r));
+                _replaceCache(all);
                 return _cacheFilter(filters);
             }
         } catch (e) {
@@ -261,7 +365,7 @@ async function recalcTreatmentPaid(treatmentId) {
         const curr = getCurrency ? getCurrency() : 'EGP';
 
         ['spAmt','spNote'].forEach(id => document.getElementById(id).value = '');
-        document.getElementById('spDate').value = new Date().toISOString().split('T')[0];
+        document.getElementById('spDate').value = getTodayDate();
         document.getElementById('spPreview').classList.add('hidden');
         document.getElementById('spErr').classList.add('hidden');
         document.getElementById('spTrId').value = treatmentId;
@@ -340,7 +444,7 @@ async function recalcTreatmentPaid(treatmentId) {
         const amount      = parseFloat(document.getElementById('spAmt').value);
         const sessionNum  = parseInt(document.getElementById('spNum').value) || 1;
         const notes       = document.getElementById('spNote').value.trim();
-        const paidAt      = document.getElementById('spDate').value || new Date().toISOString().split('T')[0];
+        const paidAt      = document.getElementById('spDate').value || getTodayDate();
 
         const errEl = document.getElementById('spErr');
         const showErr = msg => { errEl.textContent = msg; errEl.classList.remove('hidden'); };
@@ -431,7 +535,14 @@ async function recalcTreatmentPaid(treatmentId) {
         container.innerHTML = '<div class="text-center py-6 text-gray-300 text-xs"><i class="fa-solid fa-spinner fa-spin"></i> جاري التحميل…</div>';
 
         // ✅ جيب الجلسات من Dexie مباشرة (يشتغل أوف لاين وأون لاين)
-        const treatments = await getDexieTreatments(patientId);
+        const allTreatments = await getLiveTreatments(patientId);
+        const allPayments = await getLivePayments(patientId);
+        updateProfileSummaryCards(allTreatments, allPayments, curr);
+        const selectedYear = syncHistoryYearOptions(allTreatments);
+        const treatments = selectedYear
+            ? allTreatments.filter(treatment => String(treatment.date || '').startsWith(selectedYear))
+            : allTreatments;
+        refreshHistoryChart(patientId, treatments, selectedYear);
 
         if (!treatments.length) {
             container.innerHTML = '<p class="text-gray-400 text-center text-sm mt-5">No treatments recorded.</p>';
@@ -440,22 +551,13 @@ async function recalcTreatmentPaid(treatmentId) {
         }
 
         // ✅ جيب كل دفعات المريض من Dexie مباشرة
-        const allPayments = await getPaymentsByPatient(patientId);
-
         let totalCost = 0, totalPaid = 0;
 
         const rows = treatments.map((tr, idx) => {
             const cost  = parseFloat(tr.total_cost || tr.totalCost) || 0;
-            const trPay = allPayments.filter(p => {
-                const tid = p.treatment_id ?? p.treatmentId;
-                return String(tid) === String(tr.id);
-            });
+            const { payments: trPay, paid } = getTreatmentPaidState(tr, allPayments);
 
             // ✅ FIX: لو مفيش دفعات في الـ cache، استخدم treatments.paid المحفوظ كـ fallback
-            const paidFromPayments = trPay.reduce((s, p) => s + (parseFloat(p.amount) || 0), 0);
-            const paidFromTreatment = parseFloat(tr.paid) || 0;
-            const paid = (trPay.length > 0) ? paidFromPayments : paidFromTreatment;
-
             const debt  = cost - paid;
 
             totalCost += cost;
@@ -534,6 +636,105 @@ async function recalcTreatmentPaid(treatmentId) {
         if ($('profileTotalDebt')) $('profileTotalDebt').innerText = `${(totalCost - totalPaid).toFixed(2)} ${curr}`;
     }
 
+    function getPaymentsForTreatment(treatmentId, allPayments = []) {
+        return allPayments.filter(payment => {
+            const linkedTreatmentId = payment.treatment_id ?? payment.treatmentId;
+            return String(linkedTreatmentId) === String(treatmentId);
+        });
+    }
+
+    function getTreatmentPaidState(treatment, allPayments = []) {
+        const payments = getPaymentsForTreatment(treatment.id, allPayments);
+        const paidFromPayments = payments.reduce((sum, payment) => sum + (parseFloat(payment.amount) || 0), 0);
+        const paidFromTreatment = parseFloat(treatment.paid) || 0;
+        return {
+            payments,
+            paid: payments.length > 0 ? paidFromPayments : paidFromTreatment
+        };
+    }
+
+    function syncHistoryYearOptions(treatments = []) {
+        const yearSelect = document.getElementById('patientHistoryYear');
+        if (!yearSelect) return '';
+
+        const previousYear = yearSelect.value;
+        const years = [...new Set(
+            treatments
+                .map(treatment => String(treatment.date || '').slice(0, 4))
+                .filter(Boolean)
+        )].sort((a, b) => Number(b) - Number(a));
+
+        yearSelect.innerHTML = '<option value="">All</option>' +
+            years.map(year => `<option value="${year}">${year}</option>`).join('');
+        yearSelect.value = previousYear && years.includes(previousYear) ? previousYear : '';
+
+        return yearSelect.value;
+    }
+
+    function refreshHistoryChart(patientId, treatments = [], yearFilter = '') {
+        if (typeof window.generateDentalChart !== 'function') return;
+        try {
+            if (!yearFilter) {
+                window.generateDentalChart(patientId);
+                return;
+            }
+
+            const yearStates = {};
+            treatments.forEach(treatment => {
+                const toothNumber = treatment.tooth_number || treatment.toothNumber;
+                const rawCondition = treatment.tooth_condition || treatment.toothCondition;
+                if (!toothNumber || !rawCondition) return;
+
+                let condition = rawCondition;
+                if (condition === 'crown') condition = 'crown_work';
+                if (condition === 'root') condition = 'root_canal';
+                yearStates[toothNumber] = condition;
+            });
+
+            window.generateDentalChart(patientId, yearStates);
+        } catch (e) {
+            console.warn('[SP] history chart refresh failed:', e);
+        }
+    }
+
+    function updateProfileSummaryCards(treatments = [], allPayments = [], curr = 'EGP') {
+        let totalCost = 0;
+        let totalPaid = 0;
+
+        treatments.forEach(treatment => {
+            totalCost += parseFloat(treatment.total_cost || treatment.totalCost) || 0;
+            totalPaid += getTreatmentPaidState(treatment, allPayments).paid;
+        });
+
+        const cardsRoot = document.getElementById('profileInfoCards');
+        const statCards = cardsRoot ? Array.from(cardsRoot.querySelectorAll('.stat-card')) : [];
+        const treatmentsCountEl = document.getElementById('profileTreatmentsCount') || statCards[1]?.querySelector('p.font-bold');
+        const topPaidEl = document.getElementById('profileTopPaid') || statCards[2]?.querySelector('p.font-bold');
+        const balanceCardEl = document.getElementById('profileBalanceCard') || statCards[3] || null;
+        const topBalanceEl = document.getElementById('profileTopBalance') || balanceCardEl?.querySelector('p.font-bold');
+        const remaining = totalCost - totalPaid;
+        const settledLabel = typeof t === 'function' ? t('patients.settled') : 'Settled ✓';
+
+        if (treatmentsCountEl) treatmentsCountEl.innerText = String(treatments.length);
+        if (topPaidEl) topPaidEl.innerText = `${totalPaid.toFixed(2)} ${curr}`;
+
+        if (topBalanceEl) {
+            topBalanceEl.classList.remove('text-red-500', 'text-green-600');
+            if (remaining > 0.01) {
+                topBalanceEl.innerText = `${remaining.toFixed(2)} ${curr}`;
+                topBalanceEl.classList.add('text-red-500');
+            } else {
+                topBalanceEl.innerText = settledLabel;
+                topBalanceEl.classList.add('text-green-600');
+            }
+        }
+
+        if (balanceCardEl) {
+            balanceCardEl.classList.remove('border-l-red-400', 'border-l-green-400');
+            balanceCardEl.classList.add(remaining > 0.01 ? 'border-l-red-400' : 'border-l-green-400');
+        }
+    }
+
     // ✅ اعمل الـ cache functions متاحة لـ offline_first_patch
     window._spCacheAdd    = _cacheAdd;
     window._spCacheRemove = _cacheRemove;
@@ -555,9 +756,6 @@ async function recalcTreatmentPaid(treatmentId) {
         }
 
         window.loadPatientHistory = async function (patientId) {
-            if (typeof window.generateDentalChart === 'function') {
-                try { await window.generateDentalChart(patientId); } catch (_) {}
-            }
             await window.renderSessionPayments(patientId);
         };
 
@@ -565,8 +763,47 @@ async function recalcTreatmentPaid(treatmentId) {
     }
 
     // ─── START ────────────────────────────────────────────────────────
+    let _profileAutoRefreshTimer = null;
+    let _profileAutoRefreshRunning = false;
+
+    async function refreshActiveProfileFromServer() {
+        const patientId = getCurrentProfilePatientIdSafe();
+        const profileViewActive = document.getElementById('profileView')?.classList.contains('active');
+        if (!patientId || !profileViewActive || !isSupabaseReady() || _profileAutoRefreshRunning) return;
+
+        _profileAutoRefreshRunning = true;
+        try {
+            await window.renderSessionPayments(patientId);
+            if (typeof window.loadPatientNotes === 'function') {
+                await window.loadPatientNotes(patientId);
+            }
+            if (typeof window.loadPatientXrays === 'function') {
+                await window.loadPatientXrays(patientId);
+            }
+        } catch (e) {
+            console.warn('[SP] active profile refresh failed:', e);
+        } finally {
+            _profileAutoRefreshRunning = false;
+        }
+    }
+
+    function startProfileAutoRefresh() {
+        if (_profileAutoRefreshTimer) return;
+
+        _profileAutoRefreshTimer = setInterval(() => {
+            refreshActiveProfileFromServer();
+        }, 4000);
+
+        window.addEventListener('focus', refreshActiveProfileFromServer);
+        window.addEventListener('online', refreshActiveProfileFromServer);
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) refreshActiveProfileFromServer();
+        });
+    }
+
     if (document.readyState === 'complete') hookLoadPatientHistory();
     else window.addEventListener('load', hookLoadPatientHistory);
+    startProfileAutoRefresh();
 
     console.log('[session_payments] v5 loaded');
 
@@ -648,9 +885,9 @@ async function recalcTreatmentPaid(treatmentId) {
                 if (window.db && window.db.session_payments) {
                     p = await window.db.session_payments.get(parseInt(payId));
                 }
-                document.getElementById('epDate').value = (p?.paid_at || p?.paidAt) || new Date().toISOString().split('T')[0];
+                document.getElementById('epDate').value = (p?.paid_at || p?.paidAt) || getTodayDate();
             } catch(e) {
-                document.getElementById('epDate').value = new Date().toISOString().split('T')[0];
+                document.getElementById('epDate').value = getTodayDate();
             }
         })();
 
@@ -667,7 +904,7 @@ async function recalcTreatmentPaid(treatmentId) {
         const amount     = parseFloat(document.getElementById('epAmt').value);
         const sessionNum = parseInt(document.getElementById('epNum').value) || 1;
         const notes      = document.getElementById('epNote').value.trim();
-        const paidAt     = document.getElementById('epDate').value || new Date().toISOString().split('T')[0];
+        const paidAt     = document.getElementById('epDate').value || getTodayDate();
 
         const errEl = document.getElementById('epErr');
         errEl.classList.add('hidden');
