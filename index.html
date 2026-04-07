@@ -1165,7 +1165,10 @@
             <div class="view-section h-full overflow-y-auto p-5" id="expensesView">
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="text-xl font-bold flex items-center gap-2"><i class="fa-solid fa-file-invoice-dollar text-red-500"></i> Expenses</h2>
-                    <button onclick="openModal('addExpenseModal')" class="btn btn-red"><i class="fa-solid fa-plus"></i> New Expense</button>
+                    <div class="flex gap-2">
+                        <button onclick="openPayableModal()" class="btn" style="background:#f59e0b;color:white;"><i class="fa-solid fa-hand-holding-dollar"></i> <span data-t="exp.newDebt">New Debt</span></button>
+                        <button onclick="openModal('addExpenseModal')" class="btn btn-red"><i class="fa-solid fa-plus"></i> New Expense</button>
+                    </div>
                 </div>
                 <div class="grid grid-cols-3 gap-4 mb-4">
                     <div class="stat-card">
@@ -1204,6 +1207,65 @@
                         <tbody id="expensesTableBody"></tbody>
                     </table>
                 </div>
+
+                <div class="mt-8">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-bold text-gray-800 flex items-center gap-2">
+                            <i class="fa-solid fa-hand-holding-dollar text-amber-500"></i>
+                            <span data-t="exp.debtsTitle">Payables</span>
+                        </h3>
+                        <button onclick="openPayableModal()" class="btn text-xs" style="background:#fff7ed;color:#b45309;border:1px solid #fcd34d;">
+                            <i class="fa-solid fa-plus"></i> <span data-t="exp.newDebt">New Debt</span>
+                        </button>
+                    </div>
+                    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                        <div class="stat-card">
+                            <div>
+                                <h3 class="text-xl font-bold text-gray-800" id="payablesTotalAll">0</h3>
+                                <p class="text-xs text-gray-400" data-t="exp.totalDebt">Total Debt</p>
+                            </div>
+                            <div class="w-9 h-9 bg-amber-50 text-amber-500 rounded-xl flex items-center justify-center"><i class="fa-solid fa-file-invoice"></i></div>
+                        </div>
+                        <div class="stat-card">
+                            <div>
+                                <h3 class="text-xl font-bold text-gray-800" id="payablesPaidAll">0</h3>
+                                <p class="text-xs text-gray-400" data-t="exp.paidDebt">Paid</p>
+                            </div>
+                            <div class="w-9 h-9 bg-green-50 text-green-500 rounded-xl flex items-center justify-center"><i class="fa-solid fa-circle-check"></i></div>
+                        </div>
+                        <div class="stat-card">
+                            <div>
+                                <h3 class="text-xl font-bold text-gray-800" id="payablesOutstanding">0</h3>
+                                <p class="text-xs text-gray-400" data-t="exp.remainingDebt">Remaining</p>
+                            </div>
+                            <div class="w-9 h-9 bg-rose-50 text-rose-500 rounded-xl flex items-center justify-center"><i class="fa-solid fa-hourglass-half"></i></div>
+                        </div>
+                        <div class="stat-card">
+                            <div>
+                                <h3 class="text-xl font-bold text-gray-800" id="payablesCount">0</h3>
+                                <p class="text-xs text-gray-400" data-t="exp.totalDebtEntries">Total Entries</p>
+                            </div>
+                            <div class="w-9 h-9 bg-slate-50 text-slate-500 rounded-xl flex items-center justify-center"><i class="fa-solid fa-list"></i></div>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-xl border border-gray-100 overflow-hidden">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-gray-50 text-gray-500 text-xs border-b border-gray-100 uppercase tracking-wide">
+                                    <th class="p-3" data-t="exp.creditor">Creditor</th>
+                                    <th class="p-3" data-t="exp.category">Category</th>
+                                    <th class="p-3" data-t="exp.total">Total</th>
+                                    <th class="p-3" data-t="exp.paid">Paid</th>
+                                    <th class="p-3" data-t="exp.remaining">Remaining</th>
+                                    <th class="p-3" data-t="exp.dueDate">Due Date</th>
+                                    <th class="p-3" data-t="exp.debtStatus">Status</th>
+                                    <th class="p-3 text-center" data-t="table.actions">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="payablesTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
 
             <!-- ── REPORTS ── -->
@@ -1222,7 +1284,7 @@
                 </div>
                 <!-- Overview Panel -->
                 <div id="repPanel-overview">
-                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5" id="reportKpis"></div>
+                    <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3 mb-5" id="reportKpis"></div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
                         <div class="bg-white rounded-xl border border-gray-100 p-5">
                             <h3 class="font-bold text-gray-800 mb-3 text-sm flex items-center gap-2"><i class="fa-solid fa-chart-line text-blue-500"></i> Monthly Revenue (Last 6 months)</h3>
@@ -2116,6 +2178,55 @@
         </div>
     </div>
 
+    <div id="addPayableModal" class="modal-base">
+        <div class="modal-box max-w-md">
+            <div class="flex justify-between items-center mb-5 border-b pb-3">
+                <h3 class="text-lg font-bold" id="payableModalTitle" data-t="modal.addPayable">Add Debt</h3>
+                <button onclick="closeModal('addPayableModal')" class="text-gray-300 hover:text-red-400 text-xl w-7 h-7 flex items-center justify-center"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="newPayableForm" class="space-y-3">
+                <input type="hidden" id="payableId">
+                <input type="hidden" id="payableDate">
+                <div>
+                    <label class="text-xs font-semibold text-gray-500 block mb-1" data-t="modal.payableName">Creditor / Supplier *</label>
+                    <input type="text" id="payableName" required class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm" data-t="modal.payableName" data-t-attr="placeholder" placeholder="Creditor / Supplier *">
+                </div>
+                <div>
+                    <label class="text-xs font-semibold text-gray-500 block mb-1" data-t="modal.payableCategory">Category</label>
+                    <select id="payableCategory" class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm">
+                        <option value="Supplier">Supplier</option>
+                        <option value="Lab">Lab</option>
+                        <option value="Equipment">Equipment</option>
+                        <option value="Rent">Rent</option>
+                        <option value="Services">Services</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="text-xs font-semibold text-gray-500 block mb-1" data-t="modal.payableAmount">Total Amount *</label>
+                        <input type="number" id="payableAmount" min="0" required class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm" placeholder="0">
+                    </div>
+                    <div>
+                        <label class="text-xs font-semibold text-gray-500 block mb-1" data-t="modal.payablePaid">Paid Amount</label>
+                        <input type="number" id="payablePaid" min="0" class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm" placeholder="0">
+                    </div>
+                </div>
+                <div>
+                    <label class="text-xs font-semibold text-gray-500 block mb-1" data-t="modal.payableDueDate">Due Date</label>
+                    <input type="date" id="payableDueDate" class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm">
+                </div>
+                <div>
+                    <label class="text-xs font-semibold text-gray-500 block mb-1" data-t="modal.payableNote">Notes</label>
+                    <textarea id="payableNote" rows="3" class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm" data-t="modal.payableNote" data-t-attr="placeholder" placeholder="Notes"></textarea>
+                </div>
+                <button type="submit" class="btn w-full justify-center" style="background:#f59e0b;color:white;">
+                    <i class="fa-solid fa-save"></i> <span id="savePayableBtnLabel" data-t="modal.savePayable">Save Debt</span>
+                </button>
+            </form>
+        </div>
+    </div>
+
     <!-- Add Prescription -->
     <div id="addPrescriptionModal" class="modal-base">
         <div class="modal-box max-w-lg">
@@ -2360,5 +2471,3 @@
 
 </body>
 </html>
-
-

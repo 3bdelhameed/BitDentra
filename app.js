@@ -272,6 +272,80 @@ Object.assign(TRANSLATIONS.ar, {
     'profile.whatsapp': '\u0648\u0627\u062A\u0633\u0627\u0628'
 });
 
+Object.assign(TRANSLATIONS.en, {
+    'exp.debtsTitle': 'Payables',
+    'exp.newDebt': 'New Debt',
+    'exp.totalDebt': 'Total Debt',
+    'exp.paidDebt': 'Paid',
+    'exp.remainingDebt': 'Remaining',
+    'exp.totalDebtEntries': 'Total Entries',
+    'exp.creditor': 'Creditor',
+    'exp.total': 'Total',
+    'exp.paid': 'Paid',
+    'exp.remaining': 'Remaining',
+    'exp.dueDate': 'Due Date',
+    'exp.recordDate': 'Recorded',
+    'exp.debtStatus': 'Status',
+    'exp.debtNotes': 'Notes',
+    'rep.patientDebt': 'Outstanding Patient Debt',
+    'rep.payablesPaid': 'Paid Payables',
+    'rep.payablesDue': 'Outstanding Payables',
+    'rep.cashOut': 'Cash Outflow',
+    'rep.netCash': 'Net Cash',
+    'rep.netAfterPayables': 'Net After Payables',
+    'rep.kpiPayables': 'Payables Due',
+    'modal.addPayable': 'Add Debt',
+    'modal.editPayable': 'Edit Debt',
+    'modal.payableName': 'Creditor / Supplier *',
+    'modal.payableCategory': 'Category',
+    'modal.payableAmount': 'Total Amount *',
+    'modal.payablePaid': 'Paid Amount',
+    'modal.payableDueDate': 'Due Date',
+    'modal.payableNote': 'Notes',
+    'modal.savePayable': 'Save Debt',
+    'modal.updatePayable': 'Update Debt',
+    'confirm.deletePayable': 'Delete this debt record?',
+    'toast.payableSaved': 'Debt saved',
+    'toast.payableUpdated': 'Debt updated'
+});
+
+Object.assign(TRANSLATIONS.ar, {
+    'exp.debtsTitle': '\u0627\u0644\u062f\u064a\u0648\u0646 \u0627\u0644\u0645\u0633\u062a\u062d\u0642\u0629 \u0639\u0644\u064a\u0643',
+    'exp.newDebt': '\u062f\u064a\u0646 \u062c\u062f\u064a\u062f',
+    'exp.totalDebt': '\u0625\u062c\u0645\u0627\u0644\u064a \u0627\u0644\u062f\u064a\u0648\u0646',
+    'exp.paidDebt': '\u0627\u0644\u0645\u0633\u062f\u062f',
+    'exp.remainingDebt': '\u0627\u0644\u0645\u062a\u0628\u0642\u064a',
+    'exp.totalDebtEntries': '\u0639\u062f\u062f \u0627\u0644\u0633\u062c\u0644\u0627\u062a',
+    'exp.creditor': '\u0627\u0644\u062f\u0627\u0626\u0646',
+    'exp.total': '\u0627\u0644\u0625\u062c\u0645\u0627\u0644\u064a',
+    'exp.paid': '\u0627\u0644\u0645\u062f\u0641\u0648\u0639',
+    'exp.remaining': '\u0627\u0644\u0645\u062a\u0628\u0642\u064a',
+    'exp.dueDate': '\u062a\u0627\u0631\u064a\u062e \u0627\u0644\u0627\u0633\u062a\u062d\u0642\u0627\u0642',
+    'exp.recordDate': '\u062a\u0627\u0631\u064a\u062e \u0627\u0644\u062a\u0633\u062c\u064a\u0644',
+    'exp.debtStatus': '\u0627\u0644\u062d\u0627\u0644\u0629',
+    'exp.debtNotes': '\u0645\u0644\u0627\u062d\u0638\u0627\u062a',
+    'rep.patientDebt': '\u062f\u064a\u0648\u0646 \u0627\u0644\u0645\u0631\u0636\u0649 \u0627\u0644\u0645\u0633\u062a\u062d\u0642\u0629',
+    'rep.payablesPaid': '\u0627\u0644\u062f\u064a\u0648\u0646 \u0627\u0644\u0645\u0633\u062f\u062f\u0629',
+    'rep.payablesDue': '\u0627\u0644\u062f\u064a\u0648\u0646 \u0627\u0644\u0645\u062a\u0628\u0642\u064a\u0629',
+    'rep.cashOut': '\u0625\u062c\u0645\u0627\u0644\u064a \u0627\u0644\u062e\u0631\u0648\u062c \u0645\u0646 \u0627\u0644\u062e\u0632\u064a\u0646\u0629',
+    'rep.netCash': '\u0635\u0627\u0641\u064a \u0627\u0644\u062e\u0632\u064a\u0646\u0629',
+    'rep.netAfterPayables': '\u0627\u0644\u0635\u0627\u0641\u064a \u0628\u0639\u062f \u062e\u0635\u0645 \u0627\u0644\u062f\u064a\u0648\u0646',
+    'rep.kpiPayables': '\u0627\u0644\u062f\u064a\u0648\u0646 \u0627\u0644\u0645\u062a\u0628\u0642\u064a\u0629',
+    'modal.addPayable': '\u0625\u0636\u0627\u0641\u0629 \u062f\u064a\u0646',
+    'modal.editPayable': '\u062a\u0639\u062f\u064a\u0644 \u062f\u064a\u0646',
+    'modal.payableName': '\u0627\u0633\u0645 \u0627\u0644\u062f\u0627\u0626\u0646 / \u0627\u0644\u0645\u0648\u0631\u062f *',
+    'modal.payableCategory': '\u0627\u0644\u0641\u0626\u0629',
+    'modal.payableAmount': '\u0625\u062c\u0645\u0627\u0644\u064a \u0627\u0644\u0645\u0628\u0644\u063a *',
+    'modal.payablePaid': '\u0627\u0644\u0645\u0628\u0644\u063a \u0627\u0644\u0645\u0633\u062f\u062f',
+    'modal.payableDueDate': '\u062a\u0627\u0631\u064a\u062e \u0627\u0644\u0627\u0633\u062a\u062d\u0642\u0627\u0642',
+    'modal.payableNote': '\u0645\u0644\u0627\u062d\u0638\u0627\u062a',
+    'modal.savePayable': '\u062d\u0641\u0638 \u0627\u0644\u062f\u064a\u0646',
+    'modal.updatePayable': '\u062a\u062d\u062f\u064a\u062b \u0627\u0644\u062f\u064a\u0646',
+    'confirm.deletePayable': '\u0647\u0644 \u062a\u0631\u064a\u062f \u062d\u0630\u0641 \u0633\u062c\u0644 \u0627\u0644\u062f\u064a\u0646\u061f',
+    'toast.payableSaved': '\u062a\u0645 \u062d\u0641\u0638 \u0627\u0644\u062f\u064a\u0646',
+    'toast.payableUpdated': '\u062a\u0645 \u062a\u062d\u062f\u064a\u062b \u0627\u0644\u062f\u064a\u0646'
+});
+
 function t(key) {
     return TRANSLATIONS[currentLang][key] || TRANSLATIONS['en'][key] || key;
 }
@@ -343,6 +417,16 @@ function refreshAllUI() {
         genderSel.options[0].text = t('modal.selectGender');
         genderSel.options[1].text = t('modal.male');
         genderSel.options[2].text = t('modal.female');
+    }
+
+    const payableCategorySel = document.getElementById('payableCategory');
+    if (payableCategorySel) {
+        const labels = isAr
+            ? { Supplier: 'مورد', Lab: 'معمل', Equipment: 'أجهزة', Rent: 'إيجار', Services: 'خدمات', Other: 'أخرى' }
+            : { Supplier: 'Supplier', Lab: 'Lab', Equipment: 'Equipment', Rent: 'Rent', Services: 'Services', Other: 'Other' };
+        Array.from(payableCategorySel.options).forEach(option => {
+            option.text = labels[option.value] || option.value;
+        });
     }
 
     // Update lang toggle button
@@ -469,6 +553,26 @@ db.version(6).stores({
     session_payments: '++id, treatment_id, patient_id, amount, session_num, date, note',
     procedureCatalog: '++id, name, category, isActive',
     audit_logs:       '++id, actor_user_id, actor_username, action_type, entity_table, entity_id, created_at, view_name'
+}).upgrade(tx => {});
+db.version(7).stores({
+    patients:         '++id, name, phone, createdAt',
+    appointments:     '++id, patientId, patientName, date, time, doctor, status, complaint',
+    treatments:       '++id, patientId, patientName, toothNumber, toothCondition, procedure, totalCost, paid, notes, date',
+    expenses:         '++id, item, category, amount, date',
+    prescriptions:    '++id, patientId, patientName, diagnosis, meds, instructions, date',
+    xrays:            '++id, patientId, imageBase64, date',
+    toothStates:      '++id, patientId, toothNumber, condition',
+    patientNotes:     '++id, patientId, notes',
+    invoices:         '++id, patientId, patientName, date, dueDate, items, total, paid, notes, status',
+    inventory:        '++id, name, category, qty, minQty, unit, unitCost, supplier, expiry, lastRestock',
+    labOrders:        '++id, patientId, patientName, labName, workType, status, dueDate, cost, paidToLab, teeth, material, shade, priority, notes, createdAt',
+    inventoryLog:     '++id, itemId, type, qtyChange, date',
+    pendingOps:       '++id, operation, table, timestamp',
+    doctors:          '++id, name_ar, name_en, specialty, is_active, commission_pct',
+    session_payments: '++id, treatment_id, patient_id, amount, session_num, date, note',
+    procedureCatalog: '++id, name, category, isActive',
+    audit_logs:       '++id, actor_user_id, actor_username, action_type, entity_table, entity_id, created_at, view_name',
+    payables:         '++id, creditorName, category, amount, paidAmount, dueDate, status, date'
 }).upgrade(tx => {});
 
 // ── 2. STATE ─────────────────────────────
@@ -990,6 +1094,86 @@ function toMoneyNumber(value) {
     return Number.isFinite(num) ? num : 0;
 }
 
+function getPayableStatusFromAmounts(amount, paidAmount) {
+    const total = Math.max(0, toMoneyNumber(amount));
+    const paid = Math.min(total, Math.max(0, toMoneyNumber(paidAmount)));
+    if (total <= 0 || paid >= total) return 'paid';
+    if (paid > 0) return 'partial';
+    return 'unpaid';
+}
+
+function normalizePayableRecord(payable = {}) {
+    const creditorName = String(
+        payable?.creditor_name ??
+        payable?.creditorName ??
+        payable?.supplier_name ??
+        payable?.supplierName ??
+        ''
+    ).trim();
+    const amount = Math.max(0, toMoneyNumber(payable?.amount));
+    const paidAmount = Math.min(amount, Math.max(0, toMoneyNumber(payable?.paid_amount ?? payable?.paidAmount)));
+    const remainingAmount = Math.max(0, amount - paidAmount);
+    const dueDate = normalizeDateOnly(payable?.due_date ?? payable?.dueDate);
+    const date = normalizeDateOnly(payable?.date);
+    const category = String(payable?.category || 'Supplier').trim() || 'Supplier';
+    const note = String(payable?.note ?? payable?.notes ?? '').trim();
+
+    return {
+        ...payable,
+        creditor_name: creditorName,
+        creditorName,
+        amount,
+        paid_amount: paidAmount,
+        paidAmount,
+        remaining_amount: remainingAmount,
+        remainingAmount,
+        due_date: dueDate,
+        dueDate,
+        date,
+        category,
+        note,
+        status: getPayableStatusFromAmounts(amount, paidAmount)
+    };
+}
+
+function summarizePayables(payables = []) {
+    return payables.reduce((summary, payable) => {
+        const normalized = normalizePayableRecord(payable);
+        summary.totalAmount += normalized.amount;
+        summary.totalPaid += normalized.paid_amount;
+        summary.totalRemaining += normalized.remaining_amount;
+        summary.count += 1;
+        return summary;
+    }, {
+        totalAmount: 0,
+        totalPaid: 0,
+        totalRemaining: 0,
+        count: 0
+    });
+}
+
+function translatePayableStatus(status) {
+    const key = String(status || '').toLowerCase();
+    const labels = currentLang === 'ar'
+        ? { unpaid: 'غير مسدد', partial: 'مسدد جزئياً', paid: 'مسدد' }
+        : { unpaid: 'Unpaid', partial: 'Partial', paid: 'Paid' };
+    return labels[key] || (currentLang === 'ar' ? 'غير معروف' : 'Unknown');
+}
+
+function translatePayableCategory(category) {
+    const key = String(category || 'Supplier').trim();
+    if (currentLang !== 'ar') return key;
+    const map = {
+        Supplier: 'مورد',
+        Lab: 'معمل',
+        Equipment: 'أجهزة',
+        Rent: 'إيجار',
+        Services: 'خدمات',
+        Other: 'أخرى'
+    };
+    return map[key] || key;
+}
+
 function buildMissingPatientLabel(rawName) {
     const cleanName = String(rawName || '').trim();
     if (cleanName) return cleanName;
@@ -1143,15 +1327,18 @@ function sanitizeTreatmentsForReports(treatments, patients) {
 }
 
 async function getCleanReportCollections() {
-    const [patients, rawTreatments, expenses, appointments, rawSessionPayments] = await Promise.all([
+    const [patients, rawTreatments, expenses, appointments, rawSessionPayments, rawPayables] = await Promise.all([
         dbGetAll('patients'),
         dbGetAll('treatments'),
         dbGetAll('expenses'),
         dbGetAll('appointments'),
-        dbGetAll('session_payments').catch(() => [])
+        dbGetAll('session_payments').catch(() => []),
+        dbGetAll('payables').catch(() => [])
     ]);
     const treatmentAudit = sanitizeTreatmentsForReports(rawTreatments, patients);
     const sessionPayments = normalizeSessionPaymentsForReports(rawSessionPayments);
+    const payables = rawPayables.map(normalizePayableRecord);
+    const payableStats = summarizePayables(payables);
     const hydratedTreatments = hydrateTreatmentsForReports(treatmentAudit.treatments, sessionPayments);
     const collectionEntries = buildReportCollectionEntries(
         hydratedTreatments.treatments,
@@ -1163,7 +1350,8 @@ async function getCleanReportCollections() {
         validTreatments: hydratedTreatments.treatments.length,
         orphanTreatments: treatmentAudit.orphanCount,
         rawSessionPayments: rawSessionPayments.length,
-        collectionEntries: collectionEntries.length
+        collectionEntries: collectionEntries.length,
+        rawPayables: rawPayables.length
     };
     window._reportsAudit = reportAudit;
     if (reportAudit.orphanTreatments > 0) {
@@ -1176,6 +1364,8 @@ async function getCleanReportCollections() {
         appointments,
         sessionPayments,
         collectionEntries,
+        payables,
+        payableStats,
         reportAudit
     };
 }
@@ -1401,6 +1591,83 @@ document.getElementById('newExpenseForm').addEventListener('submit', async e => 
     updateDashboard();
     loadExpenses();
     showToast('Expense added');
+});
+
+window.openPayableModal = async function(id = null) {
+    const form = document.getElementById('newPayableForm');
+    if (!form) return;
+
+    form.reset();
+    document.getElementById('payableId').value = '';
+    document.getElementById('payableDate').value = today();
+
+    const titleEl = document.getElementById('payableModalTitle');
+    const submitEl = document.getElementById('savePayableBtnLabel');
+
+    if (id != null) {
+        const payables = await dbGetAll('payables').catch(() => []);
+        const current = payables.find(row => String(row?.id) === String(id));
+        if (!current) return;
+
+        const payable = normalizePayableRecord(current);
+        document.getElementById('payableId').value = payable.id;
+        document.getElementById('payableName').value = payable.creditor_name || '';
+        document.getElementById('payableCategory').value = payable.category || 'Supplier';
+        document.getElementById('payableAmount').value = payable.amount || 0;
+        document.getElementById('payablePaid').value = payable.paid_amount || 0;
+        document.getElementById('payableDueDate').value = payable.due_date || '';
+        document.getElementById('payableNote').value = payable.note || '';
+        document.getElementById('payableDate').value = payable.date || today();
+
+        if (titleEl) titleEl.textContent = t('modal.editPayable');
+        if (submitEl) submitEl.textContent = t('modal.updatePayable');
+    } else {
+        if (titleEl) titleEl.textContent = t('modal.addPayable');
+        if (submitEl) submitEl.textContent = t('modal.savePayable');
+    }
+
+    openModal('addPayableModal');
+};
+
+document.getElementById('newPayableForm')?.addEventListener('submit', async e => {
+    e.preventDefault();
+
+    const id = document.getElementById('payableId').value;
+    const amount = Math.max(0, toMoneyNumber(document.getElementById('payableAmount').value));
+    const paidAmount = Math.min(amount, Math.max(0, toMoneyNumber(document.getElementById('payablePaid').value)));
+
+    const payload = {
+        creditor_name: document.getElementById('payableName').value.trim(),
+        category: document.getElementById('payableCategory').value,
+        amount,
+        paid_amount: paidAmount,
+        due_date: document.getElementById('payableDueDate').value || null,
+        note: document.getElementById('payableNote').value.trim() || null,
+        status: getPayableStatusFromAmounts(amount, paidAmount),
+        date: document.getElementById('payableDate').value || today()
+    };
+
+    if (!payload.creditor_name || amount <= 0) {
+        showToast(currentLang === 'ar' ? 'يرجى إدخال اسم الدائن ومبلغ صحيح' : 'Please enter creditor name and amount', 'error');
+        return;
+    }
+
+    if (id) {
+        await dbUpdate('payables', Number(id), payload);
+    } else {
+        await dbInsert('payables', payload);
+    }
+
+    e.target.reset();
+    document.getElementById('payableId').value = '';
+    document.getElementById('payableDate').value = today();
+    closeModal('addPayableModal');
+    await loadExpenses();
+    updateDashboard();
+    if (document.getElementById('reportsView')?.classList.contains('active')) {
+        await loadReports();
+    }
+    showToast(t(id ? 'toast.payableUpdated' : 'toast.payableSaved'));
 });
 
 // New Prescription
@@ -1962,7 +2229,12 @@ window.goToToday = function() {
 
 // ── 16. EXPENSES ─────────────────────────
 async function loadExpenses() {
-    const expenses = await dbGetAll('expenses');
+    const [expenses, rawPayables] = await Promise.all([
+        dbGetAll('expenses'),
+        dbGetAll('payables').catch(() => [])
+    ]);
+    const payables = rawPayables.map(normalizePayableRecord);
+    const payableStats = summarizePayables(payables);
     const curr = getCurrency();
     const thisMonth = today().slice(0,7);
     let totalMonth = 0, totalAll = 0;
@@ -1983,6 +2255,42 @@ async function loadExpenses() {
             <td class="p-3 text-center"><button onclick="deleteExpense(${e.id})" class="btn text-xs px-2 py-1" style="background:#fef2f2;color:#ef4444;border:1px solid #fecaca;"><i class="fa-solid fa-trash"></i></button></td>
         </tr>
     `).join('');
+
+    const statusStyles = {
+        unpaid: 'background:#fef2f2;color:#dc2626;',
+        partial: 'background:#fff7ed;color:#ea580c;',
+        paid: 'background:#f0fdf4;color:#16a34a;'
+    };
+    document.getElementById('payablesTotalAll').innerText = `${payableStats.totalAmount} ${curr}`;
+    document.getElementById('payablesPaidAll').innerText = `${payableStats.totalPaid} ${curr}`;
+    document.getElementById('payablesOutstanding').innerText = `${payableStats.totalRemaining} ${curr}`;
+    document.getElementById('payablesCount').innerText = payables.length;
+    document.getElementById('payablesTableBody').innerHTML = payables.length ? payables.map(payable => `
+        <tr class="border-b border-gray-50 hover:bg-amber-50/40 text-sm">
+            <td class="p-3">
+                <div class="font-semibold text-gray-800">${payable.creditor_name || '—'}</div>
+                ${payable.note ? `<div class="text-[11px] text-gray-400 mt-1">${payable.note}</div>` : ''}
+            </td>
+            <td class="p-3"><span class="badge" style="background:#fff7ed;color:#9a3412;">${translatePayableCategory(payable.category)}</span></td>
+            <td class="p-3 font-bold text-gray-800">${payable.amount} ${curr}</td>
+            <td class="p-3 font-bold text-green-600">${payable.paid_amount} ${curr}</td>
+            <td class="p-3 font-bold ${payable.remaining_amount > 0 ? 'text-red-500' : 'text-emerald-600'}">${payable.remaining_amount} ${curr}</td>
+            <td class="p-3 text-gray-400">${payable.due_date || '—'}</td>
+            <td class="p-3"><span class="badge" style="${statusStyles[payable.status] || statusStyles.unpaid}">${translatePayableStatus(payable.status)}</span></td>
+            <td class="p-3 text-center">
+                <div class="flex gap-1 justify-center">
+                    <button onclick="openPayableModal(${payable.id})" class="btn text-xs px-2 py-1" style="background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe;"><i class="fa-solid fa-pen"></i></button>
+                    <button onclick="deletePayable(${payable.id})" class="btn text-xs px-2 py-1" style="background:#fef2f2;color:#ef4444;border:1px solid #fecaca;"><i class="fa-solid fa-trash"></i></button>
+                </div>
+            </td>
+        </tr>
+    `).join('') : `
+        <tr>
+            <td colspan="8" class="p-6 text-center text-sm text-gray-400">
+                ${currentLang === 'ar' ? 'لا توجد ديون مسجلة حالياً' : 'No payables recorded yet'}
+            </td>
+        </tr>
+    `;
 }
 
 window.deleteExpense = async function(id) {
@@ -1990,6 +2298,17 @@ window.deleteExpense = async function(id) {
     await dbDelete('expenses', id);
     loadExpenses();
     updateDashboard();
+    showToast(t('toast.deleted'), 'error');
+};
+
+window.deletePayable = async function(id) {
+    if (!confirm(t('confirm.deletePayable'))) return;
+    await dbDelete('payables', id);
+    await loadExpenses();
+    updateDashboard();
+    if (document.getElementById('reportsView')?.classList.contains('active')) {
+        await loadReports();
+    }
     showToast(t('toast.deleted'), 'error');
 };
 
@@ -2304,8 +2623,8 @@ window.applyProfitRatios = async function() {
 
 async function loadReports() {
     const curr = getCurrency();
-    const { treatments, expenses, patients, appointments, collectionEntries } = await getCleanReportCollections();
-    renderReportKpis(treatments, expenses, patients, appointments, collectionEntries);
+    const { treatments, expenses, patients, appointments, collectionEntries, payables, payableStats } = await getCleanReportCollections();
+    renderReportKpis(treatments, expenses, patients, appointments, collectionEntries, payables);
     renderCharts(treatments, collectionEntries);
 
     // inject placeholder if missing then render profit card
@@ -2324,13 +2643,19 @@ async function loadReports() {
     const totalPaid = sumCollectionAmounts(collectionEntries);
     totalDebt = totalRevenue - totalPaid;
     expenses.forEach(e => { totalExpenses += toMoneyNumber(e.amount); });
+    const cashOut = totalExpenses + payableStats.totalPaid;
+    const netCash = totalPaid - cashOut;
+    const netAfterPayables = netCash - payableStats.totalRemaining;
 
     document.getElementById('financialReport').innerHTML = `
         <div class="flex justify-between text-sm border-b pb-2"><span class="text-gray-500">${t('rep.totalRevenue')}</span><span class="font-bold text-gray-800">${totalRevenue} ${curr}</span></div>
         <div class="flex justify-between text-sm border-b pb-2"><span class="text-gray-500">${t('rep.collected')}</span><span class="font-bold text-green-600">${totalPaid} ${curr}</span></div>
-        <div class="flex justify-between text-sm border-b pb-2"><span class="text-gray-500">${t('rep.debt')}</span><span class="font-bold text-red-500">${totalDebt} ${curr}</span></div>
+        <div class="flex justify-between text-sm border-b pb-2"><span class="text-gray-500">${t('rep.patientDebt')}</span><span class="font-bold text-red-500">${totalDebt} ${curr}</span></div>
         <div class="flex justify-between text-sm border-b pb-2"><span class="text-gray-500">${t('rep.totalExp')}</span><span class="font-bold text-orange-500">${totalExpenses} ${curr}</span></div>
-        <div class="flex justify-between text-sm font-bold text-base mt-1"><span>${t('rep.netProfit')}</span><span class="${totalPaid-totalExpenses>=0?'text-green-600':'text-red-500'}">${totalPaid - totalExpenses} ${curr}</span></div>
+        <div class="flex justify-between text-sm border-b pb-2"><span class="text-gray-500">${t('rep.payablesPaid')}</span><span class="font-bold text-amber-600">${payableStats.totalPaid} ${curr}</span></div>
+        <div class="flex justify-between text-sm border-b pb-2"><span class="text-gray-500">${t('rep.payablesDue')}</span><span class="font-bold text-rose-500">${payableStats.totalRemaining} ${curr}</span></div>
+        <div class="flex justify-between text-sm border-b pb-2"><span class="text-gray-500">${t('rep.netCash')}</span><span class="font-bold ${netCash>=0?'text-green-600':'text-red-500'}">${netCash} ${curr}</span></div>
+        <div class="flex justify-between text-sm font-bold text-base mt-1"><span>${t('rep.netAfterPayables')}</span><span class="${netAfterPayables>=0?'text-green-600':'text-red-500'}">${netAfterPayables} ${curr}</span></div>
     `;
 
     const examined = appointments.filter(a => a.status === 'Examined').length;
@@ -2409,6 +2734,7 @@ window.removeLogo = function() { showToast('Logo is managed by BitMaster.', 'inf
 async function purgeAllClinicData() {
     const coreTables = [
         'session_payments',
+        'payables',
         'lab_orders',
         'invoices',
         'xrays',
@@ -2471,6 +2797,7 @@ window.exportBackup = async function() {
         appointments:  await safeGet('appointments'),
         treatments:    await safeGet('treatments'),
         expenses:      await safeGet('expenses'),
+        payables:      await safeGet('payables'),
         prescriptions: await safeGet('prescriptions'),
         toothStates:   await db.toothStates.toArray().catch(()=>[]),
         patientNotes:  await db.patientNotes.toArray().catch(()=>[]),
@@ -2505,6 +2832,7 @@ window.importBackup = async function(event) {
         appointments:  'appointments',
         treatments:    'treatments',
         expenses:      'expenses',
+        payables:      'payables',
         prescriptions: 'prescriptions',
         toothStates:   'toothStates',
         patientNotes:  'patientNotes',
@@ -3402,7 +3730,7 @@ window.checkReminders = async function() {
 window.exportExcel = async function() {
     if (typeof XLSX === 'undefined') { showToast('Excel library loading, try again', 'error'); return; }
     const curr = getCurrency();
-    const { patients, treatments, appointments, expenses } = await getCleanReportCollections();
+    const { patients, treatments, appointments, expenses, payables, collectionEntries } = await getCleanReportCollections();
     const invoices     = await dbGetAll('invoices');
 
     const wb = XLSX.utils.book_new();
@@ -3426,6 +3754,26 @@ window.exportExcel = async function() {
     const eData = [['ID','Item','Category','Amount ('+curr+')','Date']];
     expenses.forEach(e => eData.push([e.id, e.item, e.category||'', e.amount||0, e.date||'']));
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(eData), 'Expenses');
+
+    if (payables.length) {
+        const payData = [['ID','Creditor','Category','Total ('+curr+')','Paid ('+curr+')','Remaining ('+curr+')','Due Date','Status','Recorded Date','Notes']];
+        payables.forEach(payable => {
+            const normalized = normalizePayableRecord(payable);
+            payData.push([
+                normalized.id,
+                normalized.creditor_name,
+                normalized.category || '',
+                normalized.amount,
+                normalized.paid_amount,
+                normalized.remaining_amount,
+                normalized.due_date || '',
+                normalized.status || '',
+                normalized.date || '',
+                normalized.note || ''
+            ]);
+        });
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(payData), 'Payables');
+    }
 
     if (invoices.length) {
         const iData = [['#','Patient','Date','Total','Paid','Due','Status']];
@@ -3464,15 +3812,21 @@ window.exportExcel = async function() {
     } catch(e) {}
 
     const totalRevenue = treatments.reduce((s,tr) => s+(parseFloat(tr.total_cost||tr.totalCost)||0), 0);
-    const totalPaid    = treatments.reduce((s,tr) => s+(parseFloat(tr.paid)||0), 0);
+    const totalPaid    = sumCollectionAmounts(collectionEntries);
     const totalExp     = expenses.reduce((s,e) => s+(parseFloat(e.amount)||0), 0);
+    const payableStats = summarizePayables(payables);
+    const totalCashOut = totalExp + payableStats.totalPaid;
     const sumData = [
         ['Metric', 'Value ('+curr+')'],
         ['Total Revenue', totalRevenue],
         ['Total Collected', totalPaid],
         ['Outstanding Debt', totalRevenue - totalPaid],
         ['Total Expenses', totalExp],
-        ['Net Profit', totalPaid - totalExp],
+        ['Paid Payables', payableStats.totalPaid],
+        ['Outstanding Payables', payableStats.totalRemaining],
+        ['Cash Outflow', totalCashOut],
+        ['Net Cash', totalPaid - totalCashOut],
+        ['Net After Payables', totalPaid - totalCashOut - payableStats.totalRemaining],
         ['Total Patients', patients.length],
         ['Total Appointments', appointments.length],
         ['Total Treatments', treatments.length],
@@ -3583,21 +3937,31 @@ async function renderCharts(treatments = null, collectionEntries = null) {
     }
 }
 
-function renderReportKpis(treatments, expenses, patients, appointments, collectionEntries = null) {
+function renderReportKpis(treatments, expenses, patients, appointments, collectionEntries = null, payables = []) {
     const curr = getCurrency();
     const totalRevenue = treatments.reduce((s,tr)=>s+(parseFloat(tr.total_cost||tr.totalCost)||0),0);
     const totalPaid    = Array.isArray(collectionEntries)
         ? sumCollectionAmounts(collectionEntries)
         : treatments.reduce((s,tr)=>s+(parseFloat(tr.paid)||0),0);
     const totalExp     = expenses.reduce((s,e)=>s+(parseFloat(e.amount)||0),0);
-    const netProfit    = totalPaid - totalExp;
+    const payableStats = summarizePayables(payables);
+    const totalCashOut = totalExp + payableStats.totalPaid;
+    const netAfterPayables = totalPaid - totalCashOut - payableStats.totalRemaining;
     const kpis = [
-        { label:'Total Revenue', value:`${totalRevenue} ${curr}`, icon:'fa-coins', color:'blue' },
-        { label:'Collected', value:`${totalPaid} ${curr}`, icon:'fa-circle-check', color:'green' },
-        { label:'Total Expenses', value:`${totalExp} ${curr}`, icon:'fa-receipt', color:'orange' },
-        { label:'Net Profit', value:`${netProfit} ${curr}`, icon:'fa-chart-line', color: netProfit>=0?'emerald':'red' },
+        { label: currentLang === 'ar' ? 'إجمالي الإيراد' : 'Total Revenue', value:`${totalRevenue} ${curr}`, icon:'fa-coins', color:'blue' },
+        { label: currentLang === 'ar' ? 'إجمالي المحصل' : 'Collected', value:`${totalPaid} ${curr}`, icon:'fa-circle-check', color:'green' },
+        { label: t('rep.cashOut'), value:`${totalCashOut} ${curr}`, icon:'fa-receipt', color:'orange' },
+        { label: t('rep.kpiPayables'), value:`${payableStats.totalRemaining} ${curr}`, icon:'fa-hand-holding-dollar', color:'amber' },
+        { label: t('rep.netAfterPayables'), value:`${netAfterPayables} ${curr}`, icon:'fa-chart-line', color: netAfterPayables>=0?'emerald':'red' },
     ];
-    const colors = { blue:'bg-blue-50 text-blue-600', green:'bg-green-50 text-green-600', orange:'bg-orange-50 text-orange-500', emerald:'bg-emerald-50 text-emerald-600', red:'bg-red-50 text-red-600' };
+    const colors = {
+        blue:'bg-blue-50 text-blue-600',
+        green:'bg-green-50 text-green-600',
+        orange:'bg-orange-50 text-orange-500',
+        amber:'bg-amber-50 text-amber-600',
+        emerald:'bg-emerald-50 text-emerald-600',
+        red:'bg-red-50 text-red-600'
+    };
     document.getElementById('reportKpis').innerHTML = kpis.map(k=>`
         <div class="bg-white rounded-xl border border-gray-100 p-4 flex items-center gap-3 stat-card">
             <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${colors[k.color]}"><i class="fa-solid ${k.icon}"></i></div>

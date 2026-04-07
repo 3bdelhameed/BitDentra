@@ -322,6 +322,142 @@
         return `${patientId}::${toothNumber}`;
     }
 
+    function getToothStateParts(source) {
+        const patientId = String(source?.patient_id ?? source?.patientId ?? source?.data?.patient_id ?? source?.data?.patientId ?? '').trim();
+        const toothNumber = String(source?.tooth_number ?? source?.toothNumber ?? source?.data?.tooth_number ?? source?.data?.toothNumber ?? '').trim();
+        return { patientId, toothNumber, key: patientId && toothNumber ? `${patientId}::${toothNumber}` : '' };
+    }
+
+    async function pruneOrphanPendingToothStates() {
+        const toothStore = getDexieStore('tooth_states');
+        if (!toothStore) return { removedRows: 0, removedOps: 0 };
+
+        let rows = [];
+        try {
+            rows = await toothStore.toArray();
+        } catch (_) {
+            return { removedRows: 0, removedOps: 0 };
+        }
+
+        let q = getQueue();
+        const patientStore = getDexieStore('patients');
+        let patientRows = [];
+        try {
+            patientRows = patientStore ? ((await patientStore.toArray()) || []) : [];
+        } catch (_) {
+            patientRows = [];
+        }
+
+        const localPatientIds = new Set(
+            patientRows
+                .map(row => String(row?.id ?? '').trim())
+                .filter(Boolean)
+        );
+        const queuedPatientIds = new Set(
+            q
+                .filter(op => op.table === 'patients')
+                .flatMap(op => [op.id, op.data?.id])
+                .map(value => String(value ?? '').trim())
+                .filter(Boolean)
+        );
+
+        const sbOk = window._sbReady
+            ? (typeof window._sbReady === 'function' ? window._sbReady() : !!window._sbReady)
+            : !!window._sb;
+        const remotePatientCache = new Map();
+
+        async function hasPatient(patientId) {
+            const id = String(patientId ?? '').trim();
+            if (!id) return false;
+            if (localPatientIds.has(id) || queuedPatientIds.has(id)) return true;
+            if (!sbOk || !window._sb) return false;
+            if (remotePatientCache.has(id)) return remotePatientCache.get(id);
+
+            let exists = false;
+            try {
+                const lookupId = /^-?\d+$/.test(id) ? Number(id) : id;
+                const { data, error } = await window._sb
+                    .from('patients')
+                    .select('id')
+                    .eq('id', lookupId)
+                    .limit(1);
+                exists = !error && Array.isArray(data) && data.length > 0;
+            } catch (_) {
+                exists = false;
+            }
+
+            remotePatientCache.set(id, exists);
+            return exists;
+        }
+
+        const orphanKeys = new Set();
+        const rowIdsToDelete = [];
+
+        for (const row of rows) {
+            if (!row?._pendingSync) continue;
+            const { patientId, key } = getToothStateParts(row);
+            const canPruneWithoutRemoteCheck = !!row?._localOnly;
+            if (!key || await hasPatient(patientId) || (!sbOk && !canPruneWithoutRemoteCheck)) continue;
+            orphanKeys.add(key);
+            if (row?.id != null) rowIdsToDelete.push(row.id);
+        }
+
+        let removedOps = 0;
+        if (q.length > 0) {
+            const nextQueue = [];
+            for (const op of q) {
+                if (op.table !== 'tooth_states' || op.action !== 'upsert') {
+                    nextQueue.push(op);
+                    continue;
+                }
+
+                const { patientId, key } = getToothStateParts(op);
+                const canPruneWithoutRemoteCheck = !!op?.data?._localOnly;
+                const missingPatient = !(await hasPatient(patientId));
+                const isOrphan = !key || orphanKeys.has(key) || (missingPatient && (sbOk || canPruneWithoutRemoteCheck));
+                if (isOrphan) {
+                    if (key) orphanKeys.add(key);
+                    removedOps++;
+                    continue;
+                }
+
+                nextQueue.push(op);
+            }
+
+            if (removedOps > 0) {
+                q = nextQueue;
+                saveQueue(q);
+            }
+        }
+
+        if (orphanKeys.size > 0) {
+            for (const row of rows) {
+                const { key } = getToothStateParts(row);
+                if (key && orphanKeys.has(key) && row?.id != null) {
+                    rowIdsToDelete.push(row.id);
+                }
+            }
+        }
+
+        const uniqueRowIds = [...new Set(rowIdsToDelete.filter(id => id != null))];
+        if (uniqueRowIds.length > 0) {
+            try {
+                await toothStore.bulkDelete(uniqueRowIds);
+            } catch (_) {
+                for (const id of uniqueRowIds) {
+                    try { await toothStore.delete(id); } catch (_) {}
+                }
+            }
+        }
+
+        if (uniqueRowIds.length > 0 || removedOps > 0) {
+            updateBadge();
+            console.warn(`[Offline] Cleaned ${uniqueRowIds.length} orphan tooth_states rows and ${removedOps} stale queue ops`);
+        }
+
+        return { removedRows: uniqueRowIds.length, removedOps };
+    }
+
     function getToothStatePriority(row) {
         if (!row) return -1;
         if (row._pendingSync) return 3;
@@ -384,6 +520,8 @@
     async function recoverPendingToothStateQueue() {
         const store = getDexieStore('tooth_states');
         if (!store) return 0;
+
+        await pruneOrphanPendingToothStates();
 
         let rows = [];
         try {
@@ -1853,11 +1991,17 @@
         alert(`📋 عمليات في انتظار المزامنة (${q.length}):\n\n${lines}\n\nستُزامن تلقائياً لما النت يرجع`);
     };
 
-    window.clearOfflineQueue = function () {
+    window.clearOfflineQueue = async function () {
         if (!confirm('⚠️ مسح الـ queue؟\nستفقد التغييرات اللي مش اتزامنت لـ Supabase.')) return;
         localStorage.removeItem(QUEUE_KEY);
+        const cleanup = await pruneOrphanPendingToothStates();
         updateBadge();
-        if (typeof showToast === 'function') showToast('تم مسح الـ queue', 'warning');
+        if (typeof showToast === 'function') {
+            const cleaned = (cleanup.removedRows || cleanup.removedOps)
+                ? `تم مسح الـ queue وتنظيف ${cleanup.removedRows} سجل قديم`
+                : 'تم مسح الـ queue';
+            showToast(cleaned, 'warning');
+        }
     };
 
     function formatSyncTime(ts) {

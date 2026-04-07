@@ -28,7 +28,8 @@
         inventory:     'inventory',
         lab_orders:    'labOrders',
         doctors:       'doctors',
-        session_payments: 'session_payments'
+        session_payments: 'session_payments',
+        payables:      'payables'
 
     };
 

@@ -43,6 +43,7 @@ const TABLE_MAP = {
     session_payments: 'session_payments',
     audit_logs:       'audit_logs',
     doctors:          'doctors',
+    payables:         'payables',
 };
 
 // ══════════════════════════════════════════════════════════════════
@@ -381,6 +382,7 @@ async function uploadPendingRecords() {
         ['clinicUsers',   'clinic_users'],
         ['session_payments','session_payments'],
         ['audit_logs',    'audit_logs'],
+        ['payables',      'payables'],
     ];
 
     let uploaded = 0;
@@ -479,7 +481,7 @@ function startRealtimeListeners() {
         'patients', 'appointments', 'treatments', 'prescriptions',
         'expenses', 'invoices', 'lab_orders', 'inventory', 'inventory_log',
         'tooth_states', 'patient_notes', 'doctors', 'clinic_users',
-        'session_payments', 'audit_logs',
+        'session_payments', 'audit_logs', 'payables',
     ];
     tables.forEach(table => {
         _sb.channel(`db-${table}`)
@@ -521,6 +523,7 @@ function refreshViewForTable(table) {
         clinic_users:  () => { if (isViewActive('usersView') && window.loadUsersView) window.loadUsersView(); },
         session_payments: () => { if (currentProfilePatientId && isViewActive('profileView')) loadPatientHistory(currentProfilePatientId); },
         audit_logs:    () => { if (isViewActive('auditView') && window.loadAuditLogView) window.loadAuditLogView(); },
+        payables:      () => { if (isViewActive('expensesView')) loadExpenses(); if (isViewActive('reportsView')) loadReports(); if (isViewActive('dashboardView')) updateDashboard(); },
     };
     if (map[table]) map[table]();
 }
@@ -617,6 +620,7 @@ async function migrateLocalToSupabase() {
         ['doctors','doctors'],['clinicUsers','clinic_users'],
         ['session_payments','session_payments'],
         ['audit_logs','audit_logs'],
+        ['payables','payables'],
     ];
     let count = 0;
     for (const [dexName, sbName] of pairs) {
