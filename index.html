@@ -816,9 +816,10 @@
             <a onclick="switchView('calendar')" id="nav-calendar" class="sidebar-link"><i class="fa-solid fa-calendar-days"></i> <span data-t="nav.calendar">Calendar</span></a>
             <p class="px-3 text-[10px] font-semibold text-gray-400 mb-1 mt-3 uppercase tracking-wider" id="nav-section-clinical" data-t="nav.clinical">CLINICAL</p>
             <a onclick="switchView('prescriptions')" id="nav-prescriptions" class="sidebar-link"><i class="fa-solid fa-prescription-bottle-medical"></i> <span data-t="nav.prescriptions">Prescriptions</span></a>
-            <p class="px-3 text-[10px] font-semibold text-gray-400 mb-1 mt-3 uppercase id="nav-section-finance" tracking-wider nav-section-finance" data-t="nav.finance">FINANCE</p>
+            <p class="px-3 text-[10px] font-semibold text-gray-400 mb-1 mt-3 uppercase tracking-wider" id="nav-section-finance" data-t="nav.finance">FINANCE</p>
             <a onclick="switchView('invoices')" id="nav-invoices" class="sidebar-link"><i class="fa-solid fa-file-invoice"></i> <span data-t="nav.invoices">Invoices</span></a>
             <a onclick="switchView('expenses')" id="nav-expenses" class="sidebar-link"><i class="fa-solid fa-file-invoice-dollar"></i> <span data-t="nav.expenses">Expenses</span></a>
+            <a onclick="switchView('payables')" id="nav-payables" class="sidebar-link"><i class="fa-solid fa-hand-holding-dollar"></i> <span data-t="nav.payables">Payables</span></a>
             <a onclick="switchView('reports')" id="nav-reports" class="sidebar-link"><i class="fa-solid fa-chart-bar"></i> <span data-t="nav.reports">Reports</span></a>
             <p class="px-3 text-[10px] font-semibold text-gray-400 mb-1 mt-3 uppercase tracking-wider" id="nav-section-system" data-t="nav.system">SYSTEM</p>
             <a onclick="switchView('inventory')" id="nav-inventory" class="sidebar-link" style="position:relative">
@@ -1165,10 +1166,7 @@
             <div class="view-section h-full overflow-y-auto p-5" id="expensesView">
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="text-xl font-bold flex items-center gap-2"><i class="fa-solid fa-file-invoice-dollar text-red-500"></i> Expenses</h2>
-                    <div class="flex gap-2">
-                        <button onclick="openPayableModal()" class="btn" style="background:#f59e0b;color:white;"><i class="fa-solid fa-hand-holding-dollar"></i> <span data-t="exp.newDebt">New Debt</span></button>
-                        <button onclick="openModal('addExpenseModal')" class="btn btn-red"><i class="fa-solid fa-plus"></i> New Expense</button>
-                    </div>
+                    <button onclick="openModal('addExpenseModal')" class="btn btn-red"><i class="fa-solid fa-plus"></i> New Expense</button>
                 </div>
                 <div class="grid grid-cols-3 gap-4 mb-4">
                     <div class="stat-card">
@@ -1208,67 +1206,97 @@
                     </table>
                 </div>
 
-                <div class="mt-8">
-                    <div class="flex justify-between items-center mb-4">
+                <div class="mt-8 bg-white rounded-xl border border-gray-100 p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                    <div>
                         <h3 class="text-lg font-bold text-gray-800 flex items-center gap-2">
                             <i class="fa-solid fa-hand-holding-dollar text-amber-500"></i>
-                            <span data-t="exp.debtsTitle">Payables</span>
+                            <span data-t="nav.payables">Payables</span>
                         </h3>
-                        <button onclick="openPayableModal()" class="btn text-xs" style="background:#fff7ed;color:#b45309;border:1px solid #fcd34d;">
-                            <i class="fa-solid fa-plus"></i> <span data-t="exp.newDebt">New Debt</span>
-                        </button>
+                        <p class="text-sm text-gray-400 mt-1" data-t="exp.payablesModuleHint">Manage supplier and company debts from the dedicated Payables module.</p>
                     </div>
-                    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-                        <div class="stat-card">
-                            <div>
-                                <h3 class="text-xl font-bold text-gray-800" id="payablesTotalAll">0</h3>
-                                <p class="text-xs text-gray-400" data-t="exp.totalDebt">Total Debt</p>
-                            </div>
-                            <div class="w-9 h-9 bg-amber-50 text-amber-500 rounded-xl flex items-center justify-center"><i class="fa-solid fa-file-invoice"></i></div>
-                        </div>
-                        <div class="stat-card">
-                            <div>
-                                <h3 class="text-xl font-bold text-gray-800" id="payablesPaidAll">0</h3>
-                                <p class="text-xs text-gray-400" data-t="exp.paidDebt">Paid</p>
-                            </div>
-                            <div class="w-9 h-9 bg-green-50 text-green-500 rounded-xl flex items-center justify-center"><i class="fa-solid fa-circle-check"></i></div>
-                        </div>
-                        <div class="stat-card">
-                            <div>
-                                <h3 class="text-xl font-bold text-gray-800" id="payablesOutstanding">0</h3>
-                                <p class="text-xs text-gray-400" data-t="exp.remainingDebt">Remaining</p>
-                            </div>
-                            <div class="w-9 h-9 bg-rose-50 text-rose-500 rounded-xl flex items-center justify-center"><i class="fa-solid fa-hourglass-half"></i></div>
-                        </div>
-                        <div class="stat-card">
-                            <div>
-                                <h3 class="text-xl font-bold text-gray-800" id="payablesCount">0</h3>
-                                <p class="text-xs text-gray-400" data-t="exp.totalDebtEntries">Total Entries</p>
-                            </div>
-                            <div class="w-9 h-9 bg-slate-50 text-slate-500 rounded-xl flex items-center justify-center"><i class="fa-solid fa-list"></i></div>
-                        </div>
-                    </div>
-                    <div class="bg-white rounded-xl border border-gray-100 overflow-hidden">
-                        <table class="w-full text-left border-collapse">
-                            <thead>
-                                <tr class="bg-gray-50 text-gray-500 text-xs border-b border-gray-100 uppercase tracking-wide">
-                                    <th class="p-3" data-t="exp.creditor">Creditor</th>
-                                    <th class="p-3" data-t="exp.category">Category</th>
-                                    <th class="p-3" data-t="exp.total">Total</th>
-                                    <th class="p-3" data-t="exp.paid">Paid</th>
-                                    <th class="p-3" data-t="exp.remaining">Remaining</th>
-                                    <th class="p-3" data-t="exp.dueDate">Due Date</th>
-                                    <th class="p-3" data-t="exp.debtStatus">Status</th>
-                                    <th class="p-3 text-center" data-t="table.actions">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="payablesTableBody"></tbody>
-                        </table>
-                    </div>
+                    <button onclick="switchView('payables')" class="btn text-sm" style="background:#fff7ed;color:#b45309;border:1px solid #fcd34d;">
+                        <i class="fa-solid fa-arrow-up-right-from-square"></i> <span data-t="nav.payables">Payables</span>
+                    </button>
                 </div>
             </div>
 
             <!-- ── REPORTS ── -->
+            <div class="view-section h-full overflow-y-auto p-5" id="payablesView">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-bold flex items-center gap-2"><i class="fa-solid fa-hand-holding-dollar text-amber-500"></i> Payables</h2>
+                    <button onclick="openPayableModal()" class="btn" style="background:#f59e0b;color:white;"><i class="fa-solid fa-plus"></i> <span data-t="exp.newDebt">New Debt</span></button>
+                </div>
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                    <div class="stat-card">
+                        <div>
+                            <h3 class="text-xl font-bold text-gray-800" id="payablesTotalAll">0</h3>
+                            <p class="text-xs text-gray-400" data-t="exp.totalDebt">Total Debt</p>
+                        </div>
+                        <div class="w-9 h-9 bg-amber-50 text-amber-500 rounded-xl flex items-center justify-center"><i class="fa-solid fa-file-invoice"></i></div>
+                    </div>
+                    <div class="stat-card">
+                        <div>
+                            <h3 class="text-xl font-bold text-gray-800" id="payablesPaidAll">0</h3>
+                            <p class="text-xs text-gray-400" data-t="exp.paidDebt">Paid</p>
+                        </div>
+                        <div class="w-9 h-9 bg-green-50 text-green-500 rounded-xl flex items-center justify-center"><i class="fa-solid fa-circle-check"></i></div>
+                    </div>
+                    <div class="stat-card">
+                        <div>
+                            <h3 class="text-xl font-bold text-gray-800" id="payablesOutstanding">0</h3>
+                            <p class="text-xs text-gray-400" data-t="exp.remainingDebt">Remaining</p>
+                        </div>
+                        <div class="w-9 h-9 bg-rose-50 text-rose-500 rounded-xl flex items-center justify-center"><i class="fa-solid fa-hourglass-half"></i></div>
+                    </div>
+                    <div class="stat-card">
+                        <div>
+                            <h3 class="text-xl font-bold text-gray-800" id="payablesCount">0</h3>
+                            <p class="text-xs text-gray-400" data-t="exp.totalDebtEntries">Total Entries</p>
+                        </div>
+                        <div class="w-9 h-9 bg-slate-50 text-slate-500 rounded-xl flex items-center justify-center"><i class="fa-solid fa-list"></i></div>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 xl:grid-cols-[320px,1fr] gap-4 mb-4">
+                    <div class="bg-white rounded-xl border border-gray-100 p-4">
+                        <div class="flex items-center justify-between mb-3">
+                            <h4 class="font-bold text-gray-800 flex items-center gap-2">
+                                <i class="fa-solid fa-buildings text-amber-500"></i>
+                                <span data-t="exp.companyProfiles">Company Profiles</span>
+                            </h4>
+                            <span id="payableCompaniesCountBadge" class="badge" style="background:#fff7ed;color:#b45309;">0</span>
+                        </div>
+                        <div id="payableCompaniesList" class="space-y-3"></div>
+                    </div>
+                    <div id="payableCompanyProfile" class="bg-white rounded-xl border border-gray-100 p-5 min-h-[320px]"></div>
+                </div>
+                <div class="bg-white rounded-xl border border-gray-100 overflow-hidden">
+                    <div class="flex items-center justify-between gap-3 px-4 py-3 border-b border-gray-100 bg-slate-50/70">
+                        <div>
+                            <h4 id="payablesTableTitle" class="font-bold text-gray-800" data-t="exp.companyAllDebts">All Payables</h4>
+                            <p id="payablesTableSubtitle" class="text-xs text-gray-400" data-t="exp.companyAllDebtsHint">Showing every recorded payable</p>
+                        </div>
+                        <button id="clearPayableCompanyFilterBtn" onclick="clearPayableCompanyFilter()" class="btn text-xs" style="display:none;background:#fff;color:#475569;border:1px solid #cbd5e1;">
+                            <i class="fa-solid fa-layer-group"></i> <span data-t="exp.showAllCompanies">Show All</span>
+                        </button>
+                    </div>
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-gray-50 text-gray-500 text-xs border-b border-gray-100 uppercase tracking-wide">
+                                <th class="p-3" data-t="exp.creditor">Creditor</th>
+                                <th class="p-3" data-t="exp.category">Category</th>
+                                <th class="p-3" data-t="exp.total">Total</th>
+                                <th class="p-3" data-t="exp.paid">Paid</th>
+                                <th class="p-3" data-t="exp.remaining">Remaining</th>
+                                <th class="p-3" data-t="exp.dueDate">Due Date</th>
+                                <th class="p-3" data-t="exp.debtStatus">Status</th>
+                                <th class="p-3 text-center" data-t="table.actions">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="payablesTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
             <div class="view-section h-full overflow-y-auto p-5" id="reportsView">
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="text-xl font-bold flex items-center gap-2"><i class="fa-solid fa-chart-bar text-blue-500"></i> Reports & Analytics</h2>
@@ -2398,6 +2426,7 @@
                 prescriptions: 'nav-prescriptions',
                 invoices: 'nav-invoices',
                 expenses: 'nav-expenses',
+                payables: 'nav-payables',
                 reports: 'nav-reports',
                 inventory: 'nav-inventory',
                 lab: 'nav-lab',

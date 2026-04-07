@@ -273,8 +273,32 @@ Object.assign(TRANSLATIONS.ar, {
 });
 
 Object.assign(TRANSLATIONS.en, {
+    'nav.payables': 'Payables'
+});
+
+Object.assign(TRANSLATIONS.ar, {
+    'nav.payables': '\u0627\u0644\u062f\u064a\u0648\u0646'
+});
+
+Object.assign(TRANSLATIONS.en, {
     'exp.debtsTitle': 'Payables',
     'exp.newDebt': 'New Debt',
+    'exp.payablesModuleHint': 'Manage supplier and company debts from the dedicated Payables module.',
+    'exp.companyProfiles': 'Company Profiles',
+    'exp.companyProfile': 'Company Profile',
+    'exp.companyCount': 'Companies',
+    'exp.companyEntries': 'Debt Entries',
+    'exp.companyLatest': 'Latest Due',
+    'exp.companyCategories': 'Categories',
+    'exp.companyEmpty': 'No company profiles yet. Add a debt and it will create a company profile automatically.',
+    'exp.companySelectHint': 'Choose a company to view all debts for it.',
+    'exp.companyAllDebts': 'All Payables',
+    'exp.companyAllDebtsHint': 'Showing every recorded payable',
+    'exp.companyFilteredHint': 'Showing debts for this company only',
+    'exp.showAllCompanies': 'Show All',
+    'exp.addDebtForCompany': 'Add Debt For This Company',
+    'exp.latestDebts': 'Latest Debts',
+    'exp.noDebtsForCompany': 'No debts recorded for this company yet',
     'exp.totalDebt': 'Total Debt',
     'exp.paidDebt': 'Paid',
     'exp.remainingDebt': 'Remaining',
@@ -312,6 +336,22 @@ Object.assign(TRANSLATIONS.en, {
 Object.assign(TRANSLATIONS.ar, {
     'exp.debtsTitle': '\u0627\u0644\u062f\u064a\u0648\u0646 \u0627\u0644\u0645\u0633\u062a\u062d\u0642\u0629 \u0639\u0644\u064a\u0643',
     'exp.newDebt': '\u062f\u064a\u0646 \u062c\u062f\u064a\u062f',
+    'exp.payablesModuleHint': '\u0623\u062f\u0631 \u062f\u064a\u0648\u0646 \u0627\u0644\u0645\u0648\u0631\u062f\u064a\u0646 \u0648\u0627\u0644\u0634\u0631\u0643\u0627\u062a \u0645\u0646 \u0645\u0648\u062f\u064a\u0648\u0644 \u0627\u0644\u062f\u064a\u0648\u0646 \u0627\u0644\u0645\u062e\u0635\u0635.',
+    'exp.companyProfiles': '\u0628\u0631\u0648\u0641\u0627\u064a\u0644\u0627\u062a \u0627\u0644\u0634\u0631\u0643\u0627\u062a',
+    'exp.companyProfile': '\u0628\u0631\u0648\u0641\u0627\u064a\u0644 \u0627\u0644\u0634\u0631\u0643\u0629',
+    'exp.companyCount': '\u0639\u062f\u062f \u0627\u0644\u0634\u0631\u0643\u0627\u062a',
+    'exp.companyEntries': '\u0639\u062f\u062f \u0633\u062c\u0644\u0627\u062a \u0627\u0644\u062f\u064a\u0648\u0646',
+    'exp.companyLatest': '\u0622\u062e\u0631 \u0627\u0633\u062a\u062d\u0642\u0627\u0642',
+    'exp.companyCategories': '\u0627\u0644\u0641\u0626\u0627\u062a',
+    'exp.companyEmpty': '\u0644\u0627 \u062a\u0648\u062c\u062f \u0628\u0631\u0648\u0641\u0627\u064a\u0644\u0627\u062a \u0634\u0631\u0643\u0627\u062a \u062d\u0627\u0644\u064a\u0627\u064b. \u0623\u0636\u0641 \u0623\u0648\u0644 \u062f\u064a\u0646 \u0648\u0633\u064a\u062a\u0645 \u0625\u0646\u0634\u0627\u0621 \u0628\u0631\u0648\u0641\u0627\u064a\u0644 \u0627\u0644\u0634\u0631\u0643\u0629 \u062a\u0644\u0642\u0627\u0626\u064a\u064b\u0627.',
+    'exp.companySelectHint': '\u0627\u062e\u062a\u0631 \u0634\u0631\u0643\u0629 \u0644\u0639\u0631\u0636 \u0643\u0644 \u062f\u064a\u0648\u0646\u0647\u0627.',
+    'exp.companyAllDebts': '\u0643\u0644 \u0627\u0644\u062f\u064a\u0648\u0646',
+    'exp.companyAllDebtsHint': '\u0639\u0631\u0636 \u062c\u0645\u064a\u0639 \u0633\u062c\u0644\u0627\u062a \u0627\u0644\u062f\u064a\u0648\u0646',
+    'exp.companyFilteredHint': '\u0627\u0644\u0645\u0639\u0631\u0648\u0636 \u0627\u0644\u0622\u0646 \u062f\u064a\u0648\u0646 \u0647\u0630\u0647 \u0627\u0644\u0634\u0631\u0643\u0629 \u0641\u0642\u0637',
+    'exp.showAllCompanies': '\u0639\u0631\u0636 \u0627\u0644\u0643\u0644',
+    'exp.addDebtForCompany': '\u0625\u0636\u0627\u0641\u0629 \u062f\u064a\u0646 \u0644\u0647\u0630\u0647 \u0627\u0644\u0634\u0631\u0643\u0629',
+    'exp.latestDebts': '\u0622\u062e\u0631 \u0627\u0644\u062f\u064a\u0648\u0646',
+    'exp.noDebtsForCompany': '\u0644\u0627 \u062a\u0648\u062c\u062f \u062f\u064a\u0648\u0646 \u0645\u0633\u062c\u0644\u0629 \u0644\u0647\u0630\u0647 \u0627\u0644\u0634\u0631\u0643\u0629 \u0628\u0639\u062f',
     'exp.totalDebt': '\u0625\u062c\u0645\u0627\u0644\u064a \u0627\u0644\u062f\u064a\u0648\u0646',
     'exp.paidDebt': '\u0627\u0644\u0645\u0633\u062f\u062f',
     'exp.remainingDebt': '\u0627\u0644\u0645\u062a\u0628\u0642\u064a',
@@ -436,6 +476,7 @@ function refreshAllUI() {
     setText('#nav-inventory span', 'nav.inventory');
     setText('#nav-lab span', 'nav.lab');
     setText('#nav-doctors span', 'nav.doctors');
+    setText('#nav-payables span', 'nav.payables');
     setHtml('#patientsView h2', `<i class="fa-solid fa-users text-blue-500"></i> ${t('patients.viewTitle')}`);
     setHtml('#appointmentsView h2', `<i class="fa-solid fa-clipboard-list text-blue-500"></i> ${t('appts.viewTitle')}`);
     setText('#appointmentsView .btn-gray.text-xs', 'common.clear');
@@ -452,6 +493,7 @@ function refreshAllUI() {
     setHtml('#prescriptionsView .btn', `<i class="fa-solid fa-plus"></i> ${t('rx.newBtn')}`);
     setHtml('#expensesView h2', `<i class="fa-solid fa-file-invoice-dollar text-red-500"></i> ${t('exp.viewTitle')}`);
     setHtml('#expensesView .btn-red', `<i class="fa-solid fa-plus"></i> ${t('exp.newBtn')}`);
+    setHtml('#payablesView h2', `<i class="fa-solid fa-hand-holding-dollar text-amber-500"></i> ${t('nav.payables')}`);
     setHtml('#reportsView h2', `<i class="fa-solid fa-chart-bar text-blue-500"></i> ${t('rep.viewTitle')}`);
     setHtml('#reportsView .btn-green.text-xs', `<i class="fa-solid fa-file-excel"></i> ${t('rep.exportExcel')}`);
     setHtml('#reportsView .btn-outline.text-xs', `<i class="fa-solid fa-download"></i> ${t('rep.backupJson')}`);
@@ -459,6 +501,9 @@ function refreshAllUI() {
 
     // Re-render current active view
     updateDashboard();
+    if (document.getElementById('expensesView')?.classList.contains('active')) loadExpenses();
+    if (document.getElementById('payablesView')?.classList.contains('active') && typeof loadPayablesView === 'function') loadPayablesView();
+    if (document.getElementById('reportsView')?.classList.contains('active')) loadReports();
 }
 
 
@@ -582,6 +627,7 @@ let calendarYear = new Date().getFullYear();
 let calendarMonth = new Date().getMonth();
 let selectedToothNum = null;
 let allAppointmentsCache = [];
+let currentPayableCompanyKey = '';
 
 // ── 3. SETTINGS ──────────────────────────
 let _settingsCache = null;
@@ -632,10 +678,10 @@ function showToast(msg, type = 'success') {
 
 // ── 5. NAVIGATION ────────────────────────
 const viewIds = ['dashboardView','patientsView','profileView','appointmentsView',
-                 'calendarView','prescriptionsView','expensesView','reportsView','invoicesView',
+                 'calendarView','prescriptionsView','expensesView','payablesView','reportsView','invoicesView',
                  'remindersView','inventoryView','labView','doctorsView','settingsView','usersView','auditView'];
 const navIds  = ['nav-dashboard','nav-patients','nav-appointments','nav-calendar',
-                 'nav-prescriptions','nav-invoices','nav-expenses','nav-reports',
+                 'nav-prescriptions','nav-invoices','nav-expenses','nav-payables','nav-reports',
                  'nav-inventory','nav-lab','nav-doctors','nav-reminders',
                  'nav-settings','nav-users','nav-audit'];
 
@@ -646,7 +692,7 @@ function getCurrentRole() {
 function isDoctor()       { const r = getCurrentRole(); return r === 'doctor' || r === 'admin'; }
 
 // ── ROLE SYSTEM ──────────────────────────
-const DOCTOR_ONLY_VIEWS = ['expenses','reports','settings','invoices'];
+const DOCTOR_ONLY_VIEWS = ['expenses','payables','reports','settings','invoices'];
 
 window.isDoctor = function(){ const r = getCurrentRole(); return r === 'doctor' || r === 'admin'; }
 
@@ -678,7 +724,7 @@ function switchView(viewName) {
     }
     if (role !== 'admin' && role !== 'doctor') {
         if (DOCTOR_ONLY_VIEWS.includes(viewName)) {
-            const navId = { expenses:'nav-expenses', reports:'nav-reports', settings:'nav-settings', invoices:'nav-invoices' }[viewName];
+            const navId = { expenses:'nav-expenses', payables:'nav-payables', reports:'nav-reports', settings:'nav-settings', invoices:'nav-invoices' }[viewName];
             const allowed = window._currentUserPermissions;
             if (!allowed || !navId || !allowed.includes(navId)) {
                 showToast('⛔ غير مصرح', 'error');
@@ -703,6 +749,7 @@ function switchView(viewName) {
         calendar:      ['calendarView',    'nav-calendar',    'Calendar',          renderCalendar],
         prescriptions: ['prescriptionsView','nav-prescriptions','Prescriptions',   loadPrescriptions],
         expenses:      ['expensesView',    'nav-expenses',    'Expenses',          loadExpenses],
+        payables:      ['payablesView',    'nav-payables',    currentLang === 'ar' ? 'الديون' : 'Payables', loadPayablesView],
         reports:       ['reportsView',     'nav-reports',     'Reports',           loadReports],
         invoices:      ['invoicesView',    'nav-invoices',    'Invoices',          loadInvoices],
         reminders:     ['remindersView',   'nav-reminders',   'Reminders',         checkReminders],
@@ -1102,6 +1149,15 @@ function getPayableStatusFromAmounts(amount, paidAmount) {
     return 'unpaid';
 }
 
+function getPayableCompanyKey(value) {
+    return String(value || '').trim().toLowerCase();
+}
+
+function getPayableDisplayCompanyName(value) {
+    const name = String(value || '').trim();
+    return name || (currentLang === 'ar' ? 'شركة غير محددة' : 'Unassigned Company');
+}
+
 function normalizePayableRecord(payable = {}) {
     const creditorName = String(
         payable?.creditor_name ??
@@ -1110,6 +1166,8 @@ function normalizePayableRecord(payable = {}) {
         payable?.supplierName ??
         ''
     ).trim();
+    const companyName = getPayableDisplayCompanyName(creditorName);
+    const companyKey = getPayableCompanyKey(creditorName) || '__unassigned__';
     const amount = Math.max(0, toMoneyNumber(payable?.amount));
     const paidAmount = Math.min(amount, Math.max(0, toMoneyNumber(payable?.paid_amount ?? payable?.paidAmount)));
     const remainingAmount = Math.max(0, amount - paidAmount);
@@ -1122,6 +1180,10 @@ function normalizePayableRecord(payable = {}) {
         ...payable,
         creditor_name: creditorName,
         creditorName,
+        company_name: companyName,
+        companyName,
+        company_key: companyKey,
+        companyKey,
         amount,
         paid_amount: paidAmount,
         paidAmount,
@@ -1152,6 +1214,76 @@ function summarizePayables(payables = []) {
     });
 }
 
+function sortPayablesByDate(payables = []) {
+    return [...payables].sort((a, b) => {
+        const aDate = normalizeDateOnly(a?.due_date ?? a?.dueDate ?? a?.date);
+        const bDate = normalizeDateOnly(b?.due_date ?? b?.dueDate ?? b?.date);
+        if (aDate !== bDate) return bDate.localeCompare(aDate);
+        return toMoneyNumber(b?.id) - toMoneyNumber(a?.id);
+    });
+}
+
+function groupPayablesByCompany(payables = []) {
+    const groups = new Map();
+
+    sortPayablesByDate(payables).forEach(entry => {
+        const payable = normalizePayableRecord(entry);
+        const key = payable.company_key || '__unassigned__';
+
+        if (!groups.has(key)) {
+            groups.set(key, {
+                company_key: key,
+                company_name: payable.company_name,
+                totalAmount: 0,
+                totalPaid: 0,
+                totalRemaining: 0,
+                count: 0,
+                latestDate: '',
+                categories: new Set(),
+                payables: []
+            });
+        }
+
+        const group = groups.get(key);
+        group.totalAmount += payable.amount;
+        group.totalPaid += payable.paid_amount;
+        group.totalRemaining += payable.remaining_amount;
+        group.count += 1;
+        group.payables.push(payable);
+        if (payable.category) group.categories.add(payable.category);
+
+        const effectiveDate = normalizeDateOnly(payable.due_date || payable.date);
+        if (effectiveDate && (!group.latestDate || effectiveDate > group.latestDate)) {
+            group.latestDate = effectiveDate;
+        }
+    });
+
+    return [...groups.values()]
+        .map(group => ({
+            ...group,
+            status: getPayableStatusFromAmounts(group.totalAmount, group.totalPaid),
+            categories: [...group.categories]
+        }))
+        .sort((a, b) => (
+            b.totalRemaining - a.totalRemaining ||
+            b.totalAmount - a.totalAmount ||
+            a.company_name.localeCompare(b.company_name)
+        ));
+}
+
+function getMonthlyPayablesAmount(payables = [], monthKey = '') {
+    const currentMonthKey = today().slice(0, 7);
+
+    return payables.reduce((sum, entry) => {
+        const payable = normalizePayableRecord(entry);
+        const recordMonth = payable.date ? payable.date.slice(0, 7) : '';
+        const dueMonth = payable.due_date ? payable.due_date.slice(0, 7) : '';
+        const belongsToMonth = recordMonth === monthKey || dueMonth === monthKey;
+        const isCurrentOpenDebt = monthKey === currentMonthKey && payable.remaining_amount > 0;
+        return sum + ((belongsToMonth || isCurrentOpenDebt) ? payable.remaining_amount : 0);
+    }, 0);
+}
+
 function translatePayableStatus(status) {
     const key = String(status || '').toLowerCase();
     const labels = currentLang === 'ar'
@@ -1172,6 +1304,197 @@ function translatePayableCategory(category) {
         Other: 'أخرى'
     };
     return map[key] || key;
+}
+
+function renderPayableCompanyProfiles(payableCompanies = [], selectedCompany = null, curr = getCurrency()) {
+    const listEl = document.getElementById('payableCompaniesList');
+    const profileEl = document.getElementById('payableCompanyProfile');
+    const badgeEl = document.getElementById('payableCompaniesCountBadge');
+    if (badgeEl) badgeEl.textContent = String(payableCompanies.length);
+    if (!listEl || !profileEl) return;
+
+    const statusStyles = {
+        unpaid: 'background:#fef2f2;color:#dc2626;',
+        partial: 'background:#fff7ed;color:#ea580c;',
+        paid: 'background:#f0fdf4;color:#16a34a;'
+    };
+
+    if (!payableCompanies.length) {
+        listEl.innerHTML = `
+            <div class="rounded-2xl border border-dashed border-amber-200 bg-amber-50/60 px-4 py-6 text-center text-sm text-amber-700">
+                ${t('exp.companyEmpty')}
+            </div>
+        `;
+        profileEl.innerHTML = `
+            <div class="h-full min-h-[260px] flex flex-col items-center justify-center text-center text-sm text-gray-400 gap-3">
+                <div class="w-14 h-14 rounded-2xl bg-amber-50 text-amber-500 flex items-center justify-center text-xl">
+                    <i class="fa-solid fa-building"></i>
+                </div>
+                <div>${t('exp.companyEmpty')}</div>
+                <button onclick="openPayableModal()" class="btn text-xs" style="background:#f59e0b;color:white;">
+                    <i class="fa-solid fa-plus"></i> ${t('exp.newDebt')}
+                </button>
+            </div>
+        `;
+        return;
+    }
+
+    listEl.innerHTML = payableCompanies.map(company => {
+        const isActive = company.company_key === selectedCompany?.company_key;
+        return `
+            <button type="button"
+                    onclick="selectPayableCompany('${encodeURIComponent(company.company_key)}')"
+                    class="w-full text-left rounded-2xl border p-4 transition ${isActive ? 'border-amber-300 bg-amber-50/80 shadow-sm' : 'border-gray-100 hover:border-amber-200 hover:bg-slate-50'}">
+                <div class="flex items-start justify-between gap-3">
+                    <div>
+                        <div class="text-[11px] text-gray-400">${t('exp.companyProfile')}</div>
+                        <div class="font-bold text-gray-800">${company.company_name}</div>
+                        <div class="text-[11px] text-gray-400 mt-1">${company.count} ${t('exp.companyEntries')}</div>
+                    </div>
+                    <span class="badge whitespace-nowrap" style="${statusStyles[company.status] || statusStyles.unpaid}">${translatePayableStatus(company.status)}</span>
+                </div>
+                <div class="grid grid-cols-3 gap-2 mt-3">
+                    <div class="rounded-xl bg-white/80 px-2 py-2 text-center border border-white">
+                        <div class="text-[10px] text-gray-400">${t('exp.total')}</div>
+                        <div class="text-xs font-bold text-gray-800">${company.totalAmount.toLocaleString()}</div>
+                    </div>
+                    <div class="rounded-xl bg-white/80 px-2 py-2 text-center border border-white">
+                        <div class="text-[10px] text-gray-400">${t('exp.paid')}</div>
+                        <div class="text-xs font-bold text-green-600">${company.totalPaid.toLocaleString()}</div>
+                    </div>
+                    <div class="rounded-xl bg-white/80 px-2 py-2 text-center border border-white">
+                        <div class="text-[10px] text-gray-400">${t('exp.remaining')}</div>
+                        <div class="text-xs font-bold ${company.totalRemaining > 0 ? 'text-red-500' : 'text-emerald-600'}">${company.totalRemaining.toLocaleString()}</div>
+                    </div>
+                </div>
+            </button>
+        `;
+    }).join('');
+
+    if (!selectedCompany) {
+        profileEl.innerHTML = `
+            <div class="h-full min-h-[260px] flex flex-col items-center justify-center text-center text-sm text-gray-400 gap-3">
+                <div class="w-14 h-14 rounded-2xl bg-slate-100 text-slate-500 flex items-center justify-center text-xl">
+                    <i class="fa-solid fa-buildings"></i>
+                </div>
+                <div>${t('exp.companySelectHint')}</div>
+            </div>
+        `;
+        return;
+    }
+
+    const recentRows = selectedCompany.payables.slice(0, 5);
+    profileEl.innerHTML = `
+        <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+            <div>
+                <div class="text-xs text-gray-400 mb-1">${t('exp.companyProfile')}</div>
+                <h3 class="text-2xl font-bold text-gray-800">${selectedCompany.company_name}</h3>
+                <div class="text-sm text-gray-500 mt-1">${t('exp.companyFilteredHint')}</div>
+            </div>
+            <button onclick="openPayableModal(null, '${encodeURIComponent(selectedCompany.company_name)}')" class="btn text-xs self-start" style="background:#f59e0b;color:white;">
+                <i class="fa-solid fa-plus"></i> ${t('exp.addDebtForCompany')}
+            </button>
+        </div>
+        <div class="grid grid-cols-2 xl:grid-cols-4 gap-3 mt-4">
+            <div class="rounded-2xl border border-gray-100 bg-slate-50 px-4 py-3">
+                <div class="text-[11px] text-gray-400">${t('exp.total')}</div>
+                <div class="text-lg font-bold text-gray-800">${selectedCompany.totalAmount.toLocaleString()} ${curr}</div>
+            </div>
+            <div class="rounded-2xl border border-gray-100 bg-green-50/70 px-4 py-3">
+                <div class="text-[11px] text-green-600">${t('exp.paid')}</div>
+                <div class="text-lg font-bold text-green-700">${selectedCompany.totalPaid.toLocaleString()} ${curr}</div>
+            </div>
+            <div class="rounded-2xl border border-gray-100 bg-rose-50/70 px-4 py-3">
+                <div class="text-[11px] text-rose-500">${t('exp.remaining')}</div>
+                <div class="text-lg font-bold ${selectedCompany.totalRemaining > 0 ? 'text-rose-600' : 'text-emerald-600'}">${selectedCompany.totalRemaining.toLocaleString()} ${curr}</div>
+            </div>
+            <div class="rounded-2xl border border-gray-100 bg-amber-50/70 px-4 py-3">
+                <div class="text-[11px] text-amber-600">${t('exp.companyLatest')}</div>
+                <div class="text-lg font-bold text-gray-800">${selectedCompany.latestDate || '—'}</div>
+            </div>
+        </div>
+        <div class="grid grid-cols-1 xl:grid-cols-2 gap-3 mt-3">
+            <div class="rounded-2xl border border-gray-100 px-4 py-3">
+                <div class="text-[11px] text-gray-400 mb-1">${t('exp.companyEntries')}</div>
+                <div class="text-base font-bold text-gray-800">${selectedCompany.count}</div>
+            </div>
+            <div class="rounded-2xl border border-gray-100 px-4 py-3">
+                <div class="text-[11px] text-gray-400 mb-1">${t('exp.companyCategories')}</div>
+                <div class="text-sm font-semibold text-gray-700">${selectedCompany.categories.length ? selectedCompany.categories.map(translatePayableCategory).join(' • ') : '—'}</div>
+            </div>
+        </div>
+        <div class="mt-4">
+            <div class="flex items-center justify-between mb-3">
+                <h4 class="font-bold text-gray-800">${t('exp.latestDebts')}</h4>
+                <span class="text-xs text-gray-400">${selectedCompany.count} ${t('exp.totalDebtEntries')}</span>
+            </div>
+            <div class="space-y-2">
+                ${recentRows.length ? recentRows.map(payable => `
+                    <div class="rounded-2xl border border-gray-100 px-4 py-3 flex items-center justify-between gap-3">
+                        <div>
+                            <div class="font-semibold text-gray-800">${translatePayableCategory(payable.category)}</div>
+                            <div class="text-xs text-gray-400 mt-1">${payable.note || payable.due_date || payable.date || '—'}</div>
+                        </div>
+                        <div class="text-right">
+                            <div class="font-bold ${payable.remaining_amount > 0 ? 'text-red-500' : 'text-emerald-600'}">${payable.remaining_amount.toLocaleString()} ${curr}</div>
+                            <div class="text-xs text-gray-400">${payable.amount.toLocaleString()} ${curr}</div>
+                        </div>
+                    </div>
+                `).join('') : `
+                    <div class="rounded-2xl border border-dashed border-gray-200 px-4 py-6 text-center text-sm text-gray-400">
+                        ${t('exp.noDebtsForCompany')}
+                    </div>
+                `}
+            </div>
+        </div>
+    `;
+}
+
+function renderPayablesTable(payables = [], curr = getCurrency(), selectedCompany = null) {
+    const tableTitle = document.getElementById('payablesTableTitle');
+    const tableSubtitle = document.getElementById('payablesTableSubtitle');
+    const clearBtn = document.getElementById('clearPayableCompanyFilterBtn');
+    const bodyEl = document.getElementById('payablesTableBody');
+    if (!bodyEl) return;
+
+    if (tableTitle) tableTitle.textContent = selectedCompany ? selectedCompany.company_name : t('exp.companyAllDebts');
+    if (tableSubtitle) tableSubtitle.textContent = selectedCompany ? t('exp.companyFilteredHint') : t('exp.companyAllDebtsHint');
+    if (clearBtn) clearBtn.style.display = selectedCompany ? 'inline-flex' : 'none';
+
+    const statusStyles = {
+        unpaid: 'background:#fef2f2;color:#dc2626;',
+        partial: 'background:#fff7ed;color:#ea580c;',
+        paid: 'background:#f0fdf4;color:#16a34a;'
+    };
+
+    bodyEl.innerHTML = payables.length ? payables.map(payable => `
+        <tr class="border-b border-gray-50 hover:bg-amber-50/40 text-sm">
+            <td class="p-3">
+                <button type="button" onclick="selectPayableCompany('${encodeURIComponent(payable.company_key)}')" class="text-left">
+                    <div class="font-semibold text-gray-800 hover:text-amber-600 transition">${payable.company_name || '—'}</div>
+                </button>
+                ${payable.note ? `<div class="text-[11px] text-gray-400 mt-1">${payable.note}</div>` : ''}
+            </td>
+            <td class="p-3"><span class="badge" style="background:#fff7ed;color:#9a3412;">${translatePayableCategory(payable.category)}</span></td>
+            <td class="p-3 font-bold text-gray-800">${payable.amount.toLocaleString()} ${curr}</td>
+            <td class="p-3 font-bold text-green-600">${payable.paid_amount.toLocaleString()} ${curr}</td>
+            <td class="p-3 font-bold ${payable.remaining_amount > 0 ? 'text-red-500' : 'text-emerald-600'}">${payable.remaining_amount.toLocaleString()} ${curr}</td>
+            <td class="p-3 text-gray-400">${payable.due_date || payable.date || '—'}</td>
+            <td class="p-3"><span class="badge" style="${statusStyles[payable.status] || statusStyles.unpaid}">${translatePayableStatus(payable.status)}</span></td>
+            <td class="p-3 text-center">
+                <div class="flex gap-1 justify-center">
+                    <button onclick="openPayableModal(${payable.id})" class="btn text-xs px-2 py-1" style="background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe;"><i class="fa-solid fa-pen"></i></button>
+                    <button onclick="deletePayable(${payable.id})" class="btn text-xs px-2 py-1" style="background:#fef2f2;color:#ef4444;border:1px solid #fecaca;"><i class="fa-solid fa-trash"></i></button>
+                </div>
+            </td>
+        </tr>
+    `).join('') : `
+        <tr>
+            <td colspan="8" class="p-6 text-center text-sm text-gray-400">
+                ${currentLang === 'ar' ? 'لا توجد ديون مسجلة حالياً' : 'No payables recorded yet'}
+            </td>
+        </tr>
+    `;
 }
 
 function buildMissingPatientLabel(rawName) {
@@ -1589,17 +1912,18 @@ document.getElementById('newExpenseForm').addEventListener('submit', async e => 
     e.target.reset();
     closeModal('addExpenseModal');
     updateDashboard();
-    loadExpenses();
+    await loadExpenses();
     showToast('Expense added');
 });
 
-window.openPayableModal = async function(id = null) {
+window.openPayableModal = async function(id = null, presetCreditorName = '') {
     const form = document.getElementById('newPayableForm');
     if (!form) return;
 
     form.reset();
     document.getElementById('payableId').value = '';
     document.getElementById('payableDate').value = today();
+    document.getElementById('payableName').value = presetCreditorName ? decodeURIComponent(String(presetCreditorName)) : '';
 
     const titleEl = document.getElementById('payableModalTitle');
     const submitEl = document.getElementById('savePayableBtnLabel');
@@ -1662,7 +1986,7 @@ document.getElementById('newPayableForm')?.addEventListener('submit', async e =>
     document.getElementById('payableId').value = '';
     document.getElementById('payableDate').value = today();
     closeModal('addPayableModal');
-    await loadExpenses();
+    await loadPayablesView();
     updateDashboard();
     if (document.getElementById('reportsView')?.classList.contains('active')) {
         await loadReports();
@@ -2233,7 +2557,16 @@ async function loadExpenses() {
         dbGetAll('expenses'),
         dbGetAll('payables').catch(() => [])
     ]);
-    const payables = rawPayables.map(normalizePayableRecord);
+    const payables = sortPayablesByDate(rawPayables.map(normalizePayableRecord));
+    const payableCompanies = groupPayablesByCompany(payables);
+    if (currentPayableCompanyKey && !payableCompanies.some(company => company.company_key === currentPayableCompanyKey)) {
+        currentPayableCompanyKey = '';
+    }
+    if (!currentPayableCompanyKey && payableCompanies.length) {
+        currentPayableCompanyKey = payableCompanies[0].company_key;
+    }
+    const selectedPayableCompany = payableCompanies.find(company => company.company_key === currentPayableCompanyKey) || null;
+    const filteredPayables = selectedPayableCompany ? selectedPayableCompany.payables : payables;
     const payableStats = summarizePayables(payables);
     const curr = getCurrency();
     const thisMonth = today().slice(0,7);
@@ -2246,7 +2579,7 @@ async function loadExpenses() {
     document.getElementById('expTotalAll').innerText   = `${totalAll} ${curr}`;
     document.getElementById('expCount').innerText      = expenses.length;
 
-    document.getElementById('expensesTableBody').innerHTML = expenses.map(e => `
+    document.getElementById('expensesTableBody').innerHTML = expenses.length ? expenses.map(e => `
         <tr class="border-b border-gray-50 hover:bg-gray-50 text-sm">
             <td class="p-3 font-semibold text-gray-800">${e.item}</td>
             <td class="p-3"><span class="badge" style="background:#f1f5f9;color:#475569;">${e.category||'Other'}</span></td>
@@ -2254,7 +2587,13 @@ async function loadExpenses() {
             <td class="p-3 text-gray-400">${e.date}</td>
             <td class="p-3 text-center"><button onclick="deleteExpense(${e.id})" class="btn text-xs px-2 py-1" style="background:#fef2f2;color:#ef4444;border:1px solid #fecaca;"><i class="fa-solid fa-trash"></i></button></td>
         </tr>
-    `).join('');
+    `).join('') : `
+        <tr>
+            <td colspan="5" class="p-6 text-center text-sm text-gray-400">
+                ${currentLang === 'ar' ? 'لا توجد مصروفات مسجلة حالياً' : 'No expenses recorded yet'}
+            </td>
+        </tr>
+    `;
 
     const statusStyles = {
         unpaid: 'background:#fef2f2;color:#dc2626;',
@@ -2304,7 +2643,7 @@ window.deleteExpense = async function(id) {
 window.deletePayable = async function(id) {
     if (!confirm(t('confirm.deletePayable'))) return;
     await dbDelete('payables', id);
-    await loadExpenses();
+    await loadPayablesView();
     updateDashboard();
     if (document.getElementById('reportsView')?.classList.contains('active')) {
         await loadReports();
@@ -2313,6 +2652,125 @@ window.deletePayable = async function(id) {
 };
 
 // ── 17. PRESCRIPTIONS ────────────────────
+window.selectPayableCompany = async function(encodedCompanyKey = '') {
+    currentPayableCompanyKey = decodeURIComponent(String(encodedCompanyKey || ''));
+    await loadPayablesView();
+};
+
+window.clearPayableCompanyFilter = async function() {
+    currentPayableCompanyKey = '';
+    await loadPayablesView();
+};
+
+async function loadExpenses() {
+    const [expenses, rawPayables] = await Promise.all([
+        dbGetAll('expenses'),
+        dbGetAll('payables').catch(() => [])
+    ]);
+
+    const payables = sortPayablesByDate(rawPayables.map(normalizePayableRecord));
+    const payableCompanies = groupPayablesByCompany(payables);
+    if (currentPayableCompanyKey && !payableCompanies.some(company => company.company_key === currentPayableCompanyKey)) {
+        currentPayableCompanyKey = '';
+    }
+    if (!currentPayableCompanyKey && payableCompanies.length) {
+        currentPayableCompanyKey = payableCompanies[0].company_key;
+    }
+    const selectedPayableCompany = payableCompanies.find(company => company.company_key === currentPayableCompanyKey) || null;
+    const filteredPayables = selectedPayableCompany ? selectedPayableCompany.payables : payables;
+    const payableStats = summarizePayables(payables);
+    const curr = getCurrency();
+    const thisMonth = today().slice(0, 7);
+
+    let totalMonth = 0;
+    let totalAll = 0;
+    expenses.forEach(expense => {
+        totalAll += toMoneyNumber(expense.amount);
+        if ((expense.date || '').startsWith(thisMonth)) totalMonth += toMoneyNumber(expense.amount);
+    });
+
+    document.getElementById('expTotalMonth').innerText = `${totalMonth} ${curr}`;
+    document.getElementById('expTotalAll').innerText = `${totalAll} ${curr}`;
+    document.getElementById('expCount').innerText = expenses.length;
+    document.getElementById('expensesTableBody').innerHTML = expenses.length ? expenses.map(expense => `
+        <tr class="border-b border-gray-50 hover:bg-gray-50 text-sm">
+            <td class="p-3 font-semibold text-gray-800">${expense.item}</td>
+            <td class="p-3"><span class="badge" style="background:#f1f5f9;color:#475569;">${expense.category || 'Other'}</span></td>
+            <td class="p-3 text-red-500 font-bold">${toMoneyNumber(expense.amount).toLocaleString()} ${curr}</td>
+            <td class="p-3 text-gray-400">${expense.date || '—'}</td>
+            <td class="p-3 text-center"><button onclick="deleteExpense(${expense.id})" class="btn text-xs px-2 py-1" style="background:#fef2f2;color:#ef4444;border:1px solid #fecaca;"><i class="fa-solid fa-trash"></i></button></td>
+        </tr>
+    `).join('') : `
+        <tr>
+            <td colspan="5" class="p-6 text-center text-sm text-gray-400">
+                ${currentLang === 'ar' ? 'لا توجد مصروفات مسجلة حالياً' : 'No expenses recorded yet'}
+            </td>
+        </tr>
+    `;
+
+    document.getElementById('payablesTotalAll').innerText = `${payableStats.totalAmount.toLocaleString()} ${curr}`;
+    document.getElementById('payablesPaidAll').innerText = `${payableStats.totalPaid.toLocaleString()} ${curr}`;
+    document.getElementById('payablesOutstanding').innerText = `${payableStats.totalRemaining.toLocaleString()} ${curr}`;
+    document.getElementById('payablesCount').innerText = payables.length;
+    renderPayableCompanyProfiles(payableCompanies, selectedPayableCompany, curr);
+    renderPayablesTable(filteredPayables, curr, selectedPayableCompany);
+}
+
+async function loadPayablesView() {
+    const rawPayables = await dbGetAll('payables').catch(() => []);
+    const payables = sortPayablesByDate(rawPayables.map(normalizePayableRecord));
+    const payableCompanies = groupPayablesByCompany(payables);
+    if (currentPayableCompanyKey && !payableCompanies.some(company => company.company_key === currentPayableCompanyKey)) {
+        currentPayableCompanyKey = '';
+    }
+    if (!currentPayableCompanyKey && payableCompanies.length) {
+        currentPayableCompanyKey = payableCompanies[0].company_key;
+    }
+    const selectedPayableCompany = payableCompanies.find(company => company.company_key === currentPayableCompanyKey) || null;
+    const filteredPayables = selectedPayableCompany ? selectedPayableCompany.payables : payables;
+    const payableStats = summarizePayables(payables);
+    const curr = getCurrency();
+
+    document.getElementById('payablesTotalAll').innerText = `${payableStats.totalAmount.toLocaleString()} ${curr}`;
+    document.getElementById('payablesPaidAll').innerText = `${payableStats.totalPaid.toLocaleString()} ${curr}`;
+    document.getElementById('payablesOutstanding').innerText = `${payableStats.totalRemaining.toLocaleString()} ${curr}`;
+    document.getElementById('payablesCount').innerText = payables.length;
+    renderPayableCompanyProfiles(payableCompanies, selectedPayableCompany, curr);
+    renderPayablesTable(filteredPayables, curr, selectedPayableCompany);
+}
+
+async function loadExpenses() {
+    const expenses = await dbGetAll('expenses');
+    const curr = getCurrency();
+    const thisMonth = today().slice(0, 7);
+
+    let totalMonth = 0;
+    let totalAll = 0;
+    expenses.forEach(expense => {
+        totalAll += toMoneyNumber(expense.amount);
+        if ((expense.date || '').startsWith(thisMonth)) totalMonth += toMoneyNumber(expense.amount);
+    });
+
+    document.getElementById('expTotalMonth').innerText = `${totalMonth.toLocaleString()} ${curr}`;
+    document.getElementById('expTotalAll').innerText = `${totalAll.toLocaleString()} ${curr}`;
+    document.getElementById('expCount').innerText = expenses.length;
+    document.getElementById('expensesTableBody').innerHTML = expenses.length ? expenses.map(expense => `
+        <tr class="border-b border-gray-50 hover:bg-gray-50 text-sm">
+            <td class="p-3 font-semibold text-gray-800">${expense.item}</td>
+            <td class="p-3"><span class="badge" style="background:#f1f5f9;color:#475569;">${expense.category || 'Other'}</span></td>
+            <td class="p-3 text-red-500 font-bold">${toMoneyNumber(expense.amount).toLocaleString()} ${curr}</td>
+            <td class="p-3 text-gray-400">${expense.date || '—'}</td>
+            <td class="p-3 text-center"><button onclick="deleteExpense(${expense.id})" class="btn text-xs px-2 py-1" style="background:#fef2f2;color:#ef4444;border:1px solid #fecaca;"><i class="fa-solid fa-trash"></i></button></td>
+        </tr>
+    `).join('') : `
+        <tr>
+            <td colspan="5" class="p-6 text-center text-sm text-gray-400">
+                ${currentLang === 'ar' ? 'لا توجد مصروفات مسجلة حالياً' : 'No expenses recorded yet'}
+            </td>
+        </tr>
+    `;
+}
+
 async function loadPrescriptions() {
     const list = await dbGetAll('prescriptions');
     document.getElementById('prescriptionsTableBody').innerHTML = list.map(p => `
@@ -2450,6 +2908,23 @@ function currentMonthRange() {
     const m   = String(now.getMonth() + 1).padStart(2, '0');
     const last = new Date(y, now.getMonth() + 1, 0).getDate();
     return { from: `${y}-${m}-01`, to: `${y}-${m}-${String(last).padStart(2,'0')}` };
+}
+
+function lastMonthsRange(monthCount = 6) {
+    const now = new Date();
+    const start = new Date(now.getFullYear(), now.getMonth() - (monthCount - 1), 1);
+    return {
+        from: formatLocalDate(start),
+        to: formatLocalDate(now)
+    };
+}
+
+function sumTreatmentRevenueInRange(treatments = [], from = '', to = '') {
+    return treatments.reduce((sum, tr) => {
+        const date = normalizeDateOnly(tr?.date);
+        if (!date || (from && date < from) || (to && date > to)) return sum;
+        return sum + toMoneyNumber(tr?.total_cost ?? tr?.totalCost);
+    }, 0);
 }
 
 function buildProfitTableLegacy(revenue, ratios, curr) {
@@ -2636,19 +3111,22 @@ async function loadReports() {
     }
     await renderDailyProfitCard(treatments, collectionEntries);
 
+    const last6Months = lastMonthsRange(6);
     let totalRevenue = 0, totalDebt = 0, totalExpenses = 0;
     treatments.forEach(tr => {
         totalRevenue += toMoneyNumber(tr.total_cost || tr.totalCost);
     });
+    const totalRevenueLast6Months = sumTreatmentRevenueInRange(treatments, last6Months.from, last6Months.to);
     const totalPaid = sumCollectionAmounts(collectionEntries);
     totalDebt = totalRevenue - totalPaid;
     expenses.forEach(e => { totalExpenses += toMoneyNumber(e.amount); });
     const cashOut = totalExpenses + payableStats.totalPaid;
     const netCash = totalPaid - cashOut;
     const netAfterPayables = netCash - payableStats.totalRemaining;
+    const totalRevenueLabel = currentLang === 'ar' ? 'إجمالي الإيراد آخر 6 شهور' : 'Total Revenue (Last 6 Months)';
 
     document.getElementById('financialReport').innerHTML = `
-        <div class="flex justify-between text-sm border-b pb-2"><span class="text-gray-500">${t('rep.totalRevenue')}</span><span class="font-bold text-gray-800">${totalRevenue} ${curr}</span></div>
+        <div class="flex justify-between text-sm border-b pb-2"><span class="text-gray-500">${totalRevenueLabel}</span><span class="font-bold text-gray-800">${totalRevenueLast6Months.toLocaleString()} ${curr}</span></div>
         <div class="flex justify-between text-sm border-b pb-2"><span class="text-gray-500">${t('rep.collected')}</span><span class="font-bold text-green-600">${totalPaid} ${curr}</span></div>
         <div class="flex justify-between text-sm border-b pb-2"><span class="text-gray-500">${t('rep.patientDebt')}</span><span class="font-bold text-red-500">${totalDebt} ${curr}</span></div>
         <div class="flex justify-between text-sm border-b pb-2"><span class="text-gray-500">${t('rep.totalExp')}</span><span class="font-bold text-orange-500">${totalExpenses} ${curr}</span></div>
@@ -3012,11 +3490,16 @@ document.addEventListener('DOMContentLoaded', function() {
 
 window.renderMonthlyReport = async function() {
     // استخدم الـ cache لو متاح
-    const { collectionEntries, expenses } = await getCleanReportCollections();
+    const { collectionEntries, expenses, payables } = await getCleanReportCollections();
     const curr       = getCurrency();
     const yearsSet   = new Set();
     collectionEntries.forEach(entry => { const y = (entry.date || '').slice(0, 4); if (y) yearsSet.add(y); });
     expenses.forEach(e => { const y = normalizeDateOnly(e.date).slice(0, 4); if (y) yearsSet.add(y); });
+    payables.forEach(payable => {
+        const effectiveDate = normalizeDateOnly(payable?.due_date ?? payable?.dueDate ?? payable?.date);
+        const y = effectiveDate.slice(0, 4);
+        if (y) yearsSet.add(y);
+    });
     const years = [...yearsSet].sort((a,b)=>b-a);
     const sel = document.getElementById('monthlyReportYear');
     if (sel) {
@@ -3032,10 +3515,14 @@ window.renderMonthlyReport = async function() {
         const mStr = `${selectedYear}-${String(m+1).padStart(2,'0')}`;
         const rev  = collectionEntries.filter(entry => (entry.date || '').startsWith(mStr)).reduce((sum, entry) => sum + toMoneyNumber(entry.amount), 0);
         const exp  = expenses.filter(e => normalizeDateOnly(e.date).startsWith(mStr)).reduce((sum, e) => sum + toMoneyNumber(e.amount), 0);
-        return { month, rev, exp, net: rev-exp };
+        const debt = payables
+            .filter(payable => normalizeDateOnly(payable?.due_date ?? payable?.dueDate ?? payable?.date).startsWith(mStr))
+            .reduce((sum, payable) => sum + toMoneyNumber(payable?.remaining_amount ?? payable?.remainingAmount), 0);
+        return { month, rev, exp, debt, net: rev-exp };
     });
     const totalRev = monthData.reduce((s,d)=>s+d.rev,0);
     const totalExp = monthData.reduce((s,d)=>s+d.exp,0);
+    const totalDebt = monthData.reduce((s,d)=>s+d.debt,0);
     const totalNet = totalRev - totalExp;
     const totalProfitPct = totalRev > 0 ? Math.round(totalNet / totalRev * 100) : 0;
     document.getElementById('monthlyReportBody').innerHTML = `
@@ -3072,6 +3559,197 @@ window.renderMonthlyReport = async function() {
 };
 
 // ── 21.5 PRINT PATIENT SHEET ──
+window.renderMonthlyReport = async function() {
+    const { collectionEntries, expenses, payables } = await getCleanReportCollections();
+    const curr = getCurrency();
+    const yearsSet = new Set();
+
+    collectionEntries.forEach(entry => {
+        const y = (entry.date || '').slice(0, 4);
+        if (y) yearsSet.add(y);
+    });
+    expenses.forEach(expense => {
+        const y = normalizeDateOnly(expense.date).slice(0, 4);
+        if (y) yearsSet.add(y);
+    });
+    payables.forEach(payable => {
+        const effectiveDate = normalizeDateOnly(payable?.due_date ?? payable?.dueDate ?? payable?.date);
+        const y = effectiveDate.slice(0, 4);
+        if (y) yearsSet.add(y);
+    });
+
+    const years = [...yearsSet].sort((a, b) => b - a);
+    const sel = document.getElementById('monthlyReportYear');
+    if (sel) {
+        const cur = sel.value || years[0] || String(new Date().getFullYear());
+        sel.innerHTML = years.map(y => `<option value="${y}" ${y === cur ? 'selected' : ''}>${y}</option>`).join('');
+        if (!sel.value && years.length) sel.value = years[0];
+    }
+
+    const selectedYear = sel ? sel.value : (years[0] || String(new Date().getFullYear()));
+    const months = currentLang === 'ar'
+        ? ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر']
+        : ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+    const monthData = months.map((month, index) => {
+        const monthKey = `${selectedYear}-${String(index + 1).padStart(2, '0')}`;
+        const revenue = collectionEntries
+            .filter(entry => (entry.date || '').startsWith(monthKey))
+            .reduce((sum, entry) => sum + toMoneyNumber(entry.amount), 0);
+        const expense = expenses
+            .filter(item => normalizeDateOnly(item.date).startsWith(monthKey))
+            .reduce((sum, item) => sum + toMoneyNumber(item.amount), 0);
+        const debt = getMonthlyPayablesAmount(payables, monthKey);
+
+        return { month, revenue, expense, debt, net: revenue - expense };
+    });
+
+    const totalRevenue = monthData.reduce((sum, item) => sum + item.revenue, 0);
+    const totalExpense = monthData.reduce((sum, item) => sum + item.expense, 0);
+    const totalDebt = monthData.reduce((sum, item) => sum + item.debt, 0);
+    const totalNet = totalRevenue - totalExpense;
+    const totalProfitPct = totalRevenue > 0 ? Math.round((totalNet / totalRevenue) * 100) : 0;
+
+    const monthLabel = currentLang === 'ar' ? 'الشهر' : 'Month';
+    const revenueLabel = currentLang === 'ar' ? 'الإيراد' : 'Revenue';
+    const expenseLabel = currentLang === 'ar' ? 'المصروف' : 'Expenses';
+    const debtLabel = currentLang === 'ar' ? 'الديون عليّ' : 'Payables Due';
+    const netLabel = currentLang === 'ar' ? 'صافي الربح' : 'Net Profit';
+    const pctLabel = currentLang === 'ar' ? 'نسبة الربح' : 'Profit %';
+    const totalLabel = currentLang === 'ar' ? 'الإجمالي' : 'Total';
+
+    document.getElementById('monthlyReportBody').innerHTML = `
+    <div class="overflow-x-auto"><table class="w-full text-sm">
+        <thead><tr class="bg-slate-50 text-gray-400 text-xs uppercase border-b">
+            <th class="text-left px-4 py-3">${monthLabel}</th>
+            <th class="text-left px-4 py-3 text-green-600">${revenueLabel}</th>
+            <th class="text-left px-4 py-3 text-red-400">${expenseLabel}</th>
+            <th class="text-left px-4 py-3 text-amber-600">${debtLabel}</th>
+            <th class="text-left px-4 py-3 text-blue-600">${netLabel}</th>
+            <th class="px-4 py-3 w-36">${pctLabel}</th>
+        </tr></thead>
+        <tbody>${monthData.map(item => {
+            const profitPct = item.revenue > 0 ? Math.round((item.net / item.revenue) * 100) : 0;
+            const barPct = Math.max(0, Math.min(100, profitPct));
+            const hasData = item.revenue > 0 || item.expense > 0 || item.debt > 0;
+            const barColor = profitPct >= 50 ? 'bg-green-400' : profitPct >= 0 ? 'bg-yellow-400' : 'bg-red-400';
+            const pctColor = profitPct >= 0 ? 'text-gray-500' : 'text-red-400';
+            return `<tr class="border-b border-gray-50 hover:bg-blue-50 transition">
+                <td class="px-4 py-3 font-semibold text-gray-700">${item.month}</td>
+                <td class="px-4 py-3 text-green-600 font-semibold">${item.revenue > 0 ? item.revenue.toLocaleString() + ' ' + curr : '—'}</td>
+                <td class="px-4 py-3 text-red-400">${item.expense > 0 ? item.expense.toLocaleString() + ' ' + curr : '—'}</td>
+                <td class="px-4 py-3 text-amber-600 font-semibold">${item.debt > 0 ? item.debt.toLocaleString() + ' ' + curr : '—'}</td>
+                <td class="px-4 py-3 font-bold ${item.net >= 0 ? 'text-green-600' : 'text-red-500'}">${hasData ? item.net.toLocaleString() + ' ' + curr : '—'}</td>
+                <td class="px-4 py-3"><div class="flex items-center gap-2"><div class="flex-1 bg-gray-100 rounded-full h-2 overflow-hidden"><div class="h-2 rounded-full ${hasData ? barColor : 'bg-gray-200'}" style="width:${barPct}%"></div></div><span class="text-[11px] ${hasData ? pctColor : 'text-gray-300'} w-8">${hasData ? profitPct + '%' : '0%'}</span></div></td>
+            </tr>`;
+        }).join('')}</tbody>
+        <tfoot><tr class="bg-slate-50 font-bold border-t-2 border-gray-200">
+            <td class="px-4 py-3 text-gray-700">${totalLabel}</td>
+            <td class="px-4 py-3 text-green-700">${totalRevenue.toLocaleString()} ${curr}</td>
+            <td class="px-4 py-3 text-red-500">${totalExpense.toLocaleString()} ${curr}</td>
+            <td class="px-4 py-3 text-amber-600">${totalDebt.toLocaleString()} ${curr}</td>
+            <td class="px-4 py-3 ${totalNet >= 0 ? 'text-green-700' : 'text-red-500'}">${totalNet.toLocaleString()} ${curr}</td>
+            <td class="px-4 py-3"><span class="text-xs font-bold ${totalProfitPct >= 0 ? 'text-green-600' : 'text-red-500'}">${totalProfitPct}%</span></td>
+        </tr></tfoot>
+    </table></div>`;
+};
+
+window.renderMonthlyReport = async function() {
+    const { collectionEntries, expenses, payables } = await getCleanReportCollections();
+    const curr = getCurrency();
+    const yearsSet = new Set();
+
+    collectionEntries.forEach(entry => {
+        const year = (entry.date || '').slice(0, 4);
+        if (year) yearsSet.add(year);
+    });
+    expenses.forEach(expense => {
+        const year = normalizeDateOnly(expense.date).slice(0, 4);
+        if (year) yearsSet.add(year);
+    });
+    payables.forEach(payable => {
+        const recordYear = normalizeDateOnly(payable?.date).slice(0, 4);
+        const dueYear = normalizeDateOnly(payable?.due_date ?? payable?.dueDate).slice(0, 4);
+        if (recordYear) yearsSet.add(recordYear);
+        if (dueYear) yearsSet.add(dueYear);
+    });
+
+    const years = [...yearsSet].sort((a, b) => b - a);
+    const sel = document.getElementById('monthlyReportYear');
+    if (sel) {
+        const cur = sel.value || years[0] || String(new Date().getFullYear());
+        sel.innerHTML = years.map(year => `<option value="${year}" ${year === cur ? 'selected' : ''}>${year}</option>`).join('');
+        if (!sel.value && years.length) sel.value = years[0];
+    }
+
+    const selectedYear = sel ? sel.value : (years[0] || String(new Date().getFullYear()));
+    const months = currentLang === 'ar'
+        ? ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر']
+        : ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+    const monthData = months.map((month, index) => {
+        const monthKey = `${selectedYear}-${String(index + 1).padStart(2, '0')}`;
+        const revenue = collectionEntries
+            .filter(entry => (entry.date || '').startsWith(monthKey))
+            .reduce((sum, entry) => sum + toMoneyNumber(entry.amount), 0);
+        const expense = expenses
+            .filter(item => normalizeDateOnly(item.date).startsWith(monthKey))
+            .reduce((sum, item) => sum + toMoneyNumber(item.amount), 0);
+        const debt = getMonthlyPayablesAmount(payables, monthKey);
+
+        return { month, revenue, expense, debt, net: revenue - expense };
+    });
+
+    const totalRevenue = monthData.reduce((sum, item) => sum + item.revenue, 0);
+    const totalExpense = monthData.reduce((sum, item) => sum + item.expense, 0);
+    const totalDebt = monthData.reduce((sum, item) => sum + item.debt, 0);
+    const totalNet = totalRevenue - totalExpense;
+    const totalProfitPct = totalRevenue > 0 ? Math.round((totalNet / totalRevenue) * 100) : 0;
+
+    const monthLabel = currentLang === 'ar' ? 'الشهر' : 'Month';
+    const revenueLabel = currentLang === 'ar' ? 'الإيراد' : 'Revenue';
+    const expenseLabel = currentLang === 'ar' ? 'المصروف' : 'Expenses';
+    const debtLabel = currentLang === 'ar' ? 'الديون عليك' : 'Payables Due';
+    const netLabel = currentLang === 'ar' ? 'صافي الربح' : 'Net Profit';
+    const pctLabel = currentLang === 'ar' ? 'نسبة الربح' : 'Profit %';
+    const totalLabel = currentLang === 'ar' ? 'الإجمالي' : 'Total';
+
+    document.getElementById('monthlyReportBody').innerHTML = `
+    <div class="overflow-x-auto"><table class="w-full text-sm">
+        <thead><tr class="bg-slate-50 text-gray-400 text-xs uppercase border-b">
+            <th class="text-left px-4 py-3">${monthLabel}</th>
+            <th class="text-left px-4 py-3 text-green-600">${revenueLabel}</th>
+            <th class="text-left px-4 py-3 text-red-400">${expenseLabel}</th>
+            <th class="text-left px-4 py-3 text-amber-600">${debtLabel}</th>
+            <th class="text-left px-4 py-3 text-blue-600">${netLabel}</th>
+            <th class="px-4 py-3 w-36">${pctLabel}</th>
+        </tr></thead>
+        <tbody>${monthData.map(item => {
+            const profitPct = item.revenue > 0 ? Math.round((item.net / item.revenue) * 100) : 0;
+            const barPct = Math.max(0, Math.min(100, profitPct));
+            const hasData = item.revenue > 0 || item.expense > 0 || item.debt > 0;
+            const barColor = profitPct >= 50 ? 'bg-green-400' : profitPct >= 0 ? 'bg-yellow-400' : 'bg-red-400';
+            const pctColor = profitPct >= 0 ? 'text-gray-500' : 'text-red-400';
+            return `<tr class="border-b border-gray-50 hover:bg-blue-50 transition">
+                <td class="px-4 py-3 font-semibold text-gray-700">${item.month}</td>
+                <td class="px-4 py-3 text-green-600 font-semibold">${item.revenue.toLocaleString()} ${curr}</td>
+                <td class="px-4 py-3 text-red-400">${item.expense.toLocaleString()} ${curr}</td>
+                <td class="px-4 py-3 text-amber-600 font-semibold">${item.debt.toLocaleString()} ${curr}</td>
+                <td class="px-4 py-3 font-bold ${item.net >= 0 ? 'text-green-600' : 'text-red-500'}">${item.net.toLocaleString()} ${curr}</td>
+                <td class="px-4 py-3"><div class="flex items-center gap-2"><div class="flex-1 bg-gray-100 rounded-full h-2 overflow-hidden"><div class="h-2 rounded-full ${hasData ? barColor : 'bg-gray-200'}" style="width:${hasData ? barPct : 0}%"></div></div><span class="text-[11px] ${hasData ? pctColor : 'text-gray-300'} w-8">${hasData ? profitPct + '%' : '0%'}</span></div></td>
+            </tr>`;
+        }).join('')}</tbody>
+        <tfoot><tr class="bg-slate-50 font-bold border-t-2 border-gray-200">
+            <td class="px-4 py-3 text-gray-700">${totalLabel}</td>
+            <td class="px-4 py-3 text-green-700">${totalRevenue.toLocaleString()} ${curr}</td>
+            <td class="px-4 py-3 text-red-500">${totalExpense.toLocaleString()} ${curr}</td>
+            <td class="px-4 py-3 text-amber-600">${totalDebt.toLocaleString()} ${curr}</td>
+            <td class="px-4 py-3 ${totalNet >= 0 ? 'text-green-700' : 'text-red-500'}">${totalNet.toLocaleString()} ${curr}</td>
+            <td class="px-4 py-3"><span class="text-xs font-bold ${totalProfitPct >= 0 ? 'text-green-600' : 'text-red-500'}">${totalProfitPct}%</span></td>
+        </tr></tfoot>
+    </table></div>`;
+};
+
 window.printPatientSheet = async function() {
     const rows = await dbGetAll('patients');
     const p = rows.find(r => r.id == currentProfilePatientId);
@@ -3811,16 +4489,18 @@ window.exportExcel = async function() {
         }
     } catch(e) {}
 
-    const totalRevenue = treatments.reduce((s,tr) => s+(parseFloat(tr.total_cost||tr.totalCost)||0), 0);
+    const last6Months = lastMonthsRange(6);
+    const totalRevenue = sumTreatmentRevenueInRange(treatments, last6Months.from, last6Months.to);
+    const allTimeRevenue = treatments.reduce((s,tr) => s+(parseFloat(tr.total_cost||tr.totalCost)||0), 0);
     const totalPaid    = sumCollectionAmounts(collectionEntries);
     const totalExp     = expenses.reduce((s,e) => s+(parseFloat(e.amount)||0), 0);
     const payableStats = summarizePayables(payables);
     const totalCashOut = totalExp + payableStats.totalPaid;
     const sumData = [
         ['Metric', 'Value ('+curr+')'],
-        ['Total Revenue', totalRevenue],
+        ['Total Revenue (Last 6 Months)', totalRevenue],
         ['Total Collected', totalPaid],
-        ['Outstanding Debt', totalRevenue - totalPaid],
+        ['Outstanding Debt', allTimeRevenue - totalPaid],
         ['Total Expenses', totalExp],
         ['Paid Payables', payableStats.totalPaid],
         ['Outstanding Payables', payableStats.totalRemaining],
@@ -3939,7 +4619,8 @@ async function renderCharts(treatments = null, collectionEntries = null) {
 
 function renderReportKpis(treatments, expenses, patients, appointments, collectionEntries = null, payables = []) {
     const curr = getCurrency();
-    const totalRevenue = treatments.reduce((s,tr)=>s+(parseFloat(tr.total_cost||tr.totalCost)||0),0);
+    const last6Months = lastMonthsRange(6);
+    const totalRevenue = sumTreatmentRevenueInRange(treatments, last6Months.from, last6Months.to);
     const totalPaid    = Array.isArray(collectionEntries)
         ? sumCollectionAmounts(collectionEntries)
         : treatments.reduce((s,tr)=>s+(parseFloat(tr.paid)||0),0);
@@ -3970,6 +4651,41 @@ function renderReportKpis(treatments, expenses, patients, appointments, collecti
 }
 
 // ── 23. INIT ─────────────────────────────
+function renderReportKpis(treatments, expenses, patients, appointments, collectionEntries = null, payables = []) {
+    const curr = getCurrency();
+    const last6Months = lastMonthsRange(6);
+    const totalRevenue = sumTreatmentRevenueInRange(treatments, last6Months.from, last6Months.to);
+    const totalPaid = Array.isArray(collectionEntries)
+        ? sumCollectionAmounts(collectionEntries)
+        : treatments.reduce((s, tr) => s + (parseFloat(tr.paid) || 0), 0);
+    const totalExp = expenses.reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
+    const payableStats = summarizePayables(payables);
+    const totalCashOut = totalExp + payableStats.totalPaid;
+    const netAfterPayables = totalPaid - totalCashOut - payableStats.totalRemaining;
+    const revenueLabel = currentLang === 'ar' ? 'إجمالي الإيراد آخر 6 شهور' : 'Total Revenue (Last 6 Months)';
+    const collectedLabel = currentLang === 'ar' ? 'إجمالي المحصل' : 'Collected';
+    const kpis = [
+        { label: revenueLabel, value: `${totalRevenue.toLocaleString()} ${curr}`, icon: 'fa-coins', color: 'blue' },
+        { label: collectedLabel, value: `${totalPaid.toLocaleString()} ${curr}`, icon: 'fa-circle-check', color: 'green' },
+        { label: t('rep.cashOut'), value: `${totalCashOut.toLocaleString()} ${curr}`, icon: 'fa-receipt', color: 'orange' },
+        { label: t('rep.kpiPayables'), value: `${payableStats.totalRemaining.toLocaleString()} ${curr}`, icon: 'fa-hand-holding-dollar', color: 'amber' },
+        { label: t('rep.netAfterPayables'), value: `${netAfterPayables.toLocaleString()} ${curr}`, icon: 'fa-chart-line', color: netAfterPayables >= 0 ? 'emerald' : 'red' },
+    ];
+    const colors = {
+        blue: 'bg-blue-50 text-blue-600',
+        green: 'bg-green-50 text-green-600',
+        orange: 'bg-orange-50 text-orange-500',
+        amber: 'bg-amber-50 text-amber-600',
+        emerald: 'bg-emerald-50 text-emerald-600',
+        red: 'bg-red-50 text-red-600'
+    };
+    document.getElementById('reportKpis').innerHTML = kpis.map(k => `
+        <div class="bg-white rounded-xl border border-gray-100 p-4 flex items-center gap-3 stat-card">
+            <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${colors[k.color]}"><i class="fa-solid ${k.icon}"></i></div>
+            <div><p class="text-xs text-gray-400 font-medium">${k.label}</p><p class="font-bold text-gray-800 text-base">${k.value}</p></div>
+        </div>`).join('');
+}
+
 function buildProfitTable(revenue, ratios, curr) {
     const mat = revenue * ratios.material / 100;
     const dev = revenue * ratios.devices / 100;

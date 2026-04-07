@@ -32,6 +32,7 @@
         { id: 'nav-reminders', labelAr: 'التذكيرات', labelEn: 'Reminders' },
         { id: 'nav-settings', labelAr: 'الإعدادات', labelEn: 'Settings' }
     ];
+    PERMISSIONS_LIST.splice(7, 0, { id: 'nav-payables', labelAr: 'الديون', labelEn: 'Payables' });
 
     let _usersList = [];
 
@@ -386,7 +387,7 @@
         if (role === 'admin') {
             defaultPerms = PERMISSIONS_LIST.map(p => p.id); // الكل مسموح
         } else if (role === 'doctor') {
-            defaultPerms = ['nav-dashboard', 'nav-patients', 'nav-appointments', 'nav-calendar', 'nav-prescriptions', 'nav-invoices', 'nav-reports'];
+            defaultPerms = ['nav-dashboard', 'nav-patients', 'nav-appointments', 'nav-calendar', 'nav-prescriptions', 'nav-invoices', 'nav-payables', 'nav-reports'];
         } else { // reception
             defaultPerms = ['nav-dashboard', 'nav-patients', 'nav-appointments', 'nav-calendar', 'nav-prescriptions', 'nav-invoices'];
         }
@@ -733,7 +734,7 @@
                 const SECTION_MAP = {
                     'nav-section-main':     ['nav-dashboard','nav-patients','nav-appointments','nav-calendar'],
                     'nav-section-clinical': ['nav-prescriptions'],
-                    'nav-section-finance':  ['nav-invoices','nav-expenses','nav-reports'],
+                    'nav-section-finance':  ['nav-invoices','nav-expenses','nav-payables','nav-reports'],
                     'nav-section-system':   ['nav-inventory','nav-lab','nav-doctors','nav-reminders','nav-settings'],
                 };
                 Object.entries(SECTION_MAP).forEach(([sectionId, linkIds]) => {

@@ -523,7 +523,7 @@ function refreshViewForTable(table) {
         clinic_users:  () => { if (isViewActive('usersView') && window.loadUsersView) window.loadUsersView(); },
         session_payments: () => { if (currentProfilePatientId && isViewActive('profileView')) loadPatientHistory(currentProfilePatientId); },
         audit_logs:    () => { if (isViewActive('auditView') && window.loadAuditLogView) window.loadAuditLogView(); },
-        payables:      () => { if (isViewActive('expensesView')) loadExpenses(); if (isViewActive('reportsView')) loadReports(); if (isViewActive('dashboardView')) updateDashboard(); },
+        payables:      () => { if (isViewActive('payablesView') && typeof loadPayablesView === 'function') loadPayablesView(); if (isViewActive('reportsView')) loadReports(); if (isViewActive('dashboardView')) updateDashboard(); },
     };
     if (map[table]) map[table]();
 }
