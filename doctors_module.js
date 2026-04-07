@@ -179,6 +179,254 @@ window.loadDoctors = async function () {
     await refreshAllDoctorDropdowns();
 };
 
+window.openAddDoctorModal = function () {
+    const modal = document.getElementById('doctorFormModal');
+    if (!modal) return;
+    document.getElementById('dfModalTitle').textContent = docText('doc.addDoctorTitle', 'Add Doctor');
+    ['dfNameAr', 'dfNameEn', 'dfSpecialty', 'dfPhone', 'dfCommissionPct', 'dfNotes'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+    });
+    const isActiveEl = document.getElementById('dfIsActive');
+    if (isActiveEl) isActiveEl.checked = true;
+    document.getElementById('dfCommissionPreview')?.classList.add('hidden');
+    const btn = document.getElementById('dfSaveBtn');
+    if (btn) btn.onclick = () => saveDoctor(null);
+    modal.classList.add('open');
+    setTimeout(() => document.getElementById('dfNameAr')?.focus(), 100);
+};
+
+window.saveDoctor = async function (editId) {
+    editId = editId ?? null;
+    const nameArEl = document.getElementById('dfNameAr');
+    const nameAr = nameArEl?.value.trim();
+    if (!nameAr) {
+        showToast(docText('doc.nameRequired', 'Enter the doctor name in Arabic first'), 'error');
+        nameArEl?.focus();
+        return;
+    }
+
+    const pct = parseFloat(document.getElementById('dfCommissionPct')?.value) || 0;
+    if (pct < 0 || pct > 100) {
+        showToast(docText('doc.commissionRange', 'Commission must be between 0 and 100'), 'error');
+        return;
+    }
+
+    const row = {
+        name_ar: nameAr,
+        name_en: document.getElementById('dfNameEn')?.value.trim() || null,
+        specialty: document.getElementById('dfSpecialty')?.value.trim() || null,
+        phone: document.getElementById('dfPhone')?.value.trim() || null,
+        commission_pct: pct,
+        is_active: document.getElementById('dfIsActive')?.checked !== false,
+        notes: document.getElementById('dfNotes')?.value.trim() || null,
+    };
+
+    const btn = document.getElementById('dfSaveBtn');
+    const orig = btn?.innerHTML;
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-1"></i>${docText('doc.saving', 'Saving...')}`;
+    }
+
+    try {
+        if (editId) {
+            await updateDoctorInDB(editId, row);
+            showToast(docText('doc.updated', 'Doctor updated successfully'), 'success');
+        } else {
+            await insertDoctorToDB(row);
+            showToast(docText('doc.added', 'Doctor added successfully'), 'success');
+        }
+        document.getElementById('doctorFormModal')?.classList.remove('open');
+        await loadDoctors();
+    } catch (err) {
+        showToast(`${docText('doc.loadError', 'Load error:')} ${err.message || ''}`, 'error');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = orig;
+        }
+    }
+};
+
+window.editDoctor = async function (id) {
+    let all;
+    try {
+        all = await getAllDoctorsFromDB();
+    } catch (_e) {
+        showToast(docText('doc.loadError', 'Load error:'), 'error');
+        return;
+    }
+
+    const doc = all.find(d => String(d.id) === String(id));
+    if (!doc) {
+        showToast(docText('doc.notFound', 'Doctor not found'), 'error');
+        return;
+    }
+
+    document.getElementById('dfModalTitle').textContent = docText('doc.editDoctorTitle', 'Edit Doctor');
+    const setVal = (elId, v) => {
+        const el = document.getElementById(elId);
+        if (el) el.value = v ?? '';
+    };
+    setVal('dfNameAr', doc.name_ar || '');
+    setVal('dfNameEn', doc.name_en || '');
+    setVal('dfSpecialty', doc.specialty || '');
+    setVal('dfPhone', doc.phone || '');
+    setVal('dfCommissionPct', docPct(doc));
+    setVal('dfNotes', doc.notes || '');
+    const isActiveEl = document.getElementById('dfIsActive');
+    if (isActiveEl) isActiveEl.checked = docActive(doc);
+    updateDfCommissionPreview();
+    const btn = document.getElementById('dfSaveBtn');
+    if (btn) btn.onclick = () => saveDoctor(id);
+    document.getElementById('doctorFormModal')?.classList.add('open');
+    setTimeout(() => document.getElementById('dfNameAr')?.focus(), 100);
+};
+
+window.toggleDoctorStatus = async function (id, currentlyActive) {
+    try {
+        await updateDoctorInDB(id, { is_active: !currentlyActive });
+        showToast(currentlyActive ? docText('doc.stopped', 'Doctor suspended') : docText('doc.activated', 'Doctor activated'), currentlyActive ? '' : 'success');
+        await loadDoctors();
+    } catch (e) {
+        showToast(`${docText('doc.loadError', 'Load error:')} ${e.message}`, 'error');
+    }
+};
+
+window.deleteDoctor = async function (id) {
+    if (!confirm(docText('doc.deleteConfirm', 'Delete this doctor permanently?\nThis will not affect saved treatments.'))) return;
+    try {
+        await deleteDoctorFromDB(id);
+        showToast(docText('doc.deleted', 'Doctor deleted'), 'success');
+        await loadDoctors();
+    } catch (e) {
+        showToast(`${docText('doc.loadError', 'Load error:')} ${e.message}`, 'error');
+    }
+};
+
+window.updateDfCommissionPreview = function () {
+    const pct = parseFloat(document.getElementById('dfCommissionPct')?.value) || 0;
+    const el = document.getElementById('dfCommissionPreview');
+    if (!el) return;
+    if (pct > 0) {
+        const curr = getCurr();
+        const on1000 = (pct * 10).toFixed(0);
+        el.innerHTML = `<i class="fa-solid fa-circle-info mr-1"></i>${docFormat('doc.previewExample', { currency: curr, amount: on1000 }, `Example: for a 1000 ${curr} collected treatment, doctor gets ${on1000} ${curr}`)}`;
+        el.classList.remove('hidden');
+    } else {
+        el.classList.add('hidden');
+    }
+};
+
+window.refreshAllDoctorDropdowns = async function () {
+    let all = [];
+    try { all = await getAllDoctorsFromDB(); } catch (_e) { return; }
+    const active = all.filter(docActive);
+
+    const apptSel = document.getElementById('appointmentDoctor');
+    if (apptSel) {
+        const cur = apptSel.value;
+        apptSel.innerHTML = `<option value="">${docText('doc.chooseDoctor', '— Choose doctor —')}</option>` +
+            active.map(d => `<option value="${docName(d)}">${docName(d)}${d.specialty ? ' - ' + d.specialty : ''}</option>`).join('');
+        if (cur) apptSel.value = cur;
+    }
+
+    const treatSel = document.getElementById('treatmentDoctorId');
+    if (treatSel) {
+        const cur = treatSel.value;
+        treatSel.innerHTML = `<option value="">${docText('doc.chooseTreatingDoctor', '— Choose treating doctor —')}</option>` +
+            active.map(d => `<option value="${d.id}" data-pct="${docPct(d)}" data-name="${docName(d)}">${docName(d)}${docPct(d) ? ' (' + docPct(d) + '%)' : ''}</option>`).join('');
+        if (cur) treatSel.value = cur;
+    }
+};
+window.refreshDoctorDropdowns = window.refreshAllDoctorDropdowns;
+
+window.openDoctorSalaryModal = async function (docId) {
+    let all;
+    try { all = await getAllDoctorsFromDB(); } catch (_e) {
+        showToast(docText('doc.loadError', 'Load error:'), 'error');
+        return;
+    }
+    const doc = all.find(d => String(d.id) === String(docId));
+    if (!doc) return;
+
+    document.getElementById('salaryDoctorId').value = docId;
+    document.getElementById('salaryDoctorName').textContent = docName(doc);
+    document.getElementById('salaryCommissionRate').textContent = docFormat('doc.commissionRate', { pct: docPct(doc) }, `Commission Rate: ${docPct(doc)}%`);
+
+    const now = new Date();
+    const defMon = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    document.getElementById('salaryMonthFilter').value = defMon;
+    document.getElementById('doctorSalaryModal')?.classList.add('open');
+    await calcDoctorSalary(docId, defMon);
+};
+
+window.recalcDoctorSalary = async function () {
+    const docId = document.getElementById('salaryDoctorId')?.value;
+    const month = document.getElementById('salaryMonthFilter')?.value;
+    if (docId) await calcDoctorSalary(docId, month);
+};
+
+async function calcDoctorSalary(docId, monthFilter) {
+    const curr = getCurr();
+    const tbody = document.getElementById('salaryTreatmentsList');
+    if (tbody) tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-gray-400 text-xs"><i class="fa-solid fa-spinner fa-spin mr-1"></i>${docText('doc.calculating', 'Calculating...')}</td></tr>`;
+
+    let rows = [];
+    try {
+        rows = await getAllTreatmentsFromDB();
+    } catch (e) {
+        if (tbody) tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-red-400 text-xs">${docText('doc.loadError', 'Load error:')} ${e.message}</td></tr>`;
+        return;
+    }
+
+    rows = rows.filter(t => {
+        const tid = String(t.doctor_id ?? t.doctorId ?? '');
+        const tnam = String(t.doctor_name ?? t.doctorName ?? '');
+        return tid === String(docId) || (tnam && tnam === String(docId));
+    });
+    if (monthFilter) rows = rows.filter(t => (t.date || '').startsWith(monthFilter));
+
+    let rev = 0, coll = 0, comm = 0;
+    rows.forEach(t => {
+        const cost = parseFloat(t.total_cost ?? t.totalCost) || 0;
+        const paid = parseFloat(t.paid) || 0;
+        const pct = parseFloat(t.doctor_commission_pct ?? t.doctorCommissionPct) || 0;
+        const c = parseFloat(t.doctor_commission_amt ?? t.doctorCommissionAmt) || parseFloat((paid * pct / 100).toFixed(2));
+        rev += cost;
+        coll += paid;
+        comm += c;
+    });
+
+    const setEl = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+    setEl('salaryKpiRevenue', `${rev.toLocaleString()} ${curr}`);
+    setEl('salaryKpiCollected', `${coll.toLocaleString()} ${curr}`);
+    setEl('salaryKpiCommission', `${comm.toFixed(2)} ${curr}`);
+    setEl('salaryKpiSessions', docFormat('doc.sessionsCount', { count: rows.length }, `${rows.length} sessions`));
+
+    if (!tbody) return;
+    if (!rows.length) {
+        tbody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-gray-400 text-sm">${docText('doc.noTreatmentsPeriod', 'No treatments found for this doctor in this period')}</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = [...rows].sort((a, b) => (b.date || '').localeCompare(a.date || '')).map(t => {
+        const cost = parseFloat(t.total_cost ?? t.totalCost) || 0;
+        const paid = parseFloat(t.paid) || 0;
+        const pct = parseFloat(t.doctor_commission_pct ?? t.doctorCommissionPct) || 0;
+        const c = parseFloat(t.doctor_commission_amt ?? t.doctorCommissionAmt) || parseFloat((paid * pct / 100).toFixed(2));
+        return `<tr class="border-b border-gray-50 hover:bg-slate-50 text-xs">
+            <td class="p-2 text-gray-400">${t.date || '—'}</td>
+            <td class="p-2 font-medium text-gray-700">${t.procedure || '—'}</td>
+            <td class="p-2 text-gray-500">${t.patient_name ?? t.patientName ?? '—'}</td>
+            <td class="p-2 text-right text-gray-700">${cost.toLocaleString()} ${curr}</td>
+            <td class="p-2 text-right text-green-600 font-semibold">${paid.toLocaleString()} ${curr}</td>
+            <td class="p-2 text-right font-bold ${c > 0 ? 'text-purple-600' : 'text-gray-300'}">${c.toFixed(2)} ${curr}</td>
+        </tr>`;
+    }).join('');
+}
+
 // ══════════════════════════════════════════════════════════════════
 //  OPEN ADD MODAL
 // ══════════════════════════════════════════════════════════════════
@@ -576,7 +824,7 @@ document.addEventListener('DOMContentLoaded', function () {
             document.querySelectorAll('.view-section').forEach(v => v.classList.remove('active'));
             document.getElementById('doctorsView')?.classList.add('active');
             const title = document.getElementById('headerTitle');
-            if (title) title.textContent = 'Doctors & Commissions';
+            if (title) title.textContent = typeof t === 'function' ? t('doc.viewTitle') : 'Doctors & Commissions';
             loadDoctors();
         }
 
@@ -594,3 +842,87 @@ window.addEventListener('load', function () {
         await refreshAllDoctorDropdowns();
     }, 1200);
 });
+
+function docText(key, fallback = '') {
+    if (typeof t === 'function') {
+        const value = t(key);
+        if (value && value !== key) return value;
+    }
+    return fallback;
+}
+
+function docFormat(key, vars = {}, fallback = '') {
+    let text = docText(key, fallback || key);
+    Object.entries(vars).forEach(([name, value]) => {
+        text = text.replace(new RegExp(`\\{${name}\\}`, 'g'), String(value));
+    });
+    return text;
+}
+
+window.loadDoctors = async function () {
+    const tbody = document.getElementById('doctorsTableBody');
+    const empty = document.getElementById('doctorsEmpty');
+    if (!tbody) return;
+
+    tbody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-gray-400 text-sm"><i class="fa-solid fa-spinner fa-spin mr-2"></i>${docText('doc.loading', 'Loading...')}</td></tr>`;
+
+    let all = [];
+    try {
+        all = await getAllDoctorsFromDB();
+    } catch (e) {
+        tbody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-red-400 text-sm">${docText('doc.loadError', 'Load error:')} ${e.message}</td></tr>`;
+        return;
+    }
+
+    const active = all.filter(docActive);
+    const setKpi = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+    setKpi('docKpiTotal', all.length);
+    setKpi('docKpiActive', active.length);
+    setKpi('docKpiAvgComm', active.length ? (active.reduce((s, d) => s + docPct(d), 0) / active.length).toFixed(1) + '%' : '0%');
+
+    if (!all.length) {
+        tbody.innerHTML = '';
+        empty?.classList.remove('hidden');
+        await refreshAllDoctorDropdowns();
+        return;
+    }
+    empty?.classList.add('hidden');
+
+    tbody.innerHTML = all.map(doc => {
+        const nm = docName(doc);
+        const pct = docPct(doc);
+        const act = docActive(doc);
+        const pctCls = pct >= 40 ? 'bg-red-100 text-red-600' : pct >= 25 ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700';
+        return `
+        <tr class="border-b border-gray-50 hover:bg-purple-50 transition text-sm ${!act ? 'opacity-50' : ''}">
+          <td class="p-3">
+            <div class="flex items-center gap-2">
+              <div class="w-8 h-8 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center font-bold text-sm flex-shrink-0">${nm.charAt(0) || '?'}</div>
+              <div>
+                <span class="font-semibold text-gray-800 block">${nm || '—'}</span>
+                ${(doc.name_en || doc.nameEn) ? `<span class="text-xs text-gray-400">${doc.name_en || doc.nameEn}</span>` : ''}
+                ${doc.specialty ? `<span class="text-xs text-blue-400 block">${doc.specialty}</span>` : ''}
+              </div>
+            </div>
+          </td>
+          <td class="p-3 text-gray-500 text-xs">${doc.phone || '—'}</td>
+          <td class="p-3 text-center"><span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${pctCls}">${pct}%</span></td>
+          <td class="p-3 text-center">
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${act ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-400'}">
+              <span class="w-1.5 h-1.5 rounded-full ${act ? 'bg-green-500' : 'bg-gray-400'}"></span>
+              ${act ? docText('doc.statusActive', 'Active') : docText('doc.statusSuspended', 'Suspended')}
+            </span>
+          </td>
+          <td class="p-3 text-center">
+            <div class="flex gap-1 justify-center flex-wrap">
+              <button onclick="openDoctorSalaryModal(${doc.id})" title="${docText('doc.actionSalary', 'Commission Sheet')}" class="text-xs px-2 py-1 rounded-lg bg-yellow-50 text-yellow-600 border border-yellow-200 hover:bg-yellow-100"><i class="fa-solid fa-coins"></i></button>
+              <button onclick="editDoctor(${doc.id})" title="${docText('doc.actionEdit', 'Edit')}" class="text-xs px-2 py-1 rounded-lg bg-blue-50 text-blue-500 border border-blue-200 hover:bg-blue-100"><i class="fa-solid fa-pen"></i></button>
+              <button onclick="toggleDoctorStatus(${doc.id}, ${act})" title="${act ? docText('doc.actionStop', 'Suspend') : docText('doc.actionActivate', 'Activate')}" class="text-xs px-2 py-1 rounded-lg ${act ? 'bg-orange-50 text-orange-500 border border-orange-200' : 'bg-green-50 text-green-500 border border-green-200'} hover:opacity-80"><i class="fa-solid ${act ? 'fa-pause' : 'fa-play'}"></i></button>
+              <button onclick="deleteDoctor(${doc.id})" title="${docText('doc.actionDelete', 'Delete')}" class="text-xs px-2 py-1 rounded-lg bg-red-50 text-red-400 border border-red-200 hover:bg-red-100"><i class="fa-solid fa-trash"></i></button>
+            </div>
+          </td>
+        </tr>`;
+    }).join('');
+
+    await refreshAllDoctorDropdowns();
+};

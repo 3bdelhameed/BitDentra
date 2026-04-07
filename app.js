@@ -386,6 +386,294 @@ Object.assign(TRANSLATIONS.ar, {
     'toast.payableUpdated': '\u062a\u0645 \u062a\u062d\u062f\u064a\u062b \u0627\u0644\u062f\u064a\u0646'
 });
 
+Object.assign(TRANSLATIONS.en, {
+    'rep.tabOverview': 'Overview',
+    'rep.tabMonthly': 'Monthly Report',
+    'rep.chartRevenue6m': 'Monthly Revenue (Last 6 months)',
+    'rep.chartTreatmentBreakdown': 'Treatment Breakdown',
+    'rep.monthlyAll': 'Profit Report - All Months',
+    'set.address': 'Address',
+    'set.appearance': 'Appearance',
+    'set.darkMode': 'Dark Mode',
+    'set.darkModeHint': 'Switch to dark interface',
+    'set.exportExcel': 'Export to Excel',
+    'set.bitmaster': 'BitMaster',
+    'set.managedHint': 'These settings are managed by BitMaster. Contact your system administrator to make changes.',
+    'inv.viewTitle': 'Invoices',
+    'inv.new': 'New Invoice',
+    'inv.name': 'Name',
+    'inv.type': 'Type',
+    'inv.total': 'Total',
+    'inv.paid': 'Paid',
+    'inv.remaining': 'Remaining',
+    'inv.empty': 'No invoices yet',
+    'inv.patientType': 'Patient',
+    'inv.supplierType': 'Supplier / Company',
+    'inv.patient': 'Patient *',
+    'inv.supplierName': 'Supplier / Company Name *',
+    'inv.supplierPlaceholder': 'Example: Pharma company, supplies vendor...',
+    'inv.dueDate': 'Due Date',
+    'inv.items': 'Items',
+    'inv.addItem': 'Add Item',
+    'inv.subtotal': 'Subtotal:',
+    'inv.discount': 'Discount',
+    'inv.net': 'Net:',
+    'inv.notesPlaceholder': 'Optional',
+    'inv.save': 'Save Invoice',
+    'inv.deleteConfirm': 'Delete this invoice?',
+    'inv.deleted': 'Invoice deleted',
+    'inv.selectPatientError': 'Please select a patient',
+    'inv.enterSupplierError': 'Please enter supplier name',
+    'inv.itemRequiredError': 'Add at least one item',
+    'inv.itemDescPlaceholder': 'Description',
+    'inv.itemAmountPlaceholder': 'Amount',
+    'inv.statusPaid': 'Paid',
+    'inv.statusPartial': 'Partial',
+    'inv.statusUnpaid': 'Unpaid',
+    'inv.sheetTitle': 'INVOICE',
+    'inv.sheetDate': 'Date',
+    'inv.sheetDue': 'Due',
+    'inv.sheetBillTo': 'Bill To',
+    'inv.sheetStatus': 'Status',
+    'inv.sheetNotes': 'Notes',
+    'doc.viewTitle': 'Doctors & Commissions',
+    'doc.add': 'Add Doctor',
+    'doc.totalDoctors': 'Total Doctors',
+    'doc.activeDoctors': 'Active',
+    'doc.avgCommission': 'Avg. Commission',
+    'doc.commissionPct': 'Commission %',
+    'doc.empty': 'No doctors yet - add your first doctor',
+    'doc.addDoctorTitle': 'Add Doctor',
+    'doc.editDoctorTitle': 'Edit Doctor',
+    'doc.nameAr': 'Arabic Name',
+    'doc.nameArPlaceholder': 'Dr. Mohamed Ahmed',
+    'doc.nameEn': 'English Name (Optional)',
+    'doc.specialty': 'Specialty',
+    'doc.specialtyPlaceholder': 'Orthodontics / Implant / General...',
+    'doc.commissionHint': '(From collected amount)',
+    'doc.notesPlaceholder': 'Any notes...',
+    'doc.activeDoctor': 'Active Doctor',
+    'doc.save': 'Save Doctor',
+    'doc.salaryTitle': 'Commission Sheet:',
+    'doc.period': 'Period:',
+    'doc.allTime': 'All Time',
+    'doc.salaryRevenue': 'Total Revenue',
+    'doc.salaryCollected': 'Collected',
+    'doc.salaryCommission': 'Doctor Commission',
+    'doc.salarySessions': 'Sessions',
+    'doc.commission': 'Commission',
+    'doc.commissionOnlyCollectedHint': '* Commission is calculated from the collected amount only',
+    'doc.loadingDoctors': 'Loading doctors...',
+    'doc.loading': 'Loading...',
+    'doc.loadError': 'Load error:',
+    'doc.nameRequired': 'Enter the doctor name in Arabic first',
+    'doc.commissionRange': 'Commission must be between 0 and 100',
+    'doc.saving': 'Saving...',
+    'doc.updated': 'Doctor updated successfully',
+    'doc.added': 'Doctor added successfully',
+    'doc.notFound': 'Doctor not found',
+    'doc.stopped': 'Doctor suspended',
+    'doc.activated': 'Doctor activated',
+    'doc.deleteConfirm': 'Delete this doctor permanently?\nThis will not affect saved treatments.',
+    'doc.deleted': 'Doctor deleted',
+    'doc.previewExample': 'Example: for a 1000 {currency} collected treatment, doctor gets {amount} {currency}',
+    'doc.chooseDoctor': '— Choose doctor —',
+    'doc.chooseTreatingDoctor': '— Choose treating doctor —',
+    'doc.commissionRate': 'Commission Rate: {pct}%',
+    'doc.calculating': 'Calculating...',
+    'doc.noTreatmentsPeriod': 'No treatments found for this doctor in this period',
+    'doc.sessionsCount': '{count} sessions',
+    'doc.statusActive': 'Active',
+    'doc.statusSuspended': 'Suspended',
+    'doc.actionSalary': 'Commission Sheet',
+    'doc.actionEdit': 'Edit',
+    'doc.actionStop': 'Suspend',
+    'doc.actionActivate': 'Activate',
+    'doc.actionDelete': 'Delete',
+    'today.revenueTitle': "Today's Revenue",
+    'today.expensesTitle': "Today's Expenses",
+    'common.loading': 'Loading...',
+    'common.total': 'Total',
+    'common.openProfile': 'Open Profile',
+    'common.appointments': 'Appointments',
+    'common.treatments': 'Treatments',
+    'common.prescriptions': 'Prescriptions',
+    'common.invoices': 'Invoices',
+    'common.refresh': 'Refresh',
+    'rem.viewTitle': 'Appointment Reminders',
+    'rem.today': "Today's Appointments",
+    'rem.tomorrow': "Tomorrow's Appointments",
+    'inventory.addItemTitle': 'Add Inventory Item',
+    'inventory.itemName': 'Item Name *',
+    'inventory.itemPlaceholder': 'e.g. Amoxicillin 500mg',
+    'inventory.category': 'Category',
+    'modal.treatingDoctor': 'Treating Doctor'
+});
+
+Object.assign(TRANSLATIONS.ar, {
+    'rep.tabOverview': 'نظرة عامة',
+    'rep.tabMonthly': 'تقرير الأشهر',
+    'rep.chartRevenue6m': 'إيراد الشهور الستة الأخيرة',
+    'rep.chartTreatmentBreakdown': 'توزيع العلاجات',
+    'rep.monthlyAll': 'تقرير الأرباح - كل الشهور',
+    'set.address': 'العنوان',
+    'set.appearance': 'المظهر',
+    'set.darkMode': 'الوضع الليلي',
+    'set.darkModeHint': 'التبديل إلى الواجهة الداكنة',
+    'set.exportExcel': 'تصدير إلى Excel',
+    'set.bitmaster': 'BitMaster',
+    'set.managedHint': 'هذه الإعدادات تُدار بواسطة BitMaster. تواصل مع مسؤول النظام لتعديلها.',
+    'inv.viewTitle': 'الفواتير',
+    'inv.new': 'فاتورة جديدة',
+    'inv.name': 'الاسم',
+    'inv.type': 'النوع',
+    'inv.total': 'الإجمالي',
+    'inv.paid': 'المدفوع',
+    'inv.remaining': 'المتبقي',
+    'inv.empty': 'لا توجد فواتير بعد',
+    'inv.patientType': 'مريض',
+    'inv.supplierType': 'مورد / شركة',
+    'inv.patient': 'المريض *',
+    'inv.supplierName': 'اسم المورد / الشركة *',
+    'inv.supplierPlaceholder': 'مثال: شركة الدواء، مورد مستلزمات...',
+    'inv.dueDate': 'تاريخ الاستحقاق',
+    'inv.items': 'البنود',
+    'inv.addItem': 'إضافة بند',
+    'inv.subtotal': 'الإجمالي:',
+    'inv.discount': 'خصم',
+    'inv.net': 'الصافي:',
+    'inv.notesPlaceholder': 'اختياري',
+    'inv.save': 'حفظ الفاتورة',
+    'inv.deleteConfirm': 'هل تريد حذف هذه الفاتورة؟',
+    'inv.deleted': 'تم حذف الفاتورة',
+    'inv.selectPatientError': 'اختر مريضًا أولًا',
+    'inv.enterSupplierError': 'أدخل اسم المورد',
+    'inv.itemRequiredError': 'أضف بندًا واحدًا على الأقل',
+    'inv.itemDescPlaceholder': 'الوصف',
+    'inv.itemAmountPlaceholder': 'المبلغ',
+    'inv.statusPaid': 'مدفوعة',
+    'inv.statusPartial': 'جزئية',
+    'inv.statusUnpaid': 'غير مدفوعة',
+    'inv.sheetTitle': 'فاتورة',
+    'inv.sheetDate': 'التاريخ',
+    'inv.sheetDue': 'الاستحقاق',
+    'inv.sheetBillTo': 'موجهة إلى',
+    'inv.sheetStatus': 'الحالة',
+    'inv.sheetNotes': 'ملاحظات',
+    'doc.viewTitle': 'الأطباء والعمولات',
+    'doc.add': 'إضافة طبيب',
+    'doc.totalDoctors': 'إجمالي الأطباء',
+    'doc.activeDoctors': 'فعّالون',
+    'doc.avgCommission': 'متوسط العمولة',
+    'doc.commissionPct': 'نسبة العمولة %',
+    'doc.empty': 'لا يوجد أطباء بعد - أضف أول طبيب',
+    'doc.addDoctorTitle': 'إضافة طبيب',
+    'doc.editDoctorTitle': 'تعديل الطبيب',
+    'doc.nameAr': 'الاسم بالعربي',
+    'doc.nameArPlaceholder': 'د. محمد أحمد',
+    'doc.nameEn': 'الاسم بالإنجليزي (اختياري)',
+    'doc.specialty': 'التخصص',
+    'doc.specialtyPlaceholder': 'تقويم / زرع / عام...',
+    'doc.commissionHint': '(من المبلغ المحصّل)',
+    'doc.notesPlaceholder': 'أي ملاحظات...',
+    'doc.activeDoctor': 'طبيب فعّال',
+    'doc.save': 'حفظ الطبيب',
+    'doc.salaryTitle': 'كشف عمولة:',
+    'doc.period': 'الفترة:',
+    'doc.allTime': 'كل الوقت',
+    'doc.salaryRevenue': 'إجمالي الفاتورة',
+    'doc.salaryCollected': 'المحصّل فعلاً',
+    'doc.salaryCommission': 'عمولة الطبيب',
+    'doc.salarySessions': 'عدد الجلسات',
+    'doc.commission': 'العمولة',
+    'doc.commissionOnlyCollectedHint': '* العمولة تُحسب من المبلغ المحصّل فعلاً فقط',
+    'doc.loadingDoctors': 'جاري تحميل الأطباء...',
+    'doc.loading': 'جاري التحميل...',
+    'doc.loadError': 'خطأ في التحميل:',
+    'doc.nameRequired': 'اكتب اسم الطبيب بالعربي أولًا',
+    'doc.commissionRange': 'النسبة يجب أن تكون بين 0 و100',
+    'doc.saving': 'جاري الحفظ...',
+    'doc.updated': 'تم تحديث بيانات الطبيب',
+    'doc.added': 'تمت إضافة الطبيب بنجاح',
+    'doc.notFound': 'لم يُعثر على الطبيب',
+    'doc.stopped': 'تم إيقاف الطبيب',
+    'doc.activated': 'تم تفعيل الطبيب',
+    'doc.deleteConfirm': 'حذف هذا الطبيب نهائيًا؟\nلن يؤثر على العلاجات المسجلة.',
+    'doc.deleted': 'تم حذف الطبيب',
+    'doc.previewExample': 'مثال: علاج بـ 1000 {currency} محصّل ← الطبيب يأخذ {amount} {currency}',
+    'doc.chooseDoctor': '— اختر الطبيب —',
+    'doc.chooseTreatingDoctor': '— اختر الطبيب المعالج —',
+    'doc.commissionRate': 'نسبة العمولة: {pct}%',
+    'doc.calculating': 'جاري الحساب...',
+    'doc.noTreatmentsPeriod': 'لا توجد علاجات لهذا الطبيب في هذه الفترة',
+    'doc.sessionsCount': '{count} جلسة',
+    'doc.statusActive': 'فعّال',
+    'doc.statusSuspended': 'موقوف',
+    'doc.actionSalary': 'كشف العمولة',
+    'doc.actionEdit': 'تعديل',
+    'doc.actionStop': 'إيقاف',
+    'doc.actionActivate': 'تفعيل',
+    'doc.actionDelete': 'حذف',
+    'today.revenueTitle': 'إيرادات اليوم',
+    'today.expensesTitle': 'مصروفات اليوم',
+    'common.loading': 'جاري التحميل...',
+    'common.total': 'الإجمالي',
+    'common.openProfile': 'فتح البروفايل',
+    'common.appointments': 'المواعيد',
+    'common.treatments': 'العلاجات',
+    'common.prescriptions': 'الوصفات',
+    'common.invoices': 'الفواتير',
+    'common.refresh': 'تحديث',
+    'rem.viewTitle': 'تذكيرات المواعيد',
+    'rem.today': 'مواعيد اليوم',
+    'rem.tomorrow': 'مواعيد الغد',
+    'inventory.addItemTitle': 'إضافة صنف للمخزن',
+    'inventory.itemName': 'اسم الصنف *',
+    'inventory.itemPlaceholder': 'مثال: Amoxicillin 500mg',
+    'inventory.category': 'الفئة',
+    'modal.treatingDoctor': 'الطبيب المعالج'
+});
+
+Object.assign(TRANSLATIONS.en, {
+    'rem.overdue': 'Missed / Overdue',
+    'inventory.allCategories': 'All Categories',
+    'inventory.addItem': 'Add Item',
+    'inventory.totalItems': 'Total Items',
+    'inventory.lowOut': 'Low / Out',
+    'inventory.categories': 'Categories',
+    'inventory.stockValue': 'Stock Value',
+    'inventory.itemCol': 'Item',
+    'inventory.qty': 'Qty',
+    'inventory.min': 'Min',
+    'inventory.unit': 'Unit',
+    'inventory.unitCost': 'Unit Cost',
+    'inventory.expiry': 'Expiry',
+    'inventory.empty': 'No inventory items yet',
+    'inventory.saveItem': 'Save Item',
+    'lab.viewTitle': 'Lab Orders & Accounting',
+    'lab.newOrder': 'New Order'
+});
+
+Object.assign(TRANSLATIONS.ar, {
+    'rem.overdue': 'فائتة / متأخرة',
+    'inventory.allCategories': 'كل الفئات',
+    'inventory.addItem': 'إضافة صنف',
+    'inventory.totalItems': 'إجمالي الأصناف',
+    'inventory.lowOut': 'منخفض / نافد',
+    'inventory.categories': 'الفئات',
+    'inventory.stockValue': 'قيمة المخزون',
+    'inventory.itemCol': 'الصنف',
+    'inventory.qty': 'الكمية',
+    'inventory.min': 'الحد الأدنى',
+    'inventory.unit': 'الوحدة',
+    'inventory.unitCost': 'سعر الوحدة',
+    'inventory.expiry': 'الصلاحية',
+    'inventory.empty': 'لا توجد أصناف في المخزن بعد',
+    'inventory.saveItem': 'حفظ الصنف',
+    'lab.viewTitle': 'طلبات المعمل والحسابات',
+    'lab.newOrder': 'طلب جديد'
+});
+
 function t(key) {
     return TRANSLATIONS[currentLang][key] || TRANSLATIONS['en'][key] || key;
 }
@@ -469,6 +757,36 @@ function refreshAllUI() {
         });
     }
 
+    const durationSel = document.getElementById('appointmentDuration');
+    if (durationSel) {
+        const durationLabels = isAr
+            ? { 15: '⏱ 15 دقيقة', 30: '⏱ 30 دقيقة', 45: '⏱ 45 دقيقة', 60: '⏱ 60 دقيقة', 90: '⏱ 90 دقيقة', 120: '⏱ ساعتان' }
+            : { 15: '⏱ 15 min', 30: '⏱ 30 min', 45: '⏱ 45 min', 60: '⏱ 60 min', 90: '⏱ 90 min', 120: '⏱ 2 hours' };
+        Array.from(durationSel.options).forEach(option => {
+            option.text = durationLabels[option.value] || option.text;
+        });
+    }
+
+    const inventoryCategorySel = document.getElementById('invCategory');
+    if (inventoryCategorySel) {
+        const invLabels = isAr
+            ? { medicine: '💊 دواء', consumable: '🩺 مستهلكات', equipment: '🔧 أجهزة', lab_material: '🔬 خامات معمل', other: '📦 أخرى' }
+            : { medicine: '💊 Medicine', consumable: '🩺 Consumable', equipment: '🔧 Equipment', lab_material: '🔬 Lab Material', other: '📦 Other' };
+        Array.from(inventoryCategorySel.options).forEach(option => {
+            option.text = invLabels[option.value] || option.text;
+        });
+    }
+
+    const inventoryFilterSel = document.getElementById('invCatFilter');
+    if (inventoryFilterSel) {
+        const filterLabels = isAr
+            ? { '': 'كل الفئات', medicine: '💊 دواء', consumable: '🩺 مستهلكات', equipment: '🔧 أجهزة', lab_material: '🔬 خامات معمل', other: '📦 أخرى' }
+            : { '': 'All Categories', medicine: '💊 Medicine', consumable: '🩺 Consumable', equipment: '🔧 Equipment', lab_material: '🔬 Lab Material', other: '📦 Other' };
+        Array.from(inventoryFilterSel.options).forEach(option => {
+            option.text = filterLabels[option.value] || option.text;
+        });
+    }
+
     // Update lang toggle button
     const langBtn = document.getElementById('langToggleBtn');
     if (langBtn) langBtn.innerHTML = isAr ? '🌐 EN' : '🌐 عربي';
@@ -504,6 +822,9 @@ function refreshAllUI() {
     if (document.getElementById('expensesView')?.classList.contains('active')) loadExpenses();
     if (document.getElementById('payablesView')?.classList.contains('active') && typeof loadPayablesView === 'function') loadPayablesView();
     if (document.getElementById('reportsView')?.classList.contains('active')) loadReports();
+    if (document.getElementById('invoicesView')?.classList.contains('active') && typeof loadInvoices === 'function') loadInvoices();
+    if (document.getElementById('doctorsView')?.classList.contains('active') && typeof window.loadDoctors === 'function') window.loadDoctors();
+    if (document.getElementById('remindersView')?.classList.contains('active') && typeof checkReminders === 'function') checkReminders();
 }
 
 
@@ -750,13 +1071,13 @@ function switchView(viewName) {
         prescriptions: ['prescriptionsView','nav-prescriptions','Prescriptions',   loadPrescriptions],
         expenses:      ['expensesView',    'nav-expenses',    'Expenses',          loadExpenses],
         payables:      ['payablesView',    'nav-payables',    currentLang === 'ar' ? 'الديون' : 'Payables', loadPayablesView],
-        reports:       ['reportsView',     'nav-reports',     'Reports',           loadReports],
-        invoices:      ['invoicesView',    'nav-invoices',    'Invoices',          loadInvoices],
-        reminders:     ['remindersView',   'nav-reminders',   'Reminders',         checkReminders],
-        inventory:     ['inventoryView',   'nav-inventory',   'Inventory 📦',      loadInventory],
-        lab:           ['labView',         'nav-lab',         'Lab Orders 🔬',     loadLabOrders],
-        doctors:       ['doctorsView',     'nav-doctors',     'Doctors & Commissions', function(){ if(typeof window.loadDoctors==='function') window.loadDoctors(); }],
-        settings:      ['settingsView',    'nav-settings',    'Settings',          loadSettingsForm],
+        reports:       ['reportsView',     'nav-reports',     currentLang === 'ar' ? 'التقارير' : 'Reports',           loadReports],
+        invoices:      ['invoicesView',    'nav-invoices',    currentLang === 'ar' ? 'الفواتير' : 'Invoices',          loadInvoices],
+        reminders:     ['remindersView',   'nav-reminders',   currentLang === 'ar' ? 'التذكيرات' : 'Reminders',         checkReminders],
+        inventory:     ['inventoryView',   'nav-inventory',   currentLang === 'ar' ? 'المخزن' : 'Inventory',      loadInventory],
+        lab:           ['labView',         'nav-lab',         currentLang === 'ar' ? 'طلبات المعمل' : 'Lab Orders',     loadLabOrders],
+        doctors:       ['doctorsView',     'nav-doctors',     currentLang === 'ar' ? 'الأطباء والعمولات' : 'Doctors & Commissions', function(){ if(typeof window.loadDoctors==='function') window.loadDoctors(); }],
+        settings:      ['settingsView',    'nav-settings',    currentLang === 'ar' ? 'الإعدادات' : 'Settings',          loadSettingsForm],
         users:         ['usersView',       'nav-users',       'User Management',   function(){ if(typeof window.loadUsersView==='function') window.loadUsersView(); }],
         audit:         ['auditView',       'nav-audit',       'Audit Log',         function(){ if(typeof window.loadAuditLogView==='function') window.loadAuditLogView(); }],
     };
@@ -5651,4 +5972,442 @@ window.switchPqvTab = function(btn, panelId) {
     document.querySelectorAll('.pqv-panel').forEach(p=>p.classList.remove('active'));
     btn.classList.add('active');
     document.getElementById(panelId).classList.add('active');
+};
+
+function i18nText(key, fallback = '') {
+    if (typeof t === 'function') {
+        const value = t(key);
+        if (value && value !== key) return value;
+    }
+    return fallback;
+}
+
+function i18nFormat(key, vars = {}, fallback = '') {
+    let text = i18nText(key, fallback || key);
+    Object.entries(vars).forEach(([name, value]) => {
+        text = text.replace(new RegExp(`\\{${name}\\}`, 'g'), String(value));
+    });
+    return text;
+}
+
+function translateAppointmentStatusLabel(status) {
+    const normalized = String(status || '').toLowerCase();
+    if (normalized === 'inside') return i18nText('appts.inside', 'Inside');
+    if (normalized === 'examined') return i18nText('appts.examined', 'Examined');
+    if (normalized === 'cancelled') return i18nText('appts.cancelled', 'Cancelled');
+    return i18nText('appts.waiting', 'Waiting');
+}
+
+function translateInvoiceStatusLabel(status) {
+    const normalized = String(status || '').toLowerCase();
+    if (normalized === 'paid') return i18nText('inv.statusPaid', 'Paid');
+    if (normalized === 'partial') return i18nText('inv.statusPartial', 'Partial');
+    return i18nText('inv.statusUnpaid', 'Unpaid');
+}
+
+function invoiceStatusBadgeClass(status) {
+    const normalized = String(status || '').toLowerCase();
+    if (normalized === 'paid') return 'examined';
+    if (normalized === 'partial') return 'inside';
+    return 'waiting';
+}
+
+window.loadInvoices = async function() {
+    const curr = getCurrency();
+    const invoices = await dbGetAll('invoices');
+    const tbody = document.getElementById('invoicesTableBody');
+    const empty = document.getElementById('invoicesEmpty');
+    if (!tbody || !empty) return;
+    if (!invoices.length) {
+        tbody.innerHTML = '';
+        empty.classList.remove('hidden');
+        return;
+    }
+
+    empty.classList.add('hidden');
+    tbody.innerHTML = invoices.sort((a, b) => b.id - a.id).map(inv => {
+        const total = parseFloat(inv.total) || 0;
+        const paid = parseFloat(inv.paid) || 0;
+        const due = total - paid;
+        const rawName = inv.patient_name || inv.patientName || '—';
+        const isSupp = rawName.startsWith('🏢 ');
+        const name = isSupp ? rawName.slice(3) : rawName;
+        const typeBadge = isSupp
+            ? `<span class="badge" style="background:#f0fdf4;color:#15803d;font-size:10px"><i class="fa-solid fa-building mr-1"></i>${i18nText('inv.supplierType', 'Supplier / Company')}</span>`
+            : `<span class="badge" style="background:#eff6ff;color:#1d4ed8;font-size:10px"><i class="fa-solid fa-user mr-1"></i>${i18nText('inv.patientType', 'Patient')}</span>`;
+        const statusColor = due <= 0 ? 'text-green-600' : due === total ? 'text-red-500' : 'text-yellow-600';
+        return `<tr class="border-b border-gray-50 hover:bg-slate-50">
+            <td class="px-4 py-3 text-xs text-gray-400 font-mono">#${String(inv.id).padStart(4, '0')}</td>
+            <td class="px-4 py-3 font-semibold text-gray-700">${name}</td>
+            <td class="px-4 py-3 inv-hide-mobile">${typeBadge}</td>
+            <td class="px-4 py-3 text-xs text-gray-400 inv-hide-mobile">${inv.date || ''}</td>
+            <td class="px-4 py-3 text-right font-bold">${total.toLocaleString()} ${curr}</td>
+            <td class="px-4 py-3 text-right text-green-600 font-semibold inv-hide-mobile">${paid.toLocaleString()} ${curr}</td>
+            <td class="px-4 py-3 text-right font-bold ${statusColor}">${due.toLocaleString()} ${curr}</td>
+            <td class="px-4 py-3 text-center">
+                <button onclick="printInvoice(${inv.id})" class="btn btn-outline text-xs px-2 py-1" title="${i18nText('profile.printSheet', 'Print')}"><i class="fa-solid fa-print"></i></button>
+                <button onclick="deleteInvoice(${inv.id})" class="btn btn-gray text-xs px-2 py-1 ml-1" title="${i18nText('doc.actionDelete', 'Delete')}"><i class="fa-solid fa-trash"></i></button>
+            </td>
+        </tr>`;
+    }).join('');
+};
+
+window.addInvoiceItem = function() {
+    const container = document.getElementById('invoiceItemsContainer');
+    if (!container) return;
+    const div = document.createElement('div');
+    div.className = 'flex gap-2 items-center invoice-item';
+    div.innerHTML = `
+        <input type="text" placeholder="${i18nText('inv.itemDescPlaceholder', 'Description')}" class="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm inv-desc">
+        <input type="number" placeholder="${i18nText('inv.itemAmountPlaceholder', 'Amount')}" class="w-28 border border-gray-200 rounded-lg px-3 py-2 text-sm inv-amount" oninput="updateInvoiceTotal()">
+        <button onclick="this.parentElement.remove();updateInvoiceTotal()" class="text-red-400 hover:text-red-600 w-6 h-6 flex items-center justify-center flex-shrink-0" title="${i18nText('toast.deleted', 'Delete')}"><i class="fa-solid fa-xmark"></i></button>`;
+    container.appendChild(div);
+};
+
+window.saveInvoice = async function() {
+    const type = document.getElementById('invoiceType')?.value || 'patient';
+    let entityName = '';
+    let patientId = null;
+
+    if (type === 'patient') {
+        patientId = parseInt(document.getElementById('invoicePatientId')?.value, 10);
+        const pRows = await dbGetAll('patients');
+        const patient = pRows.find(r => r.id == patientId);
+        if (!patient) {
+            showToast(i18nText('inv.selectPatientError', 'Please select a patient'), 'error');
+            return;
+        }
+        entityName = patient.name;
+    } else {
+        entityName = (document.getElementById('invoiceSupplierName')?.value || '').trim();
+        if (!entityName) {
+            showToast(i18nText('inv.enterSupplierError', 'Please enter supplier name'), 'error');
+            return;
+        }
+    }
+
+    const items = [];
+    document.querySelectorAll('.invoice-item').forEach(row => {
+        const desc = row.querySelector('.inv-desc')?.value.trim();
+        const amount = parseFloat(row.querySelector('.inv-amount')?.value) || 0;
+        if (desc || amount) items.push({ desc, amount });
+    });
+    if (!items.length) {
+        showToast(i18nText('inv.itemRequiredError', 'Add at least one item'), 'error');
+        return;
+    }
+
+    const subtotal = items.reduce((s, i) => s + i.amount, 0);
+    const discount = parseFloat(document.getElementById('invoiceDiscount')?.value) || 0;
+    const total = Math.max(0, subtotal - discount);
+    const paid = parseFloat(document.getElementById('invoicePaid')?.value) || 0;
+    const displayName = type === 'supplier' ? `🏢 ${entityName}` : entityName;
+
+    await dbInsert('invoices', {
+        patient_id: patientId,
+        patient_name: displayName,
+        date: document.getElementById('invoiceDate')?.value || today(),
+        due_date: document.getElementById('invoiceDueDate')?.value || null,
+        items,
+        total,
+        paid,
+        notes: document.getElementById('invoiceNotes')?.value || null,
+        status: paid >= total ? 'paid' : paid > 0 ? 'partial' : 'unpaid'
+    });
+
+    closeModal('createInvoiceModal');
+    showToast(i18nText('toast.invoiceSaved', 'Invoice saved!'), 'success');
+    await loadInvoices();
+};
+
+window.deleteInvoice = async function(id) {
+    if (!confirm(i18nText('inv.deleteConfirm', 'Delete this invoice?'))) return;
+    await dbDelete('invoices', id);
+    await loadInvoices();
+    showToast(i18nText('inv.deleted', 'Invoice deleted'));
+};
+
+window.printInvoice = async function(id) {
+    const invRows = await dbGetAll('invoices');
+    const inv = invRows.find(r => r.id == id);
+    if (!inv) return;
+
+    const s = getSettings();
+    const curr = getCurrency();
+    const billTo = inv.patient_name || inv.patientName || '—';
+    const total = parseFloat(inv.total) || 0;
+    const paid = parseFloat(inv.paid) || 0;
+    const due = Math.max(0, total - paid);
+    const isPaid = due <= 0;
+    const statusLabel = translateInvoiceStatusLabel(inv.status);
+    const logoHtml = s.logo
+        ? `<img src="${s.logo}" style="height:70px;object-fit:contain;margin-bottom:10px;">`
+        : `<div style="width:64px;height:64px;border-radius:12px;background:#eff6ff;font-size:38px;display:flex;align-items:center;justify-content:center;margin-bottom:8px;">🦷</div>`;
+
+    const rowsHtml = (inv.items || []).map(item => `
+        <tr>
+            <td>${item.desc || '—'}</td>
+            <td>${(parseFloat(item.amount) || 0).toLocaleString()} ${curr}</td>
+        </tr>`).join('');
+
+    const html = `<!DOCTYPE html><html dir="${currentLang === 'ar' ? 'rtl' : 'ltr'}"><head><meta charset="UTF-8">
+    <title>${i18nText('inv.sheetTitle', 'INVOICE')} #${String(inv.id).padStart(4, '0')}</title>
+    <style>
+        *{box-sizing:border-box;margin:0;padding:0;}
+        body{font-family:'Segoe UI',Arial,sans-serif;background:#fff;color:#1e293b;padding:40px;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+        .page{max-width:680px;margin:0 auto;}
+        .header{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:24px;border-bottom:3px solid #2563eb;margin-bottom:28px;}
+        .clinic-logo{text-align:center;}
+        .clinic-name{font-size:22px;font-weight:800;color:#2563eb;margin-top:6px;}
+        .clinic-sub{font-size:12px;color:#64748b;margin-top:3px;}
+        .invoice-meta{text-align:${currentLang === 'ar' ? 'left' : 'right'};}
+        .invoice-title{font-size:28px;font-weight:900;color:#1e293b;letter-spacing:1px;}
+        .invoice-num{font-size:13px;color:#64748b;margin-top:4px;}
+        .invoice-date{font-size:12px;color:#94a3b8;margin-top:2px;}
+        .patient-box{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:16px 20px;margin-bottom:24px;display:flex;justify-content:space-between;align-items:center;}
+        .patient-label{font-size:10px;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;}
+        .patient-name{font-size:17px;font-weight:700;color:#1e293b;}
+        .badge{display:inline-block;padding:4px 14px;border-radius:999px;font-size:11px;font-weight:700;}
+        .badge-paid{background:#dcfce7;color:#16a34a;}
+        .badge-due{background:#fee2e2;color:#dc2626;}
+        table{width:100%;border-collapse:collapse;margin-bottom:20px;}
+        thead tr{background:#2563eb;}
+        thead th{color:#fff;padding:11px 14px;font-size:12px;font-weight:600;text-align:${currentLang === 'ar' ? 'right' : 'left'};}
+        thead th:last-child{text-align:right;}
+        tbody tr:nth-child(even){background:#f8fafc;}
+        tbody td{padding:11px 14px;font-size:13px;border-bottom:1px solid #f1f5f9;}
+        tbody td:last-child{text-align:right;font-weight:600;}
+        .totals{display:flex;justify-content:flex-end;}
+        .totals-box{width:260px;}
+        .totals-row{display:flex;justify-content:space-between;padding:7px 0;font-size:13px;border-bottom:1px solid #f1f5f9;}
+        .totals-row.final{border-bottom:none;margin-top:6px;padding-top:10px;border-top:2px solid #e2e8f0;}
+        .totals-row.final .lbl{font-size:15px;font-weight:800;}
+        .totals-row.final .val{font-size:17px;font-weight:900;color:${isPaid ? '#16a34a' : '#dc2626'};}
+        .notes-box{margin-top:20px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:12px 16px;font-size:12px;color:#92400e;}
+        .footer{margin-top:36px;padding-top:16px;border-top:1px solid #e2e8f0;display:flex;justify-content:space-between;font-size:11px;color:#94a3b8;}
+    </style>
+    </head><body><div class="page">
+        <div class="header">
+            <div class="clinic-logo">
+                ${logoHtml}
+                <div class="clinic-name">${s.clinicName || 'Dental Clinic'}</div>
+                ${s.doctorName ? `<div class="clinic-sub">${s.doctorName}</div>` : ''}
+                ${s.phone ? `<div class="clinic-sub">${s.phone}</div>` : ''}
+            </div>
+            <div class="invoice-meta">
+                <div class="invoice-title">${i18nText('inv.sheetTitle', 'INVOICE')}</div>
+                <div class="invoice-num">#${String(inv.id).padStart(4, '0')}</div>
+                <div class="invoice-date">${i18nText('inv.sheetDate', 'Date')}: ${inv.date || '—'}</div>
+                ${(inv.due_date || inv.dueDate) ? `<div class="invoice-date">${i18nText('inv.sheetDue', 'Due')}: ${inv.due_date || inv.dueDate}</div>` : ''}
+            </div>
+        </div>
+        <div class="patient-box">
+            <div>
+                <div class="patient-label">${i18nText('inv.sheetBillTo', 'Bill To')}</div>
+                <div class="patient-name">${billTo}</div>
+            </div>
+            <span class="badge ${isPaid ? 'badge-paid' : 'badge-due'}">${statusLabel}</span>
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th>${i18nText('inv.items', 'Items')}</th>
+                    <th>${i18nText('inv.total', 'Total')}</th>
+                </tr>
+            </thead>
+            <tbody>${rowsHtml}</tbody>
+        </table>
+        <div class="totals">
+            <div class="totals-box">
+                <div class="totals-row"><span class="lbl">${i18nText('inv.subtotal', 'Subtotal:').replace(':', '')}</span><span class="val">${total.toLocaleString()} ${curr}</span></div>
+                <div class="totals-row"><span class="lbl">${i18nText('inv.paid', 'Paid')}</span><span class="val">${paid.toLocaleString()} ${curr}</span></div>
+                <div class="totals-row final"><span class="lbl">${i18nText('inv.remaining', 'Remaining')}</span><span class="val">${due.toLocaleString()} ${curr}</span></div>
+            </div>
+        </div>
+        ${inv.notes ? `<div class="notes-box"><strong>${i18nText('inv.sheetNotes', 'Notes')}:</strong> ${inv.notes}</div>` : ''}
+        <div class="footer">
+            <div>${s.address || ''}</div>
+            <div>${i18nText('common.total', 'Total')}: ${total.toLocaleString()} ${curr}</div>
+        </div>
+    </div></body></html>`;
+
+    const win = window.open('', '_blank');
+    if (!win) return;
+    win.document.write(html);
+    win.document.close();
+    win.focus();
+    win.print();
+};
+
+window.checkReminders = async function() {
+    const appts = await dbGetAll('appointments');
+    const now = new Date();
+    const todayStr = today();
+    const tomorrowDate = new Date(now);
+    tomorrowDate.setDate(now.getDate() + 1);
+    const tomorrowStr = formatLocalDate(tomorrowDate);
+
+    const todayAppts = appts.filter(a => a.date === todayStr && a.status !== 'Cancelled');
+    const tomorrowAppts = appts.filter(a => a.date === tomorrowStr && a.status !== 'Cancelled');
+    const overdueAppts = appts.filter(a => a.date < todayStr && a.status === 'Waiting');
+
+    const total = overdueAppts.length + tomorrowAppts.length;
+    const badge = document.getElementById('notifBadge');
+    if (badge) {
+        badge.textContent = total;
+        total > 0 ? badge.classList.remove('hidden') : badge.classList.add('hidden');
+        badge.classList.toggle('flex', total > 0);
+    }
+
+    const renderList = (rows, emptyMsg) => {
+        if (!rows.length) return `<p class="text-sm text-gray-400 py-2">${emptyMsg}</p>`;
+        return rows.map(a => `
+            <div class="flex items-center justify-between py-2.5 border-b border-gray-50 last:border-0">
+                <div>
+                    <p class="font-semibold text-gray-700 text-sm">${a.patient_name || a.patientName || ''}</p>
+                    <p class="text-xs text-gray-400">${a.time || '--:--'} ${a.complaint ? '· ' + a.complaint : ''}</p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="badge badge-${(a.status || 'waiting').toLowerCase()}">${translateAppointmentStatusLabel(a.status)}</span>
+                    <button onclick="openPatientProfile(${a.patient_id || a.patientId})" class="btn btn-outline text-xs px-2 py-1" title="${i18nText('common.openProfile', 'Open Profile')}"><i class="fa-solid fa-user"></i></button>
+                </div>
+            </div>`).join('');
+    };
+
+    document.getElementById('remindersToday').innerHTML = renderList(todayAppts, currentLang === 'ar' ? 'لا توجد مواعيد اليوم' : 'No appointments today');
+    document.getElementById('remindersTomorrow').innerHTML = renderList(tomorrowAppts, currentLang === 'ar' ? 'لا توجد مواعيد غدًا' : 'No appointments tomorrow');
+    document.getElementById('remindersOverdue').innerHTML = renderList(overdueAppts, currentLang === 'ar' ? 'لا توجد مواعيد فائتة' : 'No missed appointments');
+};
+
+window.openPatientQuickView = async function(patientId) {
+    const patients = await dbGetAll('patients');
+    const patient = patients.find(p => p.id == patientId);
+    if (!patient) return;
+
+    const pname = patient.name || '';
+    const pphone = patient.phone || '';
+    const avatar = (pname.trim()[0] || '?').toUpperCase();
+    document.getElementById('pqvAvatar').textContent = avatar;
+    document.getElementById('pqvName').textContent = pname;
+    document.getElementById('pqvSub').textContent = [pphone, patient.age ? `${patient.age}` : ''].filter(Boolean).join(' • ');
+    const btn = document.getElementById('pqvOpenProfileBtn');
+    btn.onclick = () => { closeModal('patientQuickModal'); if (typeof openPatientProfile === 'function') openPatientProfile(patientId); };
+
+    const pid = patientId;
+    const pidStr = String(pid);
+    const matchPid = r => String(r.patientId || r.patient_id || '') === pidStr;
+    const safeFilter = async (table) => {
+        try {
+            let rows = [];
+            try { rows = await db[table].where('patientId').equals(pid).toArray(); } catch (_e) {}
+            if (!rows.length) {
+                try { rows = await db[table].toArray(); } catch (_e2) { return []; }
+                rows = rows.filter(matchPid);
+            }
+            return rows.sort((a, b) => (b.date || '') > (a.date || '') ? 1 : -1);
+        } catch (_e3) {
+            return [];
+        }
+    };
+
+    const [appts, treatments, rxList, invoices] = await Promise.all([
+        safeFilter('appointments'),
+        safeFilter('treatments'),
+        safeFilter('prescriptions'),
+        db.invoices ? safeFilter('invoices') : Promise.resolve([]),
+    ]);
+
+    const totalDue = treatments.reduce((s, tr) => s + (parseFloat(tr.totalCost || tr.total_cost) || 0), 0);
+    const totalPaid = treatments.reduce((s, tr) => s + (parseFloat(tr.paid) || 0), 0);
+    const remaining = totalDue - totalPaid;
+    const currency = localStorage.getItem('clinicCurrency') || 'EGP';
+
+    document.getElementById('pqvBalanceRow').innerHTML = `
+        <div class="bg-blue-50 rounded-xl p-3 text-center">
+            <div class="text-xs text-blue-400 mb-1">${i18nText('profile.totalDue', 'Total Due')}</div>
+            <div class="font-bold text-blue-700">${totalDue.toLocaleString()} ${currency}</div>
+        </div>
+        <div class="bg-green-50 rounded-xl p-3 text-center">
+            <div class="text-xs text-green-500 mb-1">${i18nText('profile.totalPaid', 'Total Paid')}</div>
+            <div class="font-bold text-green-700">${totalPaid.toLocaleString()} ${currency}</div>
+        </div>
+        <div class="rounded-xl p-3 text-center ${remaining > 0 ? 'bg-red-50' : 'bg-gray-50'}">
+            <div class="text-xs mb-1 ${remaining > 0 ? 'text-red-400' : 'text-gray-400'}">${i18nText('profile.remaining', 'Remaining')}</div>
+            <div class="font-bold ${remaining > 0 ? 'text-red-600' : 'text-gray-500'}">${remaining.toLocaleString()} ${currency}</div>
+        </div>
+    `;
+
+    document.getElementById('pqvAppts').innerHTML = appts.length ? `
+        <table class="w-full text-sm">
+            <thead><tr class="text-xs text-gray-400 border-b border-gray-100">
+                <th class="text-left py-2 px-2">${i18nText('table.date', 'Date')}</th>
+                <th class="text-left py-2 px-2">${i18nText('table.time', 'Time')}</th>
+                <th class="text-left py-2 px-2">${i18nText('table.doctor', 'Doctor')}</th>
+                <th class="text-left py-2 px-2">${i18nText('modal.complaint', 'Complaint')}</th>
+                <th class="text-left py-2 px-2">${i18nText('table.status', 'Status')}</th>
+            </tr></thead>
+            <tbody>${appts.map(a => `
+                <tr class="border-b border-gray-50 hover:bg-slate-50">
+                    <td class="py-2 px-2 font-medium">${a.date || ''}</td>
+                    <td class="py-2 px-2 text-gray-500">${a.time || ''}</td>
+                    <td class="py-2 px-2 text-gray-600">${a.doctor || ''}</td>
+                    <td class="py-2 px-2 text-gray-500 max-w-[140px] truncate">${a.complaint || ''}</td>
+                    <td class="py-2 px-2"><span class="badge badge-${(a.status || 'waiting').toLowerCase()}">${translateAppointmentStatusLabel(a.status)}</span></td>
+                </tr>`).join('')}
+            </tbody>
+        </table>` : `<p class="text-center text-gray-400 py-8 text-sm">${currentLang === 'ar' ? 'لا توجد مواعيد بعد' : 'No appointments yet'}</p>`;
+
+    document.getElementById('pqvTreatments').innerHTML = treatments.length ? `
+        <table class="w-full text-sm">
+            <thead><tr class="text-xs text-gray-400 border-b border-gray-100">
+                <th class="text-left py-2 px-2">${i18nText('table.date', 'Date')}</th>
+                <th class="text-left py-2 px-2">${i18nText('modal.procedure', 'Procedure')}</th>
+                <th class="text-left py-2 px-2">${i18nText('modal.toothNumber', 'Tooth')}</th>
+                <th class="text-left py-2 px-2">${i18nText('modal.totalCost', 'Cost')}</th>
+                <th class="text-left py-2 px-2">${i18nText('inv.paid', 'Paid')}</th>
+            </tr></thead>
+            <tbody>${treatments.map(tr => `
+                <tr class="border-b border-gray-50 hover:bg-slate-50">
+                    <td class="py-2 px-2 font-medium">${tr.date || ''}</td>
+                    <td class="py-2 px-2">${tr.procedure || ''}</td>
+                    <td class="py-2 px-2 text-gray-400">${tr.toothNumber || tr.tooth_number || '—'}</td>
+                    <td class="py-2 px-2 text-blue-600 font-semibold">${(parseFloat(tr.totalCost || tr.total_cost) || 0).toLocaleString()} ${currency}</td>
+                    <td class="py-2 px-2 text-green-600 font-semibold">${(parseFloat(tr.paid) || 0).toLocaleString()} ${currency}</td>
+                </tr>`).join('')}
+            </tbody>
+        </table>` : `<p class="text-center text-gray-400 py-8 text-sm">${currentLang === 'ar' ? 'لا توجد علاجات بعد' : 'No treatments yet'}</p>`;
+
+    document.getElementById('pqvRx').innerHTML = rxList.length ? `
+        <div class="space-y-2">${rxList.map(rx => `
+            <div class="bg-slate-50 rounded-xl p-3 border border-gray-100">
+                <div class="flex justify-between items-center mb-1">
+                    <span class="font-semibold text-sm text-indigo-700">${rx.diagnosis || i18nText('rx.new', 'Prescription')}</span>
+                    <span class="text-xs text-gray-400">${rx.date || ''}</span>
+                </div>
+                <p class="text-xs text-gray-600 whitespace-pre-line">${rx.meds || ''}</p>
+                ${rx.instructions ? `<p class="text-xs text-gray-400 mt-1 italic">${rx.instructions}</p>` : ''}
+            </div>`).join('')}
+        </div>` : `<p class="text-center text-gray-400 py-8 text-sm">${currentLang === 'ar' ? 'لا توجد وصفات بعد' : 'No prescriptions yet'}</p>`;
+
+    document.getElementById('pqvInvoices').innerHTML = invoices.length ? `
+        <table class="w-full text-sm">
+            <thead><tr class="text-xs text-gray-400 border-b border-gray-100">
+                <th class="text-left py-2 px-2">${i18nText('table.date', 'Date')}</th>
+                <th class="text-left py-2 px-2">${i18nText('inv.total', 'Total')}</th>
+                <th class="text-left py-2 px-2">${i18nText('inv.paid', 'Paid')}</th>
+                <th class="text-left py-2 px-2">${i18nText('table.status', 'Status')}</th>
+            </tr></thead>
+            <tbody>${invoices.map(inv => `
+                <tr class="border-b border-gray-50 hover:bg-slate-50">
+                    <td class="py-2 px-2 font-medium">${inv.date || ''}</td>
+                    <td class="py-2 px-2 text-blue-600 font-semibold">${(parseFloat(inv.total) || 0).toLocaleString()} ${currency}</td>
+                    <td class="py-2 px-2 text-green-600">${(parseFloat(inv.paid) || 0).toLocaleString()} ${currency}</td>
+                    <td class="py-2 px-2"><span class="badge badge-${invoiceStatusBadgeClass(inv.status)}">${translateInvoiceStatusLabel(inv.status)}</span></td>
+                </tr>`).join('')}
+            </tbody>
+        </table>` : `<p class="text-center text-gray-400 py-8 text-sm">${currentLang === 'ar' ? 'لا توجد فواتير بعد' : 'No invoices yet'}</p>`;
+
+    document.querySelectorAll('.pqv-tab').forEach((tab, index) => { tab.classList.toggle('active', index === 0); });
+    document.querySelectorAll('.pqv-panel').forEach((panel, index) => { panel.classList.toggle('active', index === 0); });
+    openModal('patientQuickModal');
 };

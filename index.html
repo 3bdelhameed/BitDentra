@@ -952,14 +952,14 @@
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
                     <div class="lg:col-span-2 bg-white rounded-xl border border-gray-100 overflow-hidden">
                         <div class="p-4 border-b border-gray-50 flex items-center justify-between">
-                            <h3 class="font-bold text-gray-800 flex items-center gap-2"><i class="fa-regular fa-clock text-blue-500"></i> Today's Appointments</h3>
-                            <button onclick="switchView('appointments')" class="text-xs text-blue-600 font-semibold hover:underline">View All</button>
+                            <h3 class="font-bold text-gray-800 flex items-center gap-2"><i class="fa-regular fa-clock text-blue-500"></i> <span data-t="dash.todayAppts">Today's Appointments</span></h3>
+                            <button onclick="switchView('appointments')" class="text-xs text-blue-600 font-semibold hover:underline" data-t="dash.viewAll">View All</button>
                         </div>
                         <div class="grid grid-cols-4 px-4 py-2 bg-gray-50 text-xs font-semibold text-gray-400 border-b border-gray-100 text-center">
-                            <div>Time</div>
-                            <div>Patient</div>
-                            <div>Doctor</div>
-                            <div>Status</div>
+                            <div data-t="table.time">Time</div>
+                            <div data-t="table.patient">Patient</div>
+                            <div data-t="table.doctor">Doctor</div>
+                            <div data-t="table.status">Status</div>
                         </div>
                         <div id="appointmentsList" class="max-h-64 overflow-y-auto"></div>
                     </div>
@@ -1299,42 +1299,42 @@
 
             <div class="view-section h-full overflow-y-auto p-5" id="reportsView">
                 <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-xl font-bold flex items-center gap-2"><i class="fa-solid fa-chart-bar text-blue-500"></i> Reports & Analytics</h2>
+                    <h2 class="text-xl font-bold flex items-center gap-2"><i class="fa-solid fa-chart-bar text-blue-500"></i> <span data-t="rep.viewTitle">Reports & Analytics</span></h2>
                     <div class="flex gap-2">
-                        <button onclick="exportExcel()" class="btn btn-green text-xs"><i class="fa-solid fa-file-excel"></i> Export Excel</button>
-                        <button onclick="exportBackup()" class="btn btn-outline text-xs"><i class="fa-solid fa-download"></i> Backup JSON</button>
+                        <button onclick="exportExcel()" class="btn btn-green text-xs"><i class="fa-solid fa-file-excel"></i> <span data-t="rep.exportExcel">Export Excel</span></button>
+                        <button onclick="exportBackup()" class="btn btn-outline text-xs"><i class="fa-solid fa-download"></i> <span data-t="rep.backupJson">Backup JSON</span></button>
                     </div>
                 </div>
                 <!-- Tabs -->
                 <div class="flex gap-1 mb-5 border-b border-gray-200">
-                    <button id="repTab-overview" class="px-4 py-2 text-sm font-semibold border-b-2 border-blue-600 text-blue-600 -mb-px transition"><i class="fa-solid fa-chart-bar mr-1"></i> نظرة عامة</button>
-                    <button id="repTab-monthly" class="px-4 py-2 text-sm font-semibold border-b-2 border-transparent text-gray-400 -mb-px transition hover:text-blue-500"><i class="fa-solid fa-calendar-days mr-1"></i> تقرير الأشهر</button>
+                    <button id="repTab-overview" class="px-4 py-2 text-sm font-semibold border-b-2 border-blue-600 text-blue-600 -mb-px transition"><i class="fa-solid fa-chart-bar mr-1"></i> <span data-t="rep.tabOverview">Overview</span></button>
+                    <button id="repTab-monthly" class="px-4 py-2 text-sm font-semibold border-b-2 border-transparent text-gray-400 -mb-px transition hover:text-blue-500"><i class="fa-solid fa-calendar-days mr-1"></i> <span data-t="rep.tabMonthly">Monthly Report</span></button>
                 </div>
                 <!-- Overview Panel -->
                 <div id="repPanel-overview">
                     <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3 mb-5" id="reportKpis"></div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
                         <div class="bg-white rounded-xl border border-gray-100 p-5">
-                            <h3 class="font-bold text-gray-800 mb-3 text-sm flex items-center gap-2"><i class="fa-solid fa-chart-line text-blue-500"></i> Monthly Revenue (Last 6 months)</h3>
+                            <h3 class="font-bold text-gray-800 mb-3 text-sm flex items-center gap-2"><i class="fa-solid fa-chart-line text-blue-500"></i> <span data-t="rep.chartRevenue6m">Monthly Revenue (Last 6 months)</span></h3>
                             <canvas id="revenueChart" height="180"></canvas>
                         </div>
                         <div class="bg-white rounded-xl border border-gray-100 p-5">
-                            <h3 class="font-bold text-gray-800 mb-3 text-sm flex items-center gap-2"><i class="fa-solid fa-chart-pie text-indigo-500"></i> Treatment Breakdown</h3>
+                            <h3 class="font-bold text-gray-800 mb-3 text-sm flex items-center gap-2"><i class="fa-solid fa-chart-pie text-indigo-500"></i> <span data-t="rep.chartTreatmentBreakdown">Treatment Breakdown</span></h3>
                             <canvas id="treatmentChart" height="180"></canvas>
                         </div>
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
                         <div class="bg-white rounded-xl border border-gray-100 p-5">
-                            <h3 class="font-bold text-gray-800 mb-4 border-b pb-2">Financial Summary</h3>
+                            <h3 class="font-bold text-gray-800 mb-4 border-b pb-2" data-t="rep.financial">Financial Summary</h3>
                             <div id="financialReport" class="space-y-3"></div>
                         </div>
                         <div class="bg-white rounded-xl border border-gray-100 p-5">
-                            <h3 class="font-bold text-gray-800 mb-4 border-b pb-2">Patient Statistics</h3>
+                            <h3 class="font-bold text-gray-800 mb-4 border-b pb-2" data-t="rep.patientStats">Patient Statistics</h3>
                             <div id="patientReport" class="space-y-3"></div>
                         </div>
                     </div>
                     <div class="bg-white rounded-xl border border-gray-100 p-5 mb-5">
-                        <h3 class="font-bold text-gray-800 mb-4 border-b pb-2">Outstanding Debts</h3>
+                        <h3 class="font-bold text-gray-800 mb-4 border-b pb-2" data-t="rep.debts">Outstanding Debts</h3>
                         <div id="debtReport"></div>
                     </div>
                     <div id="dailyProfitCard"></div>
@@ -1343,7 +1343,7 @@
                 <div id="repPanel-monthly" style="display:none">
                     <div class="bg-white rounded-xl border border-gray-100 p-5">
                         <div class="flex items-center justify-between mb-4 border-b pb-3">
-                            <h3 class="font-bold text-gray-800 flex items-center gap-2"><i class="fa-solid fa-calendar-days text-blue-500"></i> تقرير الأرباح — كل الأشهر</h3>
+                            <h3 class="font-bold text-gray-800 flex items-center gap-2"><i class="fa-solid fa-calendar-days text-blue-500"></i> <span data-t="rep.monthlyAll">Profit Report - All Months</span></h3>
                             <select id="monthlyReportYear" class="border border-gray-200 rounded-xl px-3 py-1.5 text-sm" onchange="renderMonthlyReport()"></select>
                         </div>
                         <div id="monthlyReportBody"></div>
@@ -1353,44 +1353,44 @@
 
             <!-- ── SETTINGS ── -->
             <div class="view-section h-full overflow-y-auto p-5" id="settingsView">
-                <h2 class="text-xl font-bold flex items-center gap-2 mb-5"><i class="fa-solid fa-gear text-gray-500"></i> Settings</h2>
+                <h2 class="text-xl font-bold flex items-center gap-2 mb-5"><i class="fa-solid fa-gear text-gray-500"></i> <span data-t="set.title">Settings</span></h2>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div class="bg-white rounded-xl border border-gray-100 p-5">
                         <h3 class="font-bold text-gray-800 mb-4 border-b pb-2 flex items-center gap-2">
-                            Clinic Information
+                            <span data-t="set.clinicInfo">Clinic Information</span>
                             <span class="ml-auto text-xs font-normal text-blue-500 bg-blue-50 border border-blue-100 px-2 py-0.5 rounded-full flex items-center gap-1">
-                                <i class="fa-solid fa-lock text-blue-400" style="font-size:9px"></i> BitMaster
+                                <i class="fa-solid fa-lock text-blue-400" style="font-size:9px"></i> <span data-t="set.bitmaster">BitMaster</span>
                             </span>
                         </h3>
                         <div class="space-y-3">
-                            <div><label class="text-xs font-semibold text-gray-500 mb-1 block">Clinic Name</label>
+                            <div><label class="text-xs font-semibold text-gray-500 mb-1 block" data-t="set.clinicName">Clinic Name</label>
                                 <div id="settingClinicName" class="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-2.5 text-sm text-gray-700 font-medium min-h-[42px] flex items-center">—</div>
                             </div>
-                            <div><label class="text-xs font-semibold text-gray-500 mb-1 block">Doctor Name</label>
+                            <div><label class="text-xs font-semibold text-gray-500 mb-1 block" data-t="set.doctorName">Doctor Name</label>
                                 <div id="settingDoctorName" class="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-2.5 text-sm text-gray-700 font-medium min-h-[42px] flex items-center">—</div>
                             </div>
-                            <div><label class="text-xs font-semibold text-gray-500 mb-1 block">Phone</label>
+                            <div><label class="text-xs font-semibold text-gray-500 mb-1 block" data-t="set.phone">Phone</label>
                                 <div id="settingPhone" class="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-2.5 text-sm text-gray-500 min-h-[42px] flex items-center">—</div>
                             </div>
-                            <div><label class="text-xs font-semibold text-gray-500 mb-1 block">Address</label>
+                            <div><label class="text-xs font-semibold text-gray-500 mb-1 block" data-t="set.address">Address</label>
                                 <div id="settingAddress" class="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-2.5 text-sm text-gray-500 min-h-[42px] flex items-center">—</div>
                             </div>
-                            <div><label class="text-xs font-semibold text-gray-500 mb-1 block">Currency</label>
+                            <div><label class="text-xs font-semibold text-gray-500 mb-1 block" data-t="set.currency">Currency</label>
                                 <div id="settingCurrency" class="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-2.5 text-sm text-gray-700 font-medium min-h-[42px] flex items-center">—</div>
                             </div>
                             <div class="flex items-start gap-2 text-xs text-gray-400 bg-blue-50 border border-blue-100 rounded-xl px-4 py-3">
                                 <i class="fa-solid fa-circle-info text-blue-400 mt-0.5 flex-shrink-0"></i>
-                                <span>These settings are managed by <strong class="text-blue-500">BitMaster</strong>. Contact your system administrator to make changes.</span>
+                                <span data-t="set.managedHint">These settings are managed by BitMaster. Contact your system administrator to make changes.</span>
                             </div>
                         </div>
                     </div>
                     <div class="space-y-4">
                         <div class="bg-white rounded-xl border border-gray-100 p-5">
-                            <h3 class="font-bold text-gray-800 mb-4 border-b pb-2">Appearance</h3>
+                            <h3 class="font-bold text-gray-800 mb-4 border-b pb-2" data-t="set.appearance">Appearance</h3>
                             <div class="flex items-center justify-between">
                                 <div>
-                                    <p class="text-sm font-semibold text-gray-700">Dark Mode</p>
-                                    <p class="text-xs text-gray-400">Switch to dark interface</p>
+                                    <p class="text-sm font-semibold text-gray-700" data-t="set.darkMode">Dark Mode</p>
+                                    <p class="text-xs text-gray-400" data-t="set.darkModeHint">Switch to dark interface</p>
                                 </div>
                                 <button onclick="toggleDarkMode()" id="darkModeToggleBtn" class="relative w-11 h-6 rounded-full bg-gray-200 transition-colors duration-200 focus:outline-none">
                                     <span id="darkModeThumb" class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200"></span>
@@ -1398,11 +1398,11 @@
                             </div>
                         </div>
                         <div class="bg-white rounded-xl border border-gray-100 p-5">
-                            <h3 class="font-bold text-gray-800 mb-4 border-b pb-2">Data Management</h3>
+                            <h3 class="font-bold text-gray-800 mb-4 border-b pb-2" data-t="set.dataMgmt">Data Management</h3>
                             <div class="space-y-3">
-                                <button onclick="exportExcel()" class="btn btn-green w-full justify-center"><i class="fa-solid fa-file-excel"></i> Export to Excel</button>
-                                <button onclick="exportBackup()" class="btn btn-outline w-full justify-center"><i class="fa-solid fa-download"></i> Export Backup (JSON)</button>
-                                <label class="btn btn-outline w-full justify-center cursor-pointer"><i class="fa-solid fa-upload"></i> Import Backup<input type="file" class="hidden" accept=".json" onchange="importBackup(event)"></label>
+                                <button onclick="exportExcel()" class="btn btn-green w-full justify-center"><i class="fa-solid fa-file-excel"></i> <span data-t="set.exportExcel">Export to Excel</span></button>
+                                <button onclick="exportBackup()" class="btn btn-outline w-full justify-center"><i class="fa-solid fa-download"></i> <span data-t="set.exportBackup">Export Backup (JSON)</span></button>
+                                <label class="btn btn-outline w-full justify-center cursor-pointer"><i class="fa-solid fa-upload"></i> <span data-t="set.importBackup">Import Backup</span><input type="file" class="hidden" accept=".json" onchange="importBackup(event)"></label>
                             </div>
                         </div>
                     </div>
@@ -1412,27 +1412,27 @@
             <!-- ── INVOICES ── -->
             <div class="view-section h-full overflow-y-auto p-5" id="invoicesView">
                 <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-xl font-bold flex items-center gap-2"><i class="fa-solid fa-file-invoice text-blue-500"></i> الفواتير</h2>
-                    <button onclick="openModal('createInvoiceModal')" class="btn btn-blue text-xs"><i class="fa-solid fa-plus"></i> فاتورة جديدة</button>
+                    <h2 class="text-xl font-bold flex items-center gap-2"><i class="fa-solid fa-file-invoice text-blue-500"></i> <span data-t="inv.viewTitle">Invoices</span></h2>
+                    <button onclick="openModal('createInvoiceModal')" class="btn btn-blue text-xs"><i class="fa-solid fa-plus"></i> <span data-t="inv.new">New Invoice</span></button>
                 </div>
                 <div class="bg-white rounded-xl border border-gray-100 overflow-hidden">
                     <table class="w-full text-sm">
                         <thead>
                             <tr class="bg-slate-50 text-gray-500 text-xs uppercase">
                                 <th class="text-left px-4 py-3">#</th>
-                                <th class="text-left px-4 py-3">الاسم</th>
-                                <th class="text-left px-4 py-3 inv-hide-mobile">النوع</th>
-                                <th class="text-left px-4 py-3 inv-hide-mobile">التاريخ</th>
-                                <th class="text-right px-4 py-3">الإجمالي</th>
-                                <th class="text-right px-4 py-3 inv-hide-mobile">المدفوع</th>
-                                <th class="text-right px-4 py-3">المتبقي</th>
-                                <th class="text-center px-4 py-3">إجراءات</th>
+                                <th class="text-left px-4 py-3" data-t="inv.name">Name</th>
+                                <th class="text-left px-4 py-3 inv-hide-mobile" data-t="inv.type">Type</th>
+                                <th class="text-left px-4 py-3 inv-hide-mobile" data-t="table.date">Date</th>
+                                <th class="text-right px-4 py-3" data-t="inv.total">Total</th>
+                                <th class="text-right px-4 py-3 inv-hide-mobile" data-t="inv.paid">Paid</th>
+                                <th class="text-right px-4 py-3" data-t="inv.remaining">Remaining</th>
+                                <th class="text-center px-4 py-3" data-t="table.actions">Actions</th>
                             </tr>
                         </thead>
                         <tbody id="invoicesTableBody"></tbody>
                     </table>
                     <div id="invoicesEmpty" class="hidden text-center py-12 text-gray-400"><i class="fa-solid fa-file-invoice text-4xl mb-3 opacity-30"></i>
-                        <p class="text-sm">لا توجد فواتير بعد</p>
+                        <p class="text-sm" data-t="inv.empty">No invoices yet</p>
                     </div>
                 </div>
             </div>
@@ -1440,19 +1440,19 @@
             <!-- ── REMINDERS ── -->
             <div class="view-section h-full overflow-y-auto p-5" id="remindersView">
                 <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-xl font-bold flex items-center gap-2"><i class="fa-solid fa-bell text-yellow-500"></i> Appointment Reminders</h2>
-                    <button onclick="checkReminders()" class="btn btn-outline text-xs"><i class="fa-solid fa-rotate"></i> Refresh</button>
+                    <h2 class="text-xl font-bold flex items-center gap-2"><i class="fa-solid fa-bell text-yellow-500"></i> <span data-t="rem.viewTitle">Appointment Reminders</span></h2>
+                    <button onclick="checkReminders()" class="btn btn-outline text-xs"><i class="fa-solid fa-rotate"></i> <span data-t="common.refresh">Refresh</span></button>
                 </div>
                 <div class="bg-white rounded-xl border border-gray-100 p-5 mb-4">
-                    <h3 class="font-bold text-gray-800 mb-3 flex items-center gap-2"><span class="w-2 h-2 bg-green-500 rounded-full"></span> Today's Appointments</h3>
+                    <h3 class="font-bold text-gray-800 mb-3 flex items-center gap-2"><span class="w-2 h-2 bg-green-500 rounded-full"></span> <span data-t="rem.today">Today's Appointments</span></h3>
                     <div id="remindersToday"></div>
                 </div>
                 <div class="bg-white rounded-xl border border-gray-100 p-5 mb-4">
-                    <h3 class="font-bold text-gray-800 mb-3 flex items-center gap-2"><span class="w-2 h-2 bg-yellow-500 rounded-full"></span> Tomorrow's Appointments</h3>
+                    <h3 class="font-bold text-gray-800 mb-3 flex items-center gap-2"><span class="w-2 h-2 bg-yellow-500 rounded-full"></span> <span data-t="rem.tomorrow">Tomorrow's Appointments</span></h3>
                     <div id="remindersTomorrow"></div>
                 </div>
                 <div class="bg-white rounded-xl border border-gray-100 p-5">
-                    <h3 class="font-bold text-gray-800 mb-3 flex items-center gap-2"><span class="w-2 h-2 bg-red-500 rounded-full"></span> Missed / Overdue</h3>
+                    <h3 class="font-bold text-gray-800 mb-3 flex items-center gap-2"><span class="w-2 h-2 bg-red-500 rounded-full"></span> <span data-t="rem.overdue">Missed / Overdue</span></h3>
                     <div id="remindersOverdue"></div>
                 </div>
             </div>
@@ -1460,44 +1460,44 @@
             <!-- ── INVENTORY ── -->
             <div class="view-section h-full overflow-y-auto p-5" id="inventoryView">
                 <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
-                    <h2 class="text-xl font-bold flex items-center gap-2"><i class="fa-solid fa-boxes-stacked text-blue-500"></i> Inventory</h2>
+                    <h2 class="text-xl font-bold flex items-center gap-2"><i class="fa-solid fa-boxes-stacked text-blue-500"></i> <span data-t="inventory.viewTitle">Inventory</span></h2>
                     <div class="flex gap-2 items-center">
                         <select id="invCatFilter" onchange="loadInventory()" class="border border-gray-200 rounded-xl text-sm py-2 px-3">
-                            <option value="">All Categories</option>
+                            <option value="" data-t="inventory.allCategories">All Categories</option>
                             <option value="medicine">💊 Medicine</option>
                             <option value="consumable">🩺 Consumable</option>
                             <option value="equipment">🔧 Equipment</option>
                             <option value="lab_material">🔬 Lab Material</option>
                             <option value="other">📦 Other</option>
                         </select>
-                        <button onclick="openModal('addInvModal')" class="btn btn-blue text-xs"><i class="fa-solid fa-plus"></i> Add Item</button>
+                        <button onclick="openModal('addInvModal')" class="btn btn-blue text-xs"><i class="fa-solid fa-plus"></i> <span data-t="inventory.addItem">Add Item</span></button>
                     </div>
                 </div>
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
                     <div class="stat-card">
                         <div>
-                            <p class="text-xs text-gray-400">Total Items</p>
+                            <p class="text-xs text-gray-400" data-t="inventory.totalItems">Total Items</p>
                             <h3 class="text-xl font-bold text-gray-800" id="invKpiTotal">0</h3>
                         </div>
                         <div class="w-9 h-9 bg-blue-50 text-blue-500 rounded-xl flex items-center justify-center"><i class="fa-solid fa-boxes-stacked"></i></div>
                     </div>
                     <div class="stat-card">
                         <div>
-                            <p class="text-xs text-red-400 font-semibold">Low / Out</p>
+                            <p class="text-xs text-red-400 font-semibold" data-t="inventory.lowOut">Low / Out</p>
                             <h3 class="text-xl font-bold text-red-500" id="invKpiLow">0</h3>
                         </div>
                         <div class="w-9 h-9 bg-red-50 text-red-400 rounded-xl flex items-center justify-center"><i class="fa-solid fa-triangle-exclamation"></i></div>
                     </div>
                     <div class="stat-card">
                         <div>
-                            <p class="text-xs text-gray-400">Categories</p>
+                            <p class="text-xs text-gray-400" data-t="inventory.categories">Categories</p>
                             <h3 class="text-xl font-bold text-gray-800" id="invKpiCats">0</h3>
                         </div>
                         <div class="w-9 h-9 bg-purple-50 text-purple-400 rounded-xl flex items-center justify-center"><i class="fa-solid fa-tag"></i></div>
                     </div>
                     <div class="stat-card">
                         <div>
-                            <p class="text-xs text-gray-400">Stock Value</p>
+                            <p class="text-xs text-gray-400" data-t="inventory.stockValue">Stock Value</p>
                             <h3 class="text-lg font-bold text-green-600" id="invKpiValue">0</h3>
                         </div>
                         <div class="w-9 h-9 bg-green-50 text-green-400 rounded-xl flex items-center justify-center"><i class="fa-solid fa-coins"></i></div>
@@ -1507,21 +1507,21 @@
                     <table class="w-full text-sm">
                         <thead>
                             <tr class="bg-slate-50 text-gray-400 text-xs uppercase border-b">
-                                <th class="text-left px-4 py-3">Item</th>
-                                <th class="text-left px-4 py-3">Category</th>
-                                <th class="text-center px-4 py-3">Qty</th>
-                                <th class="text-center px-4 py-3">Min</th>
-                                <th class="text-left px-4 py-3">Unit</th>
-                                <th class="text-right px-4 py-3">Unit Cost</th>
-                                <th class="text-center px-4 py-3">Expiry</th>
-                                <th class="text-center px-4 py-3">Actions</th>
+                                <th class="text-left px-4 py-3" data-t="inventory.itemCol">Item</th>
+                                <th class="text-left px-4 py-3" data-t="inventory.category">Category</th>
+                                <th class="text-center px-4 py-3" data-t="inventory.qty">Qty</th>
+                                <th class="text-center px-4 py-3" data-t="inventory.min">Min</th>
+                                <th class="text-left px-4 py-3" data-t="inventory.unit">Unit</th>
+                                <th class="text-right px-4 py-3" data-t="inventory.unitCost">Unit Cost</th>
+                                <th class="text-center px-4 py-3" data-t="inventory.expiry">Expiry</th>
+                                <th class="text-center px-4 py-3" data-t="table.actions">Actions</th>
                             </tr>
                         </thead>
                         <tbody id="inventoryBody"></tbody>
                     </table>
                     <div id="inventoryEmpty" class="hidden text-center py-16 text-gray-400">
                         <i class="fa-solid fa-boxes-stacked text-5xl mb-3 opacity-20"></i>
-                        <p class="font-medium">No inventory items yet</p>
+                        <p class="font-medium" data-t="inventory.empty">No inventory items yet</p>
                     </div>
                 </div>
             </div>
@@ -1529,8 +1529,8 @@
             <!-- ── LAB ORDERS ── -->
             <div class="view-section h-full overflow-y-auto p-5" id="labView">
                 <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
-                    <h2 class="text-xl font-bold flex items-center gap-2"><i class="fa-solid fa-flask text-purple-500"></i> Lab Orders & Accounting</h2>
-                    <button onclick="openModal('addLabModal')" class="btn btn-blue text-xs"><i class="fa-solid fa-plus"></i> New Order</button>
+                    <h2 class="text-xl font-bold flex items-center gap-2"><i class="fa-solid fa-flask text-purple-500"></i> <span data-t="lab.viewTitle">Lab Orders & Accounting</span></h2>
+                    <button onclick="openModal('addLabModal')" class="btn btn-blue text-xs"><i class="fa-solid fa-plus"></i> <span data-t="lab.newOrder">New Order</span></button>
                 </div>
                 <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-4">
                     <div class="stat-card">
@@ -1594,30 +1594,30 @@
             <div class="view-section h-full overflow-y-auto p-5" id="doctorsView">
                 <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
                     <h2 class="text-xl font-bold flex items-center gap-2">
-                        <i class="fa-solid fa-user-doctor text-purple-500"></i> Doctors & Commissions
+                        <i class="fa-solid fa-user-doctor text-purple-500"></i> <span data-t="doc.viewTitle">Doctors & Commissions</span>
                     </h2>
                     <button onclick="openAddDoctorModal()" class="btn btn-blue text-xs">
-                        <i class="fa-solid fa-plus"></i> Add Doctor
+                        <i class="fa-solid fa-plus"></i> <span data-t="doc.add">Add Doctor</span>
                     </button>
                 </div>
                 <div class="grid grid-cols-3 gap-3 mb-4">
                     <div class="stat-card">
                         <div>
-                            <p class="text-xs text-gray-400">إجمالي الدكاتره</p>
+                            <p class="text-xs text-gray-400" data-t="doc.totalDoctors">Total Doctors</p>
                             <h3 class="text-xl font-bold text-gray-800" id="docKpiTotal">0</h3>
                         </div>
                         <div class="w-9 h-9 bg-purple-50 text-purple-500 rounded-xl flex items-center justify-center"><i class="fa-solid fa-user-doctor"></i></div>
                     </div>
                     <div class="stat-card">
                         <div>
-                            <p class="text-xs text-gray-400">فعّالون</p>
+                            <p class="text-xs text-gray-400" data-t="doc.activeDoctors">Active</p>
                             <h3 class="text-xl font-bold text-green-600" id="docKpiActive">0</h3>
                         </div>
                         <div class="w-9 h-9 bg-green-50 text-green-500 rounded-xl flex items-center justify-center"><i class="fa-solid fa-circle-check"></i></div>
                     </div>
                     <div class="stat-card">
                         <div>
-                            <p class="text-xs text-gray-400">متوسط العمولة</p>
+                            <p class="text-xs text-gray-400" data-t="doc.avgCommission">Avg. Commission</p>
                             <h3 class="text-xl font-bold text-blue-600" id="docKpiAvgComm">0%</h3>
                         </div>
                         <div class="w-9 h-9 bg-blue-50 text-blue-500 rounded-xl flex items-center justify-center"><i class="fa-solid fa-percent"></i></div>
@@ -1627,18 +1627,18 @@
                     <table class="w-full text-sm">
                         <thead>
                             <tr class="bg-slate-50 text-gray-400 text-xs uppercase border-b">
-                                <th class="text-left px-4 py-3">الطبيب</th>
-                                <th class="text-left px-4 py-3">الهاتف</th>
-                                <th class="text-center px-4 py-3">نسبة العمولة</th>
-                                <th class="text-center px-4 py-3">الحالة</th>
-                                <th class="text-center px-4 py-3">إجراءات</th>
+                                <th class="text-left px-4 py-3" data-t="table.doctor">Doctor</th>
+                                <th class="text-left px-4 py-3" data-t="set.phone">Phone</th>
+                                <th class="text-center px-4 py-3" data-t="doc.commissionPct">Commission %</th>
+                                <th class="text-center px-4 py-3" data-t="table.status">Status</th>
+                                <th class="text-center px-4 py-3" data-t="table.actions">Actions</th>
                             </tr>
                         </thead>
                         <tbody id="doctorsTableBody"></tbody>
                     </table>
                     <div id="doctorsEmpty" class="hidden text-center py-16 text-gray-400">
                         <i class="fa-solid fa-user-doctor text-5xl mb-3 opacity-20"></i>
-                        <p class="font-medium">لا يوجد دكاتره بعد — أضف أول طبيب</p>
+                        <p class="font-medium" data-t="doc.empty">No doctors yet - add your first doctor</p>
                     </div>
                 </div>
             </div>
@@ -1653,7 +1653,7 @@
         <div class="modal-box max-w-md">
             <div class="flex justify-between items-center mb-4 border-b pb-3">
                 <h3 class="text-lg font-bold flex items-center gap-2" id="dfModalTitle">
-                    <i class="fa-solid fa-user-doctor text-purple-500"></i> إضافة طبيب
+                    <i class="fa-solid fa-user-doctor text-purple-500"></i> <span data-t="doc.addDoctorTitle">Add Doctor</span>
                 </h3>
                 <button onclick="document.getElementById('doctorFormModal').classList.remove('open')" class="text-gray-300 hover:text-red-400 text-xl w-7 h-7 flex items-center justify-center">
                     <i class="fa-solid fa-xmark"></i>
@@ -1661,25 +1661,25 @@
             </div>
             <div class="space-y-3">
                 <div>
-                    <label class="text-xs font-semibold text-gray-500 block mb-1">الاسم بالعربي <span class="text-red-400">*</span></label>
-                    <input type="text" id="dfNameAr" placeholder="د. محمد أحمد" class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm">
+                    <label class="text-xs font-semibold text-gray-500 block mb-1"><span data-t="doc.nameAr">Arabic Name</span> <span class="text-red-400">*</span></label>
+                    <input type="text" id="dfNameAr" data-t="doc.nameArPlaceholder" data-t-attr="placeholder" placeholder="Dr. Mohamed Ahmed" class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm">
                 </div>
                 <div>
-                    <label class="text-xs font-semibold text-gray-500 block mb-1">الاسم بالإنجليزي <span class="text-gray-300">(اختياري)</span></label>
+                    <label class="text-xs font-semibold text-gray-500 block mb-1" data-t="doc.nameEn">English Name (Optional)</label>
                     <input type="text" id="dfNameEn" placeholder="Dr. Mohamed Ahmed" class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm">
                 </div>
                 <div class="grid grid-cols-2 gap-3">
                     <div>
-                        <label class="text-xs font-semibold text-gray-500 block mb-1">التخصص</label>
-                        <input type="text" id="dfSpecialty" placeholder="تقويم / زرع / عام..." class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm">
+                        <label class="text-xs font-semibold text-gray-500 block mb-1" data-t="doc.specialty">Specialty</label>
+                        <input type="text" id="dfSpecialty" data-t="doc.specialtyPlaceholder" data-t-attr="placeholder" placeholder="Orthodontics / Implant / General..." class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm">
                     </div>
                     <div>
-                        <label class="text-xs font-semibold text-gray-500 block mb-1">الهاتف</label>
+                        <label class="text-xs font-semibold text-gray-500 block mb-1" data-t="set.phone">Phone</label>
                         <input type="tel" id="dfPhone" placeholder="01xxxxxxxxx" class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm">
                     </div>
                 </div>
                 <div>
-                    <label class="text-xs font-semibold text-gray-500 block mb-1">نسبة العمولة % <span class="text-purple-500 font-bold">(من المبلغ المحصّل)</span></label>
+                    <label class="text-xs font-semibold text-gray-500 block mb-1"><span data-t="doc.commissionPct">Commission %</span> <span class="text-purple-500 font-bold" data-t="doc.commissionHint">(From collected amount)</span></label>
                     <div class="flex items-center gap-2">
                         <input type="number" id="dfCommissionPct" min="0" max="100" step="0.5" placeholder="0" oninput="updateDfCommissionPreview()" class="flex-1 border border-gray-200 rounded-xl px-4 py-2.5 text-sm">
                         <span class="text-lg font-bold text-gray-400">%</span>
@@ -1687,18 +1687,18 @@
                     <div id="dfCommissionPreview" class="hidden mt-2 text-xs text-purple-700 bg-purple-50 border border-purple-100 rounded-xl px-3 py-2 font-medium"></div>
                 </div>
                 <div>
-                    <label class="text-xs font-semibold text-gray-500 block mb-1">ملاحظات</label>
-                    <input type="text" id="dfNotes" placeholder="أي ملاحظات..." class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm">
+                    <label class="text-xs font-semibold text-gray-500 block mb-1" data-t="modal.notes">Notes</label>
+                    <input type="text" id="dfNotes" data-t="doc.notesPlaceholder" data-t-attr="placeholder" placeholder="Any notes..." class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm">
                 </div>
                 <div class="flex items-center gap-2">
                     <input type="checkbox" id="dfIsActive" checked class="w-4 h-4 accent-purple-600">
-                    <label for="dfIsActive" class="text-sm text-gray-600 cursor-pointer">طبيب فعّال</label>
+                    <label for="dfIsActive" class="text-sm text-gray-600 cursor-pointer" data-t="doc.activeDoctor">Active Doctor</label>
                 </div>
             </div>
             <div class="flex gap-2 mt-4 pt-4 border-t">
-                <button onclick="document.getElementById('doctorFormModal').classList.remove('open')" class="btn btn-gray flex-1">إلغاء</button>
+                <button onclick="document.getElementById('doctorFormModal').classList.remove('open')" class="btn btn-gray flex-1" data-t="modal.cancel">Cancel</button>
                 <button id="dfSaveBtn" onclick="saveDoctor(null)" class="btn btn-blue flex-1 justify-center">
-                    <i class="fa-solid fa-save mr-1"></i> حفظ الطبيب
+                    <i class="fa-solid fa-save mr-1"></i> <span data-t="doc.save">Save Doctor</span>
                 </button>
             </div>
         </div>
@@ -1711,7 +1711,7 @@
                 <div>
                     <h3 class="text-lg font-bold flex items-center gap-2">
                         <i class="fa-solid fa-coins text-yellow-500"></i>
-                        كشف عمولة: <span id="salaryDoctorName" class="text-purple-600 mr-1"></span>
+                        <span data-t="doc.salaryTitle">Commission Sheet:</span> <span id="salaryDoctorName" class="text-purple-600 mr-1"></span>
                     </h3>
                     <p class="text-xs text-gray-400 mt-0.5" id="salaryCommissionRate"></p>
                 </div>
@@ -1721,25 +1721,25 @@
             </div>
             <input type="hidden" id="salaryDoctorId">
             <div class="flex items-center gap-3 mb-4 flex-wrap">
-                <label class="text-xs font-semibold text-gray-500">الفترة:</label>
+                <label class="text-xs font-semibold text-gray-500" data-t="doc.period">Period:</label>
                 <input type="month" id="salaryMonthFilter" class="border border-gray-200 rounded-xl px-3 py-2 text-sm" onchange="recalcDoctorSalary()">
-                <button onclick="document.getElementById('salaryMonthFilter').value=''; recalcDoctorSalary()" class="btn btn-gray text-xs">كل الوقت</button>
+                <button onclick="document.getElementById('salaryMonthFilter').value=''; recalcDoctorSalary()" class="btn btn-gray text-xs" data-t="doc.allTime">All Time</button>
             </div>
             <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
                 <div class="bg-gray-50 rounded-xl p-3 border border-gray-100 text-center">
-                    <p class="text-xs text-gray-400 mb-1">إجمالي الفاتورة</p>
+                    <p class="text-xs text-gray-400 mb-1" data-t="doc.salaryRevenue">Total Revenue</p>
                     <p class="font-bold text-gray-800" id="salaryKpiRevenue">0</p>
                 </div>
                 <div class="bg-green-50 rounded-xl p-3 border border-green-100 text-center">
-                    <p class="text-xs text-green-600 mb-1">المحصّل فعلاً</p>
+                    <p class="text-xs text-green-600 mb-1" data-t="doc.salaryCollected">Collected</p>
                     <p class="font-bold text-green-700" id="salaryKpiCollected">0</p>
                 </div>
                 <div class="bg-purple-50 rounded-xl p-3 border border-purple-100 text-center">
-                    <p class="text-xs text-purple-600 mb-1 font-semibold">عمولة الطبيب 💰</p>
+                    <p class="text-xs text-purple-600 mb-1 font-semibold" data-t="doc.salaryCommission">Doctor Commission</p>
                     <p class="font-bold text-purple-700 text-lg" id="salaryKpiCommission">0</p>
                 </div>
                 <div class="bg-blue-50 rounded-xl p-3 border border-blue-100 text-center">
-                    <p class="text-xs text-blue-600 mb-1">عدد الجلسات</p>
+                    <p class="text-xs text-blue-600 mb-1" data-t="doc.salarySessions">Sessions</p>
                     <p class="font-bold text-blue-700" id="salaryKpiSessions">0</p>
                 </div>
             </div>
@@ -1747,18 +1747,18 @@
                 <table class="w-full text-xs">
                     <thead class="sticky top-0">
                         <tr class="bg-slate-50 text-gray-400 uppercase border-b">
-                            <th class="px-3 py-2 text-right">التاريخ</th>
-                            <th class="px-3 py-2 text-right">الإجراء</th>
-                            <th class="px-3 py-2 text-right">المريض</th>
-                            <th class="px-3 py-2 text-right">التكلفة</th>
-                            <th class="px-3 py-2 text-right">المحصّل</th>
-                            <th class="px-3 py-2 text-right font-bold text-purple-600">العمولة</th>
+                            <th class="px-3 py-2 text-right" data-t="table.date">Date</th>
+                            <th class="px-3 py-2 text-right" data-t="modal.procedure">Procedure</th>
+                            <th class="px-3 py-2 text-right" data-t="table.patient">Patient</th>
+                            <th class="px-3 py-2 text-right" data-t="modal.totalCost">Total Cost</th>
+                            <th class="px-3 py-2 text-right" data-t="rep.collected">Collected</th>
+                            <th class="px-3 py-2 text-right font-bold text-purple-600" data-t="doc.commission">Commission</th>
                         </tr>
                     </thead>
                     <tbody id="salaryTreatmentsList"></tbody>
                 </table>
             </div>
-            <p class="text-xs text-gray-400 mt-2 text-center">* العمولة تُحسب من <strong>المبلغ المحصّل فعلاً</strong> فقط</p>
+            <p class="text-xs text-gray-400 mt-2 text-center" data-t="doc.commissionOnlyCollectedHint">* Commission is calculated from the collected amount only</p>
         </div>
     </div>
 
@@ -1766,7 +1766,7 @@
     <div id="createInvoiceModal" class="modal-base">
         <div class="modal-box max-w-lg">
             <div class="flex justify-between items-center mb-4 border-b pb-3">
-                <h3 class="text-lg font-bold"><i class="fa-solid fa-file-invoice text-blue-500 mr-2"></i>فاتورة جديدة</h3>
+                <h3 class="text-lg font-bold"><i class="fa-solid fa-file-invoice text-blue-500 mr-2"></i><span data-t="inv.new">New Invoice</span></h3>
                 <button onclick="closeModal('createInvoiceModal')" class="text-gray-300 hover:text-red-400 text-xl w-7 h-7 flex items-center justify-center"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="space-y-3">
@@ -1774,54 +1774,54 @@
                 <div class="flex gap-2">
                     <button id="invTypePat" onclick="setInvoiceType('patient')"
                         class="flex-1 py-2 rounded-xl text-xs font-bold border-2 border-blue-500 bg-blue-50 text-blue-700 transition">
-                        <i class="fa-solid fa-user mr-1"></i> مريض
+                        <i class="fa-solid fa-user mr-1"></i> <span data-t="inv.patientType">Patient</span>
                     </button>
                     <button id="invTypeSupp" onclick="setInvoiceType('supplier')"
                         class="flex-1 py-2 rounded-xl text-xs font-bold border-2 border-gray-200 bg-white text-gray-500 transition">
-                        <i class="fa-solid fa-building mr-1"></i> مورد / شركة
+                        <i class="fa-solid fa-building mr-1"></i> <span data-t="inv.supplierType">Supplier / Company</span>
                     </button>
                 </div>
                 <input type="hidden" id="invoiceType" value="patient">
 
                 <!-- مريض -->
                 <div id="invPatientRow">
-                    <label class="text-xs font-semibold text-gray-500 block mb-1">المريض *</label>
+                    <label class="text-xs font-semibold text-gray-500 block mb-1" data-t="inv.patient">Patient *</label>
                     <select id="invoicePatientId" class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm"></select>
                 </div>
                 <!-- مورد / شركة -->
                 <div id="invSupplierRow" class="hidden">
-                    <label class="text-xs font-semibold text-gray-500 block mb-1">اسم المورد / الشركة *</label>
-                    <input type="text" id="invoiceSupplierName" placeholder="مثال: شركة الدواء، مورد مستلزمات..." class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm">
+                    <label class="text-xs font-semibold text-gray-500 block mb-1" data-t="inv.supplierName">Supplier / Company Name *</label>
+                    <input type="text" id="invoiceSupplierName" data-t="inv.supplierPlaceholder" data-t-attr="placeholder" placeholder="Example: Pharma company, supplies vendor..." class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm">
                 </div>
 
                 <div class="grid grid-cols-2 gap-3">
-                    <div><label class="text-xs font-semibold text-gray-500 block mb-1">التاريخ</label><input type="date" id="invoiceDate" class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm"></div>
-                    <div><label class="text-xs font-semibold text-gray-500 block mb-1">تاريخ الاستحقاق</label><input type="date" id="invoiceDueDate" class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm"></div>
+                    <div><label class="text-xs font-semibold text-gray-500 block mb-1" data-t="table.date">Date</label><input type="date" id="invoiceDate" class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm"></div>
+                    <div><label class="text-xs font-semibold text-gray-500 block mb-1" data-t="inv.dueDate">Due Date</label><input type="date" id="invoiceDueDate" class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm"></div>
                 </div>
                 <div>
-                    <label class="text-xs font-semibold text-gray-500 block mb-2">البنود</label>
+                    <label class="text-xs font-semibold text-gray-500 block mb-2" data-t="inv.items">Items</label>
                     <div id="invoiceItemsContainer" class="space-y-2"></div>
-                    <button onclick="addInvoiceItem()" class="btn btn-gray text-xs mt-2"><i class="fa-solid fa-plus"></i> إضافة بند</button>
+                    <button onclick="addInvoiceItem()" class="btn btn-gray text-xs mt-2"><i class="fa-solid fa-plus"></i> <span data-t="inv.addItem">Add Item</span></button>
                 </div>
                 <div class="bg-slate-50 rounded-xl p-3 flex justify-between font-bold text-gray-800 mb-1">
-                    <span>الإجمالي:</span><span id="invoiceSubtotalDisplay">0 EGP</span>
+                    <span data-t="inv.subtotal">Subtotal:</span><span id="invoiceSubtotalDisplay">0 EGP</span>
                 </div>
                 <div class="grid grid-cols-2 gap-3 mb-2">
-                    <div><label class="text-xs font-semibold text-gray-500 block mb-1">خصم</label>
+                    <div><label class="text-xs font-semibold text-gray-500 block mb-1" data-t="inv.discount">Discount</label>
                         <input type="number" id="invoiceDiscount" placeholder="0" class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm" oninput="updateInvoiceTotal()">
                     </div>
-                    <div><label class="text-xs font-semibold text-gray-500 block mb-1">المدفوع</label>
+                    <div><label class="text-xs font-semibold text-gray-500 block mb-1" data-t="inv.paid">Paid</label>
                         <input type="number" id="invoicePaid" placeholder="0" class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm">
                     </div>
                 </div>
                 <div class="bg-blue-50 border border-blue-100 rounded-xl p-3 flex justify-between font-bold text-blue-800">
-                    <span>الصافي:</span><span id="invoiceTotalDisplay">0 EGP</span>
+                    <span data-t="inv.net">Net:</span><span id="invoiceTotalDisplay">0 EGP</span>
                 </div>
-                <div><label class="text-xs font-semibold text-gray-500 block mb-1 mt-2">ملاحظات</label><input type="text" id="invoiceNotes" placeholder="اختياري" class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm"></div>
+                <div><label class="text-xs font-semibold text-gray-500 block mb-1 mt-2" data-t="modal.notes">Notes</label><input type="text" id="invoiceNotes" data-t="inv.notesPlaceholder" data-t-attr="placeholder" placeholder="Optional" class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm"></div>
             </div>
             <div class="flex gap-2 mt-4 pt-4 border-t">
-                <button onclick="closeModal('createInvoiceModal')" class="btn btn-gray flex-1">إلغاء</button>
-                <button onclick="saveInvoice()" class="btn btn-blue flex-1"><i class="fa-solid fa-save"></i> حفظ الفاتورة</button>
+                <button onclick="closeModal('createInvoiceModal')" class="btn btn-gray flex-1" data-t="modal.cancel">Cancel</button>
+                <button onclick="saveInvoice()" class="btn btn-blue flex-1"><i class="fa-solid fa-save"></i> <span data-t="inv.save">Save Invoice</span></button>
             </div>
         </div>
     </div>
@@ -1830,11 +1830,11 @@
     <div id="addInvModal" class="modal-base">
         <div class="modal-box max-w-md">
             <div class="flex justify-between items-center mb-4 border-b pb-3">
-                <h3 class="text-lg font-bold"><i class="fa-solid fa-boxes-stacked text-blue-500 mr-2"></i>Add Inventory Item</h3>
+                <h3 class="text-lg font-bold"><i class="fa-solid fa-boxes-stacked text-blue-500 mr-2"></i><span data-t="inventory.addItemTitle">Add Inventory Item</span></h3>
                 <button onclick="closeModal('addInvModal')" class="text-gray-300 hover:text-red-400 text-xl w-7 h-7 flex items-center justify-center"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="space-y-3">
-                <div><label class="text-xs font-semibold text-gray-500 block mb-1">Item Name *</label><input type="text" id="invName" placeholder="e.g. Amoxicillin 500mg" class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm"></div>
+                <div><label class="text-xs font-semibold text-gray-500 block mb-1" data-t="inventory.itemName">Item Name *</label><input type="text" id="invName" data-t="inventory.itemPlaceholder" data-t-attr="placeholder" placeholder="e.g. Amoxicillin 500mg" class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm"></div>
                 <div class="grid grid-cols-2 gap-3">
                     <div><label class="text-xs font-semibold text-gray-500 block mb-1">Category</label>
                         <select id="invCategory" class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm">
@@ -1860,7 +1860,7 @@
             </div>
             <div class="flex gap-2 mt-4 pt-4 border-t">
                 <button onclick="closeModal('addInvModal')" class="btn btn-gray flex-1">Cancel</button>
-                <button id="invSaveBtn" onclick="saveInventoryItem()" class="btn btn-blue flex-1"><i class="fa-solid fa-save mr-1"></i>Save Item</button>
+                <button id="invSaveBtn" onclick="saveInventoryItem()" class="btn btn-blue flex-1"><i class="fa-solid fa-save mr-1"></i><span data-t="inventory.saveItem">Save Item</span></button>
             </div>
         </div>
     </div>
@@ -2067,9 +2067,9 @@
                 </div>
                 <div class="grid grid-cols-2 gap-3">
                     <div>
-                        <label class="text-xs font-semibold text-gray-500 block mb-1">Doctor *</label>
+                        <label class="text-xs font-semibold text-gray-500 block mb-1" data-t="modal.doctor">Doctor *</label>
                         <select id="appointmentDoctor" required class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm" onchange="refreshBookedSlots()">
-                            <option value="">Loading doctors...</option>
+                            <option value="" data-t="doc.loadingDoctors">Loading doctors...</option>
                         </select>
                     </div>
                     <div>
@@ -2134,11 +2134,11 @@
                 </div>
                 <div id="treatmentDoctorContainer">
                     <label class="text-xs font-semibold text-gray-500 block mb-1">
-                        <i class="fa-solid fa-user-doctor text-purple-500 mr-1"></i> الطبيب المعالج
+                        <i class="fa-solid fa-user-doctor text-purple-500 mr-1"></i> <span data-t="modal.treatingDoctor">Treating Doctor</span>
                     </label>
                     <select id="treatmentDoctorId" class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm" onchange="onTreatmentDoctorChange()"></select>
                     <div id="treatmentCommissionPreview" class="hidden mt-1.5 px-3 py-2 bg-purple-50 border border-purple-100 rounded-xl text-xs text-purple-700 font-semibold">
-                        <i class="fa-solid fa-coins mr-1"></i> عمولة الطبيب: <span id="treatmentCommAmt">0</span>
+                        <i class="fa-solid fa-coins mr-1"></i> <span data-t="doc.salaryCommission">Doctor Commission</span>: <span id="treatmentCommAmt">0</span>
                     </div>
                 </div>
                 <div><label class="text-xs font-semibold text-gray-500 block mb-1" data-t="modal.procedure">Procedure *</label>
@@ -2304,12 +2304,12 @@
     <div id="todayRevenueModal" class="modal-base">
         <div class="modal-box max-w-lg">
             <div class="flex justify-between items-center mb-5 border-b pb-3">
-                <h3 class="text-lg font-bold flex items-center gap-2"><i class="fa-solid fa-arrow-trend-up text-green-500"></i> إيرادات اليوم</h3>
+                <h3 class="text-lg font-bold flex items-center gap-2"><i class="fa-solid fa-arrow-trend-up text-green-500"></i> <span data-t="today.revenueTitle">Today's Revenue</span></h3>
                 <button onclick="closeModal('todayRevenueModal')" class="text-gray-300 hover:text-red-400 text-xl w-7 h-7 flex items-center justify-center"><i class="fa-solid fa-xmark"></i></button>
             </div>
-            <div id="todayRevenueModalBody"><p class="text-center text-gray-400 py-8">جاري التحميل...</p></div>
+            <div id="todayRevenueModalBody"><p class="text-center text-gray-400 py-8" data-t="common.loading">Loading...</p></div>
             <div class="mt-4 pt-3 border-t flex justify-between items-center">
-                <span class="text-sm text-gray-500 font-semibold">الإجمالي</span>
+                <span class="text-sm text-gray-500 font-semibold" data-t="common.total">Total</span>
                 <span id="todayRevenueModalTotal" class="text-xl font-black text-green-600">0</span>
             </div>
         </div>
@@ -2319,12 +2319,12 @@
     <div id="todayExpensesModal" class="modal-base">
         <div class="modal-box max-w-lg">
             <div class="flex justify-between items-center mb-5 border-b pb-3">
-                <h3 class="text-lg font-bold flex items-center gap-2"><i class="fa-solid fa-arrow-trend-down text-red-400"></i> مصروفات اليوم</h3>
+                <h3 class="text-lg font-bold flex items-center gap-2"><i class="fa-solid fa-arrow-trend-down text-red-400"></i> <span data-t="today.expensesTitle">Today's Expenses</span></h3>
                 <button onclick="closeModal('todayExpensesModal')" class="text-gray-300 hover:text-red-400 text-xl w-7 h-7 flex items-center justify-center"><i class="fa-solid fa-xmark"></i></button>
             </div>
-            <div id="todayExpensesModalBody"><p class="text-center text-gray-400 py-8">جاري التحميل...</p></div>
+            <div id="todayExpensesModalBody"><p class="text-center text-gray-400 py-8" data-t="common.loading">Loading...</p></div>
             <div class="mt-4 pt-3 border-t flex justify-between items-center">
-                <span class="text-sm text-gray-500 font-semibold">الإجمالي</span>
+                <span class="text-sm text-gray-500 font-semibold" data-t="common.total">Total</span>
                 <span id="todayExpensesModalTotal" class="text-xl font-black text-red-500">0</span>
             </div>
         </div>
@@ -2342,17 +2342,17 @@
                     </div>
                 </div>
                 <div class="flex items-center gap-2">
-                    <button id="pqvOpenProfileBtn" class="btn btn-blue text-xs"><i class="fa-solid fa-arrow-up-right-from-square"></i> Open Profile</button>
+                    <button id="pqvOpenProfileBtn" class="btn btn-blue text-xs"><i class="fa-solid fa-arrow-up-right-from-square"></i> <span data-t="common.openProfile">Open Profile</span></button>
                     <button onclick="closeModal('patientQuickModal')" class="text-gray-300 hover:text-red-400 text-xl w-8 h-8 flex items-center justify-center"><i class="fa-solid fa-xmark"></i></button>
                 </div>
             </div>
             <div id="pqvInfoRow" class="grid grid-cols-3 gap-3 mb-4"></div>
             <div id="pqvBalanceRow" class="grid grid-cols-3 gap-3 mb-4"></div>
             <div class="flex gap-1 mb-3 bg-gray-50 rounded-xl p-1 flex-wrap">
-                <button class="pqv-tab active" onclick="switchPqvTab(this,'pqvAppts')"><i class="fa-solid fa-calendar-days mr-1"></i>Appointments</button>
-                <button class="pqv-tab" onclick="switchPqvTab(this,'pqvTreatments')"><i class="fa-solid fa-tooth mr-1"></i>Treatments</button>
-                <button class="pqv-tab" onclick="switchPqvTab(this,'pqvRx')"><i class="fa-solid fa-prescription-bottle-medical mr-1"></i>Prescriptions</button>
-                <button class="pqv-tab" onclick="switchPqvTab(this,'pqvInvoices')"><i class="fa-solid fa-file-invoice mr-1"></i>Invoices</button>
+                <button class="pqv-tab active" onclick="switchPqvTab(this,'pqvAppts')"><i class="fa-solid fa-calendar-days mr-1"></i><span data-t="common.appointments">Appointments</span></button>
+                <button class="pqv-tab" onclick="switchPqvTab(this,'pqvTreatments')"><i class="fa-solid fa-tooth mr-1"></i><span data-t="common.treatments">Treatments</span></button>
+                <button class="pqv-tab" onclick="switchPqvTab(this,'pqvRx')"><i class="fa-solid fa-prescription-bottle-medical mr-1"></i><span data-t="common.prescriptions">Prescriptions</span></button>
+                <button class="pqv-tab" onclick="switchPqvTab(this,'pqvInvoices')"><i class="fa-solid fa-file-invoice mr-1"></i><span data-t="common.invoices">Invoices</span></button>
             </div>
             <div style="max-height:320px;overflow-y:auto">
                 <div id="pqvAppts" class="pqv-panel active"></div>
