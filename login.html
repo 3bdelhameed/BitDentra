@@ -226,7 +226,7 @@ async function loadUsersFromDB() {
     try {
         const { data, error } = await sb
             .from('clinic_users')
-            .select('id, username, password, is_active, role, name_ar, name_en')
+            .select('id, username, password, is_active, role, name_ar, name_en, permissions')
             .eq('is_active', true);
         if (error) throw error;
         _dbUsers = data || [];
@@ -325,7 +325,7 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
 
         if (sb && navigator.onLine) {
             const result = await sb
-                .from('clinic_users').select('id, username, password, is_active, role, name_ar, name_en')
+                .from('clinic_users').select('id, username, password, is_active, role, name_ar, name_en, permissions')
                 .eq('username', username).eq('is_active', true)
                 .single();
             if (!result.error && result.data) {
@@ -360,6 +360,10 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
             sessionStorage.setItem('clinicUsername',  data.username);
             sessionStorage.setItem('clinicRole',     data.role);
             sessionStorage.setItem('clinicUserName', loginLang==='ar' ? (data.name_ar||'') : (data.name_en||''));
+            const legacyPerms = Array.isArray(data.permissions)
+                ? data.permissions
+                : (() => { try { return JSON.parse(data.permissions || '[]'); } catch (_) { return []; } })();
+            sessionStorage.setItem('clinicPermissions', JSON.stringify(Array.isArray(legacyPerms) ? legacyPerms : []));
         }
         showAlert('alertBox', s.accessGranted, 'success');
         setTimeout(() => { window.location.href = 'index.html'; }, 700);
@@ -390,5 +394,3 @@ if('serviceWorker' in navigator && !/BitDentraAndroid\/\d/.test(navigator.userAg
 </script>
 </body>
 </html>
-
-

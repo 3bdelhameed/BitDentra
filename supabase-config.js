@@ -520,7 +520,10 @@ function refreshViewForTable(table) {
         },
         patient_notes: () => { if (currentProfilePatientId && isViewActive('profileView')) loadPatientNotes(currentProfilePatientId); },
         doctors:       () => { if (isViewActive('doctorsView') && window.loadDoctors) loadDoctors(); if (isViewActive('dashboardView')) updateDashboard(); },
-        clinic_users:  () => { if (isViewActive('usersView') && window.loadUsersView) window.loadUsersView(); },
+        clinic_users:  () => {
+            if (isViewActive('usersView') && window.loadUsersView) window.loadUsersView();
+            if (typeof window.applyUserPermissions === 'function') window.applyUserPermissions();
+        },
         session_payments: () => { if (currentProfilePatientId && isViewActive('profileView')) loadPatientHistory(currentProfilePatientId); },
         audit_logs:    () => { if (isViewActive('auditView') && window.loadAuditLogView) window.loadAuditLogView(); },
         payables:      () => { if (isViewActive('payablesView') && typeof loadPayablesView === 'function') loadPayablesView(); if (isViewActive('reportsView')) loadReports(); if (isViewActive('dashboardView')) updateDashboard(); },

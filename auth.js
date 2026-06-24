@@ -77,16 +77,62 @@
         return actual === expected;
     }
 
-    function buildSessionUser(user, lang) {
+    function resolveUserField(user, primaryKey, fallbackKey, defaultValue = '') {
+        if (!user || typeof user !== 'object') return defaultValue;
+        if (user[primaryKey] != null && user[primaryKey] !== '') return user[primaryKey];
+        if (fallbackKey && user[fallbackKey] != null && user[fallbackKey] !== '') return user[fallbackKey];
+        return defaultValue;
+    }
+
+    function normalizePermissions(value) {
+        if (Array.isArray(value)) {
+            return value.filter(Boolean).map(item => String(item));
+        }
+
+        if (typeof value !== 'string' || !value.trim()) return [];
+
+        try {
+            const parsed = JSON.parse(value);
+            return Array.isArray(parsed) ? parsed.filter(Boolean).map(item => String(item)) : [];
+        } catch (_) {
+            return [];
+        }
+    }
+
+    function normalizeSessionUser(user, lang = (localStorage.getItem('clinicLang') || 'ar')) {
+        const username = resolveUserField(user, 'username', '', '');
+        const nameAr = resolveUserField(user, 'name_ar', 'nameAr', '');
+        const nameEn = resolveUserField(user, 'name_en', 'nameEn', '');
+        const permissionsConfigured = !!(
+            user?.permissionsConfigured === true ||
+            Array.isArray(user?.permissions) ||
+            (typeof user?.permissions === 'string' && user.permissions.trim())
+        );
+        const displayName = resolveUserField(
+            user,
+            'displayName',
+            '',
+            lang === 'ar' ? (nameAr || nameEn || username || '') : (nameEn || nameAr || username || '')
+        );
+        const hasSnakeActive = user && Object.prototype.hasOwnProperty.call(user, 'is_active');
+        const hasCamelActive = user && Object.prototype.hasOwnProperty.call(user, 'isActive');
+        const isActive = hasSnakeActive ? user.is_active !== false : (hasCamelActive ? user.isActive !== false : true);
+
         return {
-            id: user.id,
-            username: user.username,
-            role: user.role,
-            displayName: lang === 'ar' ? (user.name_ar || user.name_en || user.username || '') : (user.name_en || user.name_ar || user.username || ''),
-            nameAr: user.name_ar || '',
-            nameEn: user.name_en || '',
-            isActive: user.is_active !== false
+            id: user?.id,
+            username,
+            role: resolveUserField(user, 'role', '', 'doctor'),
+            displayName,
+            nameAr,
+            nameEn,
+            isActive,
+            permissions: normalizePermissions(user?.permissions),
+            permissionsConfigured
         };
+    }
+
+    function buildSessionUser(user, lang) {
+        return normalizeSessionUser(user, lang);
     }
 
     function clearSession() {
@@ -95,6 +141,7 @@
         sessionStorage.removeItem('clinicUsername');
         sessionStorage.removeItem('clinicRole');
         sessionStorage.removeItem('clinicUserName');
+        sessionStorage.removeItem('clinicPermissions');
     }
 
     function persistLegacySessionFields(user) {
@@ -102,18 +149,20 @@
         sessionStorage.setItem('clinicUsername', user.username || '');
         sessionStorage.setItem('clinicRole', user.role || '');
         sessionStorage.setItem('clinicUserName', user.displayName || '');
+        sessionStorage.setItem('clinicPermissions', JSON.stringify(normalizePermissions(user.permissions)));
     }
 
     function setSession(user) {
+        const sessionUser = normalizeSessionUser(user);
         const now = Date.now();
         const payload = {
             version: 2,
             issuedAt: now,
             expiresAt: now + SESSION_TTL_MS,
-            user
+            user: sessionUser
         };
         sessionStorage.setItem(SESSION_KEY, JSON.stringify(payload));
-        persistLegacySessionFields(user);
+        persistLegacySessionFields(sessionUser);
         return payload;
     }
 
@@ -126,6 +175,7 @@
                 clearSession();
                 return null;
             }
+            parsed.user = normalizeSessionUser(parsed.user);
             persistLegacySessionFields(parsed.user);
             return parsed;
         } catch (_) {
@@ -153,6 +203,10 @@
 
     function getCurrentDisplayName() {
         return getCurrentUser()?.displayName || '';
+    }
+
+    function getCurrentPermissions() {
+        return normalizePermissions(getCurrentUser()?.permissions);
     }
 
     function requireSession(redirectUrl = 'login.html') {
@@ -189,6 +243,7 @@
         buildSessionUser,
         clearSession,
         getCurrentDisplayName,
+        getCurrentPermissions,
         getCurrentRole,
         getCurrentUser,
         getCurrentUsername,

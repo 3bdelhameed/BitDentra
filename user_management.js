@@ -41,15 +41,82 @@
         return _usersList.find(u => String(u.id) === targetId) || null;
     }
 
-    function parsePermissions(value) {
+    function readPermissionsPayload(value) {
         if (Array.isArray(value)) return value;
-        if (typeof value !== 'string' || !value.trim()) return [];
+        if (typeof value !== 'string' || !value.trim()) return null;
         try {
             const parsed = JSON.parse(value);
-            return Array.isArray(parsed) ? parsed : [];
+            return Array.isArray(parsed) ? parsed : null;
         } catch (_) {
-            return [];
+            return null;
         }
+    }
+
+    function parsePermissions(value) {
+        return readPermissionsPayload(value) || [];
+    }
+
+    function getDefaultPermissionsForRole(role) {
+        if (role === 'admin') {
+            return PERMISSIONS_LIST.map(p => p.id);
+        }
+
+        if (role === 'doctor') {
+            return ['nav-dashboard', 'nav-patients', 'nav-appointments', 'nav-calendar', 'nav-prescriptions', 'nav-invoices', 'nav-payables', 'nav-reports'];
+        }
+
+        return ['nav-dashboard', 'nav-patients', 'nav-appointments', 'nav-calendar', 'nav-prescriptions', 'nav-invoices'];
+    }
+
+    function resolveUserPermissions(user, fallbackRole = '') {
+        const role = user?.role || fallbackRole || 'reception';
+        if (role === 'admin') return getDefaultPermissionsForRole(role);
+        if (user?.permissionsConfigured === false) return getDefaultPermissionsForRole(role);
+
+        const explicitPermissions = readPermissionsPayload(user?.permissions);
+        return explicitPermissions !== null ? explicitPermissions : getDefaultPermissionsForRole(role);
+    }
+
+    function getCurrentSessionUser() {
+        return window.clinicAuth ? window.clinicAuth.getCurrentUser() : null;
+    }
+
+    function getCurrentSessionRole() {
+        return window.clinicAuth ? window.clinicAuth.getCurrentRole() : (sessionStorage.getItem('clinicRole') || '');
+    }
+
+    function applyPermissionsToSidebar(permissionIds) {
+        const perms = Array.from(new Set(parsePermissions(permissionIds)));
+        const sectionMap = {
+            'nav-section-main': ['nav-dashboard', 'nav-patients', 'nav-appointments', 'nav-calendar'],
+            'nav-section-clinical': ['nav-prescriptions'],
+            'nav-section-finance': ['nav-invoices', 'nav-expenses', 'nav-payables', 'nav-reports'],
+            'nav-section-system': ['nav-inventory', 'nav-lab', 'nav-doctors', 'nav-reminders', 'nav-settings'],
+        };
+
+        window._currentUserPermissions = perms;
+
+        PERMISSIONS_LIST.forEach(p => {
+            const el = document.getElementById(p.id);
+            if (el) el.style.display = perms.includes(p.id) ? 'flex' : 'none';
+        });
+
+        Object.entries(sectionMap).forEach(([sectionId, linkIds]) => {
+            const el = document.getElementById(sectionId);
+            if (el) el.style.display = linkIds.some(linkId => perms.includes(linkId)) ? '' : 'none';
+        });
+    }
+
+    function revealSidebarNav() {
+        const skeleton = document.getElementById('sidebarSkeleton');
+        const nav = document.getElementById('sidebarNav');
+        if (!nav) return;
+        nav.style.display = '';
+        requestAnimationFrame(() => {
+            nav.style.opacity = '1';
+            if (skeleton) skeleton.style.opacity = '0';
+            setTimeout(() => { if (skeleton) skeleton.style.display = 'none'; }, 250);
+        });
     }
 
     function serializeUserForAudit(user) {
@@ -751,6 +818,64 @@
     };
 
     // ── INIT ──────────────────────────────────────────────────────────
+    window.setDefaultPermissions = function() {
+        const role = document.getElementById('userRole').value;
+        const checkboxes = document.querySelectorAll('.user-permission-cb');
+        const defaultPerms = getDefaultPermissionsForRole(role);
+
+        checkboxes.forEach(cb => {
+            cb.checked = defaultPerms.includes(cb.value);
+        });
+    };
+
+    window.applyUserPermissions = async function() {
+        const role = getCurrentSessionRole();
+        const username = window.clinicAuth ? window.clinicAuth.getCurrentUsername() : sessionStorage.getItem('clinicUsername');
+        const sessionUser = getCurrentSessionUser();
+        const initialPermissions = resolveUserPermissions(
+            sessionUser ? {
+                role: sessionUser.role,
+                permissions: sessionUser.permissions,
+                permissionsConfigured: sessionUser.permissionsConfigured
+            } : null,
+            role
+        );
+
+        applyPermissionsToSidebar(initialPermissions);
+        revealSidebarNav();
+
+        if (role === 'admin' || !username) {
+            return;
+        }
+
+        try {
+            const data = await window.dbGetAll('clinic_users');
+            const currentUser = data.find(u => u.username === username);
+            if (!currentUser) return;
+
+            const resolvedPermissions = resolveUserPermissions(currentUser, currentUser.role || role);
+            applyPermissionsToSidebar(resolvedPermissions);
+
+            if (window.clinicAuth) {
+                const liveUser = window.clinicAuth.getCurrentUser();
+                if (liveUser) {
+                    const lang = localStorage.getItem('clinicLang') || 'ar';
+                    window.clinicAuth.setSession(window.clinicAuth.buildSessionUser({
+                        ...liveUser,
+                        ...currentUser,
+                        permissions: resolvedPermissions
+                    }, lang));
+                }
+            } else {
+                sessionStorage.setItem('clinicPermissions', JSON.stringify(resolvedPermissions));
+            }
+        } catch (e) {
+            console.error('[Permissions] Error:', e);
+        } finally {
+            revealSidebarNav();
+        }
+    };
+
     async function init() {
         let tries = 0;
         while (!window.openModal && tries < 50) {
@@ -761,7 +886,7 @@
         patchSwitchView();
         patchLanguageToggle();
         
-        setTimeout(window.applyUserPermissions, 300);
+        window.applyUserPermissions();
         setTimeout(window.applyUserPermissions, 1500);
     }
 
