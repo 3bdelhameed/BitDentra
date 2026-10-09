@@ -342,90 +342,8 @@ window.refreshAllDoctorDropdowns = async function () {
 };
 window.refreshDoctorDropdowns = window.refreshAllDoctorDropdowns;
 
-window.openDoctorSalaryModal = async function (docId) {
-    let all;
-    try { all = await getAllDoctorsFromDB(); } catch (_e) {
-        showToast(docText('doc.loadError', 'Load error:'), 'error');
-        return;
-    }
-    const doc = all.find(d => String(d.id) === String(docId));
-    if (!doc) return;
+// (Salary calculation functions defined unified below)
 
-    document.getElementById('salaryDoctorId').value = docId;
-    document.getElementById('salaryDoctorName').textContent = docName(doc);
-    document.getElementById('salaryCommissionRate').textContent = docFormat('doc.commissionRate', { pct: docPct(doc) }, `Commission Rate: ${docPct(doc)}%`);
-
-    const now = new Date();
-    const defMon = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-    document.getElementById('salaryMonthFilter').value = defMon;
-    document.getElementById('doctorSalaryModal')?.classList.add('open');
-    await calcDoctorSalary(docId, defMon);
-};
-
-window.recalcDoctorSalary = async function () {
-    const docId = document.getElementById('salaryDoctorId')?.value;
-    const month = document.getElementById('salaryMonthFilter')?.value;
-    if (docId) await calcDoctorSalary(docId, month);
-};
-
-async function calcDoctorSalary(docId, monthFilter) {
-    const curr = getCurr();
-    const tbody = document.getElementById('salaryTreatmentsList');
-    if (tbody) tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-gray-400 text-xs"><i class="fa-solid fa-spinner fa-spin mr-1"></i>${docText('doc.calculating', 'Calculating...')}</td></tr>`;
-
-    let rows = [];
-    try {
-        rows = await getAllTreatmentsFromDB();
-    } catch (e) {
-        if (tbody) tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-red-400 text-xs">${docText('doc.loadError', 'Load error:')} ${e.message}</td></tr>`;
-        return;
-    }
-
-    rows = rows.filter(t => {
-        const tid = String(t.doctor_id ?? t.doctorId ?? '');
-        const tnam = String(t.doctor_name ?? t.doctorName ?? '');
-        return tid === String(docId) || (tnam && tnam === String(docId));
-    });
-    if (monthFilter) rows = rows.filter(t => (t.date || '').startsWith(monthFilter));
-
-    let rev = 0, coll = 0, comm = 0;
-    rows.forEach(t => {
-        const cost = parseFloat(t.total_cost ?? t.totalCost) || 0;
-        const paid = parseFloat(t.paid) || 0;
-        const pct = parseFloat(t.doctor_commission_pct ?? t.doctorCommissionPct) || 0;
-        const c = parseFloat(t.doctor_commission_amt ?? t.doctorCommissionAmt) || parseFloat((paid * pct / 100).toFixed(2));
-        rev += cost;
-        coll += paid;
-        comm += c;
-    });
-
-    const setEl = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
-    setEl('salaryKpiRevenue', `${rev.toLocaleString()} ${curr}`);
-    setEl('salaryKpiCollected', `${coll.toLocaleString()} ${curr}`);
-    setEl('salaryKpiCommission', `${comm.toFixed(2)} ${curr}`);
-    setEl('salaryKpiSessions', docFormat('doc.sessionsCount', { count: rows.length }, `${rows.length} sessions`));
-
-    if (!tbody) return;
-    if (!rows.length) {
-        tbody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-gray-400 text-sm">${docText('doc.noTreatmentsPeriod', 'No treatments found for this doctor in this period')}</td></tr>`;
-        return;
-    }
-
-    tbody.innerHTML = [...rows].sort((a, b) => (b.date || '').localeCompare(a.date || '')).map(t => {
-        const cost = parseFloat(t.total_cost ?? t.totalCost) || 0;
-        const paid = parseFloat(t.paid) || 0;
-        const pct = parseFloat(t.doctor_commission_pct ?? t.doctorCommissionPct) || 0;
-        const c = parseFloat(t.doctor_commission_amt ?? t.doctorCommissionAmt) || parseFloat((paid * pct / 100).toFixed(2));
-        return `<tr class="border-b border-gray-50 hover:bg-slate-50 text-xs">
-            <td class="p-2 text-gray-400">${t.date || '—'}</td>
-            <td class="p-2 font-medium text-gray-700">${t.procedure || '—'}</td>
-            <td class="p-2 text-gray-500">${t.patient_name ?? t.patientName ?? '—'}</td>
-            <td class="p-2 text-right text-gray-700">${cost.toLocaleString()} ${curr}</td>
-            <td class="p-2 text-right text-green-600 font-semibold">${paid.toLocaleString()} ${curr}</td>
-            <td class="p-2 text-right font-bold ${c > 0 ? 'text-purple-600' : 'text-gray-300'}">${c.toFixed(2)} ${curr}</td>
-        </tr>`;
-    }).join('');
-}
 
 // ══════════════════════════════════════════════════════════════════
 //  OPEN ADD MODAL
@@ -626,15 +544,24 @@ window.refreshDoctorDropdowns = window.refreshAllDoctorDropdowns;
 //  TREATMENT — معاينة العمولة لحظياً
 // ══════════════════════════════════════════════════════════════════
 window.onTreatmentDoctorChange = function () {
-    const sel     = document.getElementById('treatmentDoctorId');
-    const paidEl  = document.getElementById('treatmentPaid');
-    const preview = document.getElementById('treatmentCommissionPreview');
-    const amtEl   = document.getElementById('treatmentCommAmt');
+    const sel       = document.getElementById('treatmentDoctorId');
+    const paidEl    = document.getElementById('treatmentPaid');
+    const labCostEl = document.getElementById('treatmentImplantLabCost');
+    const preview   = document.getElementById('treatmentCommissionPreview');
+    const amtEl     = document.getElementById('treatmentCommAmt');
     if (!sel?.value) { preview?.classList.add('hidden'); return; }
-    const pct  = parseFloat(sel.selectedOptions[0]?.getAttribute('data-pct')) || 0;
-    const paid = parseFloat(paidEl?.value) || 0;
+
+    const pct     = parseFloat(sel.selectedOptions[0]?.getAttribute('data-pct')) || 0;
+    const paid    = parseFloat(paidEl?.value) || 0;
+    const labCost = parseFloat(labCostEl?.value) || 0;
+    const netBase = Math.max(0, paid - labCost);
+
     if (pct > 0) {
-        if (amtEl) amtEl.textContent = (paid * pct / 100).toFixed(2) + ' ' + getCurr();
+        let msg = `${(netBase * pct / 100).toFixed(2)} ${getCurr()}`;
+        if (labCost > 0) {
+            msg += ` (صافي بعد خصم معمل الزرعة ${labCost} ${getCurr()})`;
+        }
+        if (amtEl) amtEl.textContent = msg;
         preview?.classList.remove('hidden');
     } else {
         preview?.classList.add('hidden');
@@ -677,21 +604,29 @@ async function calcDoctorSalary(docId, monthFilter) {
     const curr  = getCurr();
     const tbody = document.getElementById('salaryTreatmentsList');
 
-    if (tbody) tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-gray-400 text-xs">
+    if (tbody) tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-gray-400 text-xs">
         <i class="fa-solid fa-spinner fa-spin mr-1"></i>جاري الحساب...
     </td></tr>`;
+
+    let allDocs = [];
+    try { allDocs = await getAllDoctorsFromDB(); } catch (_) {}
+    const doc = allDocs.find(d => String(d.id) === String(docId));
+    const defaultDocPct = doc ? (parseFloat(doc.commission_pct ?? doc.commissionPct) || 0) : 0;
+    const docMainName = doc ? (doc.name || doc.name_ar || doc.name_en || '').trim() : '';
 
     let rows = [];
     try { rows = await getAllTreatmentsFromDB(); }
     catch (e) {
-        if (tbody) tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-red-400 text-xs">خطأ: ${e.message}</td></tr>`;
+        if (tbody) tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-red-400 text-xs">خطأ: ${e.message}</td></tr>`;
         return;
     }
 
     rows = rows.filter(t => {
-        const tid  = String(t.doctor_id   ?? t.doctorId   ?? '');
-        const tnam = String(t.doctor_name ?? t.doctorName ?? '');
-        return tid === String(docId) || (tnam && tnam === String(docId));
+        const tid  = String(t.doctor_id   ?? t.doctorId   ?? '').trim();
+        const tnam = String(t.doctor_name ?? t.doctorName ?? '').trim();
+        return (tid && tid === String(docId)) || 
+               (docMainName && tnam && tnam.toLowerCase() === docMainName.toLowerCase()) || 
+               (tnam && tnam === String(docId));
     });
     if (monthFilter) rows = rows.filter(t => (t.date || '').startsWith(monthFilter));
 
@@ -699,9 +634,14 @@ async function calcDoctorSalary(docId, monthFilter) {
     rows.forEach(t => {
         const cost = parseFloat(t.total_cost ?? t.totalCost) || 0;
         const paid = parseFloat(t.paid) || 0;
-        const pct  = parseFloat(t.doctor_commission_pct ?? t.doctorCommissionPct) || 0;
-        const c    = parseFloat(t.doctor_commission_amt ?? t.doctorCommissionAmt)
-                  || parseFloat((paid * pct / 100).toFixed(2));
+        let pct  = parseFloat(t.doctor_commission_pct ?? t.doctorCommissionPct) || 0;
+        if (!pct && defaultDocPct > 0) pct = defaultDocPct;
+
+        const implantLab = parseFloat(t.implant_lab_cost ?? t.implantLabCost ?? 0) || 0;
+        const netPaid = Math.max(0, paid - implantLab);
+        const c = pct > 0
+            ? parseFloat((netPaid * pct / 100).toFixed(2))
+            : (parseFloat(t.doctor_commission_amt ?? t.doctorCommissionAmt) || 0);
         rev  += cost;
         coll += paid;
         comm += c;
@@ -715,8 +655,8 @@ async function calcDoctorSalary(docId, monthFilter) {
 
     if (!tbody) return;
     if (!rows.length) {
-        tbody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-gray-400 text-sm">
-            لا توجد علاجات لهذا الطبيب في هذه الفترة
+        tbody.innerHTML = `<tr><td colspan="7" class="p-8 text-center text-gray-400 text-sm">
+            لا توجد علاجات مسجلة لهذا الطبيب في هذه الفترة
         </td></tr>`;
         return;
     }
@@ -726,15 +666,26 @@ async function calcDoctorSalary(docId, monthFilter) {
         .map(t => {
             const cost = parseFloat(t.total_cost ?? t.totalCost) || 0;
             const paid = parseFloat(t.paid) || 0;
-            const pct  = parseFloat(t.doctor_commission_pct ?? t.doctorCommissionPct) || 0;
-            const c    = parseFloat(t.doctor_commission_amt ?? t.doctorCommissionAmt)
-                      || parseFloat((paid * pct / 100).toFixed(2));
+            let pct  = parseFloat(t.doctor_commission_pct ?? t.doctorCommissionPct) || 0;
+            if (!pct && defaultDocPct > 0) pct = defaultDocPct;
+
+            const implantLab = parseFloat(t.implant_lab_cost ?? t.implantLabCost ?? 0) || 0;
+            const netPaid = Math.max(0, paid - implantLab);
+            const c = pct > 0
+                ? parseFloat((netPaid * pct / 100).toFixed(2))
+                : (parseFloat(t.doctor_commission_amt ?? t.doctorCommissionAmt) || 0);
+
+            const labBadge = implantLab > 0
+                ? `<div class="text-[10px] text-amber-600 font-semibold mt-0.5">خصم معمل الزرعة: -${implantLab.toLocaleString()} ${curr}</div>`
+                : '';
+
             return `<tr class="border-b border-gray-50 hover:bg-slate-50 text-xs">
               <td class="p-2 text-gray-400">${t.date || '—'}</td>
-              <td class="p-2 font-medium text-gray-700">${t.procedure || '—'}</td>
+              <td class="p-2 font-medium text-gray-700">${t.procedure || '—'}${labBadge}</td>
               <td class="p-2 text-gray-500">${t.patient_name ?? t.patientName ?? '—'}</td>
               <td class="p-2 text-right text-gray-700">${cost.toLocaleString()} ${curr}</td>
               <td class="p-2 text-right text-green-600 font-semibold">${paid.toLocaleString()} ${curr}</td>
+              <td class="p-2 text-center font-bold text-purple-700 bg-purple-50/50 rounded">${pct}%</td>
               <td class="p-2 text-right font-bold ${c > 0 ? 'text-purple-600' : 'text-gray-300'}">
                 ${c.toFixed(2)} ${curr}
               </td>
@@ -786,7 +737,9 @@ async function calcDoctorSalary(docId, monthFilter) {
                 const pct   = parseFloat(opt?.getAttribute('data-pct')) || 0;
                 const name  = opt?.getAttribute('data-name') || '';
                 const paid  = parseFloat(data.paid ?? data.totalPaid ?? 0) || 0;
-                const comm  = parseFloat((paid * pct / 100).toFixed(2));
+                const implantLab = parseFloat(data.implant_lab_cost ?? data.implantLabCost ?? document.getElementById('treatmentImplantLabCost')?.value) || 0;
+                const netPaid = Math.max(0, paid - implantLab);
+                const comm  = parseFloat((netPaid * pct / 100).toFixed(2));
                 data = {
                     ...data,
                     doctor_id:             docId,
@@ -794,6 +747,12 @@ async function calcDoctorSalary(docId, monthFilter) {
                     doctor_commission_pct: pct,
                     doctor_commission_amt: comm,
                 };
+                if (implantLab > 0) {
+                    data.implant_lab_cost = implantLab;
+                } else {
+                    delete data.implant_lab_cost;
+                    delete data.implant_lab_name;
+                }
             }
         }
         return await _origInsert(table, data);

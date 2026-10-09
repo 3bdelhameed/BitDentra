@@ -877,6 +877,69 @@
     let _lastSyncTime = 0;
     const SYNC_DEBOUNCE_MS = 3000; // منع sync مرتين في أقل من 3 ثواني
 
+    // ── Sanitize payload before sending to Supabase (strip local-only / non-existent columns)
+    function sanitizeForSupabase(table, data) {
+        if (!data || typeof data !== 'object') return data;
+        const clean = { ...data };
+        delete clean._localOnly;
+        delete clean._pendingSync;
+        delete clean._pendingOp;
+        delete clean._pending_sync;
+        delete clean._pending_op;
+        delete clean._offline;
+        delete clean._queued;
+        delete clean._updated;
+
+        if (table === 'treatments') {
+            const labCost = parseFloat(clean.implant_lab_cost ?? clean.implantLabCost ?? 0);
+            const labName = (clean.implant_lab_name ?? clean.implantLabName ?? '').toString().trim();
+            if (labCost > 0) {
+                const labTag = `[زرعة: معمل ${labName || 'معمل'} - تكلفة ${labCost}]`;
+                if (!clean.notes) {
+                    clean.notes = labTag;
+                } else if (!clean.notes.includes('زرعة:')) {
+                    clean.notes = `${clean.notes} ${labTag}`.trim();
+                }
+            }
+
+            delete clean.implant_lab_cost;
+            delete clean.implant_lab_name;
+            delete clean.implantLabCost;
+            delete clean.implantLabName;
+            delete clean.totalCost;
+            delete clean.patientName;
+            delete clean.toothNumber;
+            delete clean.toothCondition;
+            delete clean.doctorId;
+            delete clean.doctorName;
+            delete clean.doctorCommissionPct;
+            delete clean.doctorCommissionAmt;
+        }
+
+        if (table === 'lab_orders') {
+            delete clean.implant_lab_cost;
+            delete clean.implant_lab_name;
+            delete clean.patientName;
+            delete clean.workType;
+            delete clean.labName;
+            delete clean.dueDate;
+            delete clean.paidToLab;
+            delete clean.statusNote;
+            delete clean.createdAt;
+            delete clean.deliveredAt;
+        }
+
+        if (table === 'doctors') {
+            delete clean.nameAr;
+            delete clean.nameEn;
+            delete clean.commissionPct;
+            delete clean.isActive;
+            delete clean.createdAt;
+        }
+
+        return clean;
+    }
+
     async function syncQueue() {
         if (_isSyncing || !navigator.onLine) return;
         await recoverPendingToothStateQueue();
@@ -950,7 +1013,8 @@
                     // ✅ FIX: حوّل الـ tempIds في البيانات قبل الـ insert
                     opData = remapIds(opData);
 
-                    const { id: _localId, _localOnly, _pendingSync, _pendingOp, ...cleanData } = opData;
+                    const { id: _localId, _localOnly, _pendingSync, _pendingOp, ...rawOpData } = opData;
+                    const cleanData = sanitizeForSupabase(op.table, rawOpData);
 
                     // ✅ FIX: تحقق أولاً إن السجل مش موجود بالفعل في Supabase (منع duplicate)
                     let inserted = null;
@@ -995,6 +1059,7 @@
                             // ✅ حدّث الـ Dexie: احذف الـ temp record وضيف الـ real record
                             await dexieDelete(op.table, _localId);
                             await dexieUpsert(op.table, {
+                                ...opData,
                                 ...inserted,
                                 _localOnly: false,
                                 _pendingSync: false,
@@ -1027,6 +1092,7 @@
                         } else if (inserted) {
                             await dexieDelete(op.table, _localId);
                             await dexieUpsert(op.table, {
+                                ...opData,
                                 ...inserted,
                                 _localOnly: false,
                                 _pendingSync: false,
@@ -1062,7 +1128,8 @@
                     }
 
                 } else if (op.action === 'update') {
-                    const { _localOnly, _pendingSync, _pendingOp, id: _ignoreId, ...cleanUpdateData } = op.data || {};
+                    const { _localOnly, _pendingSync, _pendingOp, id: _ignoreId, ...rawUpdateData } = op.data || {};
+                    const cleanUpdateData = sanitizeForSupabase(op.table, rawUpdateData);
                     const remoteId = idRemap[op.table]?.[String(op.id)] || op.id;
                     const { error } = await window._sb
                         .from(op.table)
@@ -1082,7 +1149,8 @@
 
                 } else if (op.action === 'upsert') {
                     let opData = remapIds(op.data || {});
-                    const { id: _localId, _localOnly, _pendingSync, _pendingOp, ...cleanUpsertData } = opData;
+                    const { id: _localId, _localOnly, _pendingSync, _pendingOp, ...rawUpsertData } = opData;
+                    const cleanUpsertData = sanitizeForSupabase(op.table, rawUpsertData);
                     const upserted = op.table === 'tooth_states'
                         ? await syncToothStateToSupabase(cleanUpsertData)
                         : await (async () => {
@@ -1310,7 +1378,8 @@
 
             // ── أون لاين: جرّب Supabase مباشرةً بدون إضافة للـ queue
             try {
-                const { _localOnly, _pendingSync, _pendingOp, ...cleanData } = data;
+                const { _localOnly, _pendingSync, _pendingOp, ...rawCleanData } = data;
+                const cleanData = sanitizeForSupabase(table, rawCleanData);
 
                 const insertPromise = window._sb
                     .from(table)
@@ -1325,7 +1394,7 @@
                 if (error) throw error;
 
                 // نجح → احفظ في Dexie بدون queue
-                await dexieUpsert(table, { ...inserted, _localOnly: false });
+                await dexieUpsert(table, { ...data, ...inserted, _localOnly: false });
                 return inserted;
 
             } catch (e) {
@@ -1358,7 +1427,8 @@
         if (!orig || orig._offlineV3Done) return;
 
         window.dbUpdate = async function (table, id, data) {
-            const { _localOnly, _pendingSync, _pendingOp, ...cleanData } = data || {};
+            const { _localOnly, _pendingSync, _pendingOp, ...rawUpdateData } = data || {};
+            const cleanData = sanitizeForSupabase(table, rawUpdateData);
 
             // ✅ FIX: استخدم .update() مش .put() عشان نحدّث الـ fields بس من غير ما نمسح الباقي
             try {

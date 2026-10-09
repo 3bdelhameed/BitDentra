@@ -182,25 +182,27 @@
 
         // أضف الكارتين في الـ DOM بعد التحميل
         function injectDashboardCards() {
-            const grid = document.querySelector('#dashboardView .grid.grid-cols-2.lg\\:grid-cols-4');
-            if (!grid || document.getElementById('dashTopProc')) return;
+            if (document.getElementById('dashTopProc')) return;
+            const grid = document.querySelector('#dashboardView #dashStatsGrid') || document.querySelector('#dashboardView .grid');
+            if (!grid) return;
 
+            const isAr = (localStorage.getItem('clinicLang') || 'ar') === 'ar';
             grid.insertAdjacentHTML('beforeend', `
-                <div class="stat-card border-l-4 border-l-cyan-500">
-                    <div>
-                        <h3 class="text-lg font-bold text-gray-800 truncate" id="dashTopProc">—</h3>
-                        <p class="text-gray-400 text-xs mt-1 font-medium">أكثر إجراء اليوم</p>
+                <div class="stat-card">
+                    <div class="min-w-0 pr-1">
+                        <h3 class="text-base font-black text-sky-700 tracking-tight truncate" id="dashTopProc">—</h3>
+                        <p class="text-slate-400 text-xs mt-1 font-semibold truncate" data-t="dash.topProc">${isAr ? 'أكثر إجراء اليوم' : 'Top Procedure'}</p>
                     </div>
-                    <div class="w-10 h-10 bg-cyan-50 text-cyan-500 rounded-xl flex items-center justify-center shrink-0">
+                    <div class="w-10 h-10 bg-sky-50 text-sky-600 rounded-xl flex items-center justify-center text-sm shrink-0 shadow-sm">
                         <i class="fa-solid fa-tooth"></i>
                     </div>
                 </div>
-                <div class="stat-card border-l-4 border-l-purple-500">
+                <div class="stat-card">
                     <div>
-                        <h3 class="text-2xl font-bold text-gray-800" id="dashNewPatients">0</h3>
-                        <p class="text-gray-400 text-xs mt-1 font-medium">مريض جديد الشهر</p>
+                        <h3 class="text-2xl font-black text-violet-700 tracking-tight" id="dashNewPatients">0</h3>
+                        <p class="text-slate-400 text-xs mt-1 font-semibold" data-t="dash.newPatientsMonth">${isAr ? 'مرضى جدد هذا الشهر' : 'New This Month'}</p>
                     </div>
-                    <div class="w-10 h-10 bg-purple-50 text-purple-500 rounded-xl flex items-center justify-center shrink-0">
+                    <div class="w-10 h-10 bg-violet-50 text-violet-600 rounded-xl flex items-center justify-center text-sm shrink-0 shadow-sm">
                         <i class="fa-solid fa-user-plus"></i>
                     </div>
                 </div>

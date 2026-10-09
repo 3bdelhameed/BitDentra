@@ -69,7 +69,8 @@
         const tables = [
             'patients', 'appointments', 'treatments',
             'expenses', 'prescriptions', 'invoices',
-            'inventory', 'lab_orders', 'doctors', 'session_payments'
+            'inventory', 'lab_orders', 'doctors', 'session_payments',
+            'clinic_settings'
         ];
 
         const results = await Promise.allSettled(
@@ -90,6 +91,26 @@
         tables.forEach((t, i) => {
             fresh[t] = results[i].status === 'fulfilled' ? results[i].value : [];
         });
+
+        if (fresh.clinic_settings && fresh.clinic_settings.length) {
+            try {
+                const obj = {};
+                fresh.clinic_settings.forEach(r => { if (r && r.key) obj[r.key] = r.value; });
+                const sCache = {
+                    clinicName: obj.clinicName || obj.clinic_name || 'Bond Dental Clinic',
+                    doctorName: obj.doctorName || obj.doctor_name || 'Dr. Admin',
+                    phone:      obj.phone      || '',
+                    address:    obj.address    || '',
+                    currency:   obj.currency   || 'EGP',
+                    logo:       obj.logoUrl    || obj.logo || ''
+                };
+                localStorage.setItem('clinicSettings', JSON.stringify(sCache));
+                if (typeof window.applyClinicNameToUI === 'function') {
+                    window.applyClinicNameToUI(sCache.clinicName);
+                }
+            } catch(e) {}
+        }
+
         return fresh;
     }
 
@@ -317,7 +338,13 @@
 
         if ($('todayRevenue'))  $('todayRevenue').innerText  = rev.toFixed(2) + ' ' + curr;
         if ($('todayExpenses')) $('todayExpenses').innerText = exp.toFixed(2) + ' ' + curr;
-        if ($('netProfit'))     $('netProfit').innerText     = (rev - exp).toFixed(2) + ' ' + curr;
+        const netPreload = rev - exp;
+        if ($('netProfit'))     $('netProfit').innerText     = netPreload.toFixed(2) + ' ' + curr;
+        const bannerNetPreload = $('dashBannerNet');
+        if (bannerNetPreload) {
+            bannerNetPreload.innerHTML = `${Math.round(netPreload).toLocaleString()} <small class="text-xs font-normal text-white">${curr}</small>`;
+            bannerNetPreload.className = `text-2xl lg:text-3xl font-black tracking-tight ${netPreload >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
+        }
 
         if ($('dashDate')) {
             $('dashDate').innerText = new Date().toLocaleDateString(
@@ -328,6 +355,9 @@
         if ($('dashGreeting')) {
             const h = new Date().getHours();
             $('dashGreeting').innerText = h < 12 ? 'صباح الخير ☀️' : h < 17 ? 'مساء النهار 🌤️' : 'مساء الخير 🌙';
+        }
+        if (typeof window.applyClinicNameToUI === 'function') {
+            window.applyClinicNameToUI();
         }
 
         const rl = $('recentPatientsList');

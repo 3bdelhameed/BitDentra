@@ -400,8 +400,8 @@
         btn.id = 'nav-proc-catalog';
         btn.className = 'sidebar-link';
         btn.style.cursor = 'pointer';
-        btn.setAttribute('onclick', 'openProcCatalogModal()');
-        btn.innerHTML = `<i class="fa-solid fa-list-check"></i> <span>قائمة الإجراءات</span>`;
+        const isAr = (localStorage.getItem('clinicLang') || 'ar') === 'ar';
+        btn.innerHTML = `<i class="fa-solid fa-list-check"></i> <span data-t="nav.procCatalog">${isAr ? 'قائمة الإجراءات' : 'Procedures'}</span>`;
 
         prescriptionsNav.insertAdjacentElement('afterend', btn);
     }

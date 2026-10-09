@@ -184,6 +184,12 @@
                     delete cleanData._pending_sync;
                     delete cleanData._pending_op;
                     delete cleanData.id;
+                    if (op.table === 'treatments') {
+                        delete cleanData.implant_lab_cost;
+                        delete cleanData.implant_lab_name;
+                        delete cleanData.implantLabCost;
+                        delete cleanData.implantLabName;
+                    }
 
                     const { error } = await window._sb.from(op.table).update(cleanData).eq('id', op.id);
                     if (error) throw error;

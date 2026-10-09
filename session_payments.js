@@ -266,19 +266,47 @@ async function recalcTreatmentPaid(treatmentId) {
     const payments = await getPaymentsByTreatment(treatmentId);
     const total = payments.reduce((s, p) => s + (parseFloat(p.amount) || 0), 0);
 
-    // ✅ FIX: احفظ الـ paid في Dexie مباشرة (يشتغل أوف لاين وأون لاين)
+    let tr = null;
     try {
         if (window.db && window.db.treatments) {
-            await window.db.treatments.update(treatmentId, { paid: total });
+            tr = await window.db.treatments.get(parseInt(treatmentId));
+        }
+    } catch (_) {}
+
+    const updates = { paid: total };
+
+    // Calculate updated doctor commission
+    if (tr) {
+        let pct = parseFloat(tr.doctor_commission_pct ?? tr.doctorCommissionPct) || 0;
+        const docId = tr.doctor_id ?? tr.doctorId;
+        if (!pct && docId) {
+            try {
+                const docs = await (window.dbGetAll ? window.dbGetAll('doctors') : []);
+                const doc = docs.find(d => String(d.id) === String(docId));
+                if (doc) pct = parseFloat(doc.commission_pct ?? doc.commissionPct ?? 0);
+            } catch (_) {}
+        }
+        if (pct > 0) {
+            const implantLab = parseFloat(tr.implant_lab_cost ?? tr.implantLabCost ?? 0);
+            const netBase = Math.max(0, total - implantLab);
+            updates.doctor_commission_amt = parseFloat((netBase * pct / 100).toFixed(2));
+            if (!tr.doctor_commission_pct) updates.doctor_commission_pct = pct;
+        }
+    }
+
+    // Save in Dexie
+    try {
+        if (window.db && window.db.treatments) {
+            await window.db.treatments.update(parseInt(treatmentId), updates);
         }
     } catch (e) {
         console.warn('[SP] recalcTreatmentPaid Dexie update error:', e);
     }
 
-    // ✅ FIX: لو أون لاين — احفظ في Supabase كمان
+    // Save in Supabase
     try {
         if (navigator.onLine && typeof window.dbUpdate === 'function') {
-            await window.dbUpdate('treatments', treatmentId, { paid: total });
+            await window.dbUpdate('treatments', treatmentId, updates);
         }
     } catch (e) {
         console.warn('[SP] recalcTreatmentPaid Supabase update error:', e);

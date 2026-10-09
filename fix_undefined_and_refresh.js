@@ -88,6 +88,12 @@
             if (expEl)  expEl.innerText  = `${dailyExpense} ${curr}`;
             if (netEl)  netEl.innerText  = `${net} ${curr}`;
 
+            const bannerNet = document.getElementById('dashBannerNet');
+            if (bannerNet) {
+                bannerNet.innerHTML = `${net.toLocaleString()} <small class="text-xs font-normal text-white">${curr}</small>`;
+                bannerNet.className = `text-2xl lg:text-3xl font-black tracking-tight ${net >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
+            }
+
             if (dateEl) dateEl.innerText = new Date().toLocaleDateString(
                 typeof currentLang !== 'undefined' && currentLang === 'ar' ? 'ar-EG' : 'en-US',
                 { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }
@@ -97,6 +103,24 @@
                 greetEl.innerText = hr < 12 ? t('dash.greeting.morning') :
                                     hr < 17 ? t('dash.greeting.afternoon') :
                                               t('dash.greeting.evening');
+            }
+
+            if (typeof window.applyClinicNameToUI === 'function') {
+                window.applyClinicNameToUI();
+            }
+
+            const todayApptsCount = (appointments || []).filter(a => a.date === (typeof todayStr !== 'undefined' ? todayStr : (typeof today === 'function' ? today() : ''))).length;
+            const bannerAppts = document.getElementById('dashBannerAppts');
+            const bannerApptsText = document.getElementById('dashBannerApptsText');
+            if (bannerAppts && bannerApptsText) {
+                if (todayApptsCount > 0) {
+                    bannerApptsText.innerText = (typeof currentLang !== 'undefined' && currentLang === 'ar') ? `${todayApptsCount} موعد اليوم` : `${todayApptsCount} Appts Today`;
+                    bannerAppts.classList.remove('hidden');
+                    bannerAppts.classList.add('inline-flex');
+                } else {
+                    bannerAppts.classList.add('hidden');
+                    bannerAppts.classList.remove('inline-flex');
+                }
             }
 
             // Recent patients

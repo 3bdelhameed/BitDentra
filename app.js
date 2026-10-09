@@ -16,6 +16,9 @@ const TRANSLATIONS = {
         'dash.greeting.morning': 'Good morning ☀️', 'dash.greeting.afternoon': 'Good afternoon 🌤️', 'dash.greeting.evening': 'Good evening 🌙',
         'dash.welcome': 'Welcome back 👋', 'dash.totalPatients': 'Total Patients',
         'dash.todayRevenue': "Today's Revenue", 'dash.todayExpenses': "Today's Expenses", 'dash.netTreasury': 'Net (Treasury)',
+        'dash.todayProfit': 'Today Net Profit', 'dash.statusLive': 'Treasury Live',
+        'dash.topProc': 'Top Procedure (Today)', 'dash.newPatientsMonth': 'New Patients (Month)',
+        'nav.procCatalog': 'Procedures',
         'dash.newPatient': 'New Patient', 'dash.bookAppt': 'Book Appointment', 'dash.addTreatment': 'Add Treatment', 'dash.addExpense': 'Add Expense',
         'dash.todayAppts': "Today's Appointments", 'dash.viewAll': 'View All', 'dash.recentPatients': 'Recent Patients', 'dash.all': 'All',
         'dash.noAppts': 'No appointments today', 'dash.noPatients': 'No patients yet',
@@ -119,6 +122,9 @@ const TRANSLATIONS = {
         'dash.greeting.morning': 'صباح الخير ☀️', 'dash.greeting.afternoon': 'مساء الخير 🌤️', 'dash.greeting.evening': 'مساء النور 🌙',
         'dash.welcome': 'أهلاً وسهلاً 👋', 'dash.totalPatients': 'إجمالي المرضى',
         'dash.todayRevenue': 'إيرادات اليوم', 'dash.todayExpenses': 'مصروفات اليوم', 'dash.netTreasury': 'صافي الخزينة',
+        'dash.todayProfit': 'صافي أرباح اليوم', 'dash.statusLive': 'الخزينة نشطة',
+        'dash.topProc': 'أكثر إجراء اليوم', 'dash.newPatientsMonth': 'مرضى جدد هذا الشهر',
+        'nav.procCatalog': 'قائمة الإجراءات',
         'dash.newPatient': 'مريض جديد', 'dash.bookAppt': 'حجز موعد', 'dash.addTreatment': 'إضافة علاج', 'dash.addExpense': 'إضافة مصروف',
         'dash.todayAppts': 'مواعيد اليوم', 'dash.viewAll': 'عرض الكل', 'dash.recentPatients': 'آخر المرضى', 'dash.all': 'الكل',
         'dash.noAppts': 'لا توجد مواعيد اليوم', 'dash.noPatients': 'لا يوجد مرضى بعد',
@@ -956,13 +962,48 @@ let _settingsCache = null;
 function getSettings() {
     if (_settingsCache) return _settingsCache;
     const s = localStorage.getItem('clinicSettings');
-    return s ? JSON.parse(s) : { clinicName: 'DentalClinic', doctorName: 'Dr. Admin', phone: '', currency: 'EGP', address: '', logo: '' };
+    return s ? JSON.parse(s) : { clinicName: 'Bond Dental Clinic', doctorName: 'Dr. Admin', phone: '', currency: 'EGP', address: '', logo: '' };
 }
 function getCurrency() { return getSettings().currency || 'EGP'; }
 
+function applyClinicNameToUI(customName) {
+    let name = customName;
+    if (!name) {
+        try {
+            const s = typeof getSettings === 'function' ? getSettings() : JSON.parse(localStorage.getItem('clinicSettings') || '{}');
+            name = s && (s.clinicName || s.clinic_name);
+        } catch(e) {}
+    }
+    if (!name) {
+        try {
+            const raw = localStorage.getItem('clinicSettings');
+            if (raw) {
+                const parsed = JSON.parse(raw);
+                name = parsed.clinicName || parsed.clinic_name;
+            }
+        } catch(e) {}
+    }
+    name = name || 'Bond Dental Clinic';
+
+    const textSpan = document.getElementById('dashClinicNameText');
+    const bannerBadge = document.getElementById('dashBannerBadge');
+    if (textSpan) {
+        textSpan.textContent = name;
+    } else if (bannerBadge) {
+        bannerBadge.innerHTML = `<i class="fa-solid fa-hospital text-[10px] text-blue-300 mr-1.5 ml-1.5"></i><span>${name}</span>`;
+    }
+    if (bannerBadge) bannerBadge.title = name;
+
+    const settingEl = document.getElementById('settingClinicName');
+    if (settingEl && settingEl.textContent !== name) {
+        settingEl.textContent = name;
+    }
+}
+window.applyClinicNameToUI = applyClinicNameToUI;
+
 async function loadSettingsFromDB() {
     let waited = 0;
-while ((!window._sbReady || !(typeof window._sbReady === 'function' ? window._sbReady() : window._sbReady)) && waited < 50) {
+    while ((!window._sbReady || !(typeof window._sbReady === 'function' ? window._sbReady() : window._sbReady)) && waited < 50) {
         await new Promise(r => setTimeout(r, 100));
         waited++;
     }
@@ -973,8 +1014,8 @@ while ((!window._sbReady || !(typeof window._sbReady === 'function' ? window._sb
         const obj = {};
         data.forEach(r => { obj[r.key] = r.value; });
         _settingsCache = {
-            clinicName: obj.clinicName || 'DentalClinic',
-            doctorName: obj.doctorName || 'Dr. Admin',
+            clinicName: obj.clinicName || obj.clinic_name || 'Bond Dental Clinic',
+            doctorName: obj.doctorName || obj.doctor_name || 'Dr. Admin',
             phone:      obj.phone      || '',
             address:    obj.address    || '',
             currency:   obj.currency   || 'EGP',
@@ -983,7 +1024,8 @@ while ((!window._sbReady || !(typeof window._sbReady === 'function' ? window._sb
         localStorage.setItem('clinicSettings', JSON.stringify(_settingsCache));
         // لا نكتب doctorName على headerUsername — اسم اليوزر الحقيقي يجيه من user_header_patch.js
         loadSettingsForm();
-        console.log('[Settings] ✓ Loaded from DB');
+        applyClinicNameToUI(_settingsCache.clinicName);
+        console.log('[Settings] ✓ Loaded from DB:', _settingsCache.clinicName);
     } catch(e) { console.warn('[Settings] load failed:', e.message); }
 }
 
@@ -1089,12 +1131,54 @@ function switchView(viewName) {
     document.getElementById(viewId)?.classList.add('active');
     if (navId) document.getElementById(navId)?.classList.add('active');
     document.getElementById('headerTitle').innerText = title;
+
+    // Mobile UX: auto close drawer and backdrop on navigation
+    if (window.innerWidth <= 900) {
+        const sb = document.getElementById('sidebar');
+        const bd = document.getElementById('sidebarBackdrop');
+        if (sb) sb.classList.remove('mobile-open');
+        if (bd) {
+            bd.classList.remove('active');
+            bd.style.display = 'none';
+        }
+    }
+    ensureTablesResponsive();
     if (fn) fn();
 }
 
-function toggleSidebar() {
-    document.getElementById('sidebar').classList.toggle('hidden');
+function ensureTablesResponsive() {
+    try {
+        document.querySelectorAll('.view-section table').forEach(t => {
+            const parent = t.parentElement;
+            if (parent && !parent.classList.contains('overflow-x-auto')) {
+                parent.style.overflowX = 'auto';
+                parent.style.webkitOverflowScrolling = 'touch';
+            }
+        });
+    } catch(e) {}
 }
+window.ensureTablesResponsive = ensureTablesResponsive;
+
+function toggleSidebar() {
+    const sb = document.getElementById('sidebar');
+    const bd = document.getElementById('sidebarBackdrop');
+    if (!sb) return;
+    if (window.innerWidth <= 900) {
+        const isOpen = sb.classList.toggle('mobile-open');
+        if (bd) {
+            if (isOpen) {
+                bd.style.display = 'block';
+                bd.classList.add('active');
+            } else {
+                bd.classList.remove('active');
+                bd.style.display = 'none';
+            }
+        }
+    } else {
+        sb.classList.toggle('sidebar-collapsed');
+    }
+}
+window.toggleSidebar = toggleSidebar;
 
 // ── 6. MODALS ────────────────────────────
 function getActiveProfilePatientContext() {
@@ -2191,17 +2275,84 @@ document.getElementById('newTreatmentForm').addEventListener('submit', async e =
     if (cond === 'crown') cond = 'crown_work';
     if (cond === 'root')  cond = 'root_canal';
 
-    await dbInsert('treatments', {
-        patient_id:      patientId,
-        patient_name:    patientName,
-        tooth_number:    toothNumber || null,
-        tooth_condition: cond || null,
-        procedure:       document.getElementById('treatmentProcedure').value.trim(),
-        total_cost:      cost,
-        paid:            paid,
-        notes:           document.getElementById('treatmentNotes').value.trim() || null,
-        date:            today()
-    });
+    // Doctor Commission Details
+    const doctorSel = document.getElementById('treatmentDoctorId');
+    let docId = null, docName = null, docPct = 0, docComm = 0;
+    if (doctorSel && doctorSel.value) {
+        const opt = doctorSel.selectedOptions[0];
+        docId = parseInt(doctorSel.value, 10);
+        docPct = parseFloat(opt?.getAttribute('data-pct')) || 0;
+        docName = opt?.getAttribute('data-name') || opt?.textContent?.split('(')[0]?.trim() || '';
+    }
+
+    // Implant Lab Details
+    const procText = document.getElementById('treatmentProcedure').value.trim();
+    const implantLabCost = parseFloat(document.getElementById('treatmentImplantLabCost')?.value) || 0;
+    const implantLabName = (document.getElementById('treatmentImplantLabName')?.value || '').trim();
+
+    // Doctor commission on net (deducting implant lab cost)
+    const netBase = Math.max(0, paid - implantLabCost);
+    if (docPct > 0) {
+        docComm = parseFloat((netBase * docPct / 100).toFixed(2));
+    }
+
+    const trData = {
+        patient_id:            patientId,
+        patient_name:          patientName,
+        tooth_number:          toothNumber || null,
+        tooth_condition:       cond || null,
+        procedure:             procText,
+        total_cost:            cost,
+        paid:                  paid,
+        doctor_id:             docId,
+        doctor_name:           docName,
+        doctor_commission_pct: docPct,
+        doctor_commission_amt: docComm,
+        notes:                 document.getElementById('treatmentNotes').value.trim() || null,
+        date:                  today()
+    };
+    if (implantLabCost > 0) {
+        trData.implant_lab_cost = implantLabCost;
+        if (implantLabName) trData.implant_lab_name = implantLabName;
+    }
+
+    await dbInsert('treatments', trData);
+
+    // Auto-create Lab Order & Expense for Implant if lab cost is entered
+    if (implantLabCost > 0) {
+        const deductTreasury = document.getElementById('treatmentImplantLabDeductTreasury')?.checked ?? true;
+        try {
+            // 1. Add order to Lab Orders section
+            await dbInsert('lab_orders', {
+                patient_id:   patientId,
+                patient_name: patientName,
+                lab_name:     implantLabName || 'معمل زراعة الأسنان',
+                work_type:    'زراعة أسنان (Implant)',
+                teeth:        toothNumber || '—',
+                cost:         implantLabCost,
+                paid_to_lab:  deductTreasury ? implantLabCost : 0,
+                status:       'pending',
+                priority:     'normal',
+                notes:        `طلب تلقائي لزرعة معملية - سن ${toothNumber || '—'}${deductTreasury ? ' (صُرف من الخزينة)' : ''}`,
+                created_at:   today()
+            });
+
+            // 2. If immediate treasury deduction is enabled, record as an expense cash-out
+            if (deductTreasury) {
+                await dbInsert('expenses', {
+                    item:     `تكلفة زرعة معمل (${implantLabName || 'معمل'}) - مريض: ${patientName}`,
+                    category: 'معامل / Lab',
+                    amount:   implantLabCost,
+                    date:     today(),
+                    notes:    `سداد فوري لخروج تكلفة الزرعة من الخزينة لحساب المعمل`
+                });
+            }
+
+            showToast(deductTreasury ? '✓ تم تسجيل طلب المعمل وخصم تكلفة الزرعة من الخزينة' : '✓ تمت إضافة طلب الزرعة لقسم المعامل', 'info');
+        } catch (labErr) {
+            console.warn('[ImplantLab] Auto create lab order/expense failed:', labErr);
+        }
+    }
 
     // Save tooth state
     if (toothNumber && cond) {
@@ -2213,6 +2364,8 @@ document.getElementById('newTreatmentForm').addEventListener('submit', async e =
     }
 
     e.target.reset();
+    document.getElementById('implantLabSection')?.classList.add('hidden');
+    document.getElementById('implantTreasuryBreakdown')?.classList.add('hidden');
     closeModal('addTreatmentModal');
     updateDashboard();
     showToast('Treatment recorded');
@@ -2220,6 +2373,58 @@ document.getElementById('newTreatmentForm').addEventListener('submit', async e =
     if (!document.getElementById('profileView').classList.contains('active')) return;
     openPatientProfile(patientId);
 });
+
+window.updateImplantBreakdown = function() {
+    const paid = parseFloat(document.getElementById('treatmentPaid')?.value) || 0;
+    const labCost = parseFloat(document.getElementById('treatmentImplantLabCost')?.value) || 0;
+    const deduct = document.getElementById('treatmentImplantLabDeductTreasury')?.checked ?? true;
+    const curr = typeof getCurrency === 'function' ? getCurrency() : 'EGP';
+    
+    const box = document.getElementById('implantTreasuryBreakdown');
+    if (!box) return;
+
+    if (labCost > 0 || paid > 0) {
+        box.classList.remove('hidden');
+        const itbPaid = document.getElementById('itbPaid');
+        const itbLab  = document.getElementById('itbLab');
+        const itbNet  = document.getElementById('itbNet');
+        if (itbPaid) itbPaid.textContent = `${paid.toLocaleString()} ${curr}`;
+        if (itbLab)  itbLab.textContent  = deduct ? `-${labCost.toLocaleString()} ${curr}` : `0 ${curr} (آجل)`;
+        const netTreasury = deduct ? Math.max(0, paid - labCost) : paid;
+        if (itbNet)  itbNet.textContent  = `${netTreasury.toLocaleString()} ${curr}`;
+    } else {
+        box.classList.add('hidden');
+    }
+};
+
+window.checkImplantProcedure = async function() {
+    const proc = (document.getElementById('treatmentProcedure')?.value || '').toLowerCase().trim();
+    const isImplant = proc.includes('implant') || proc.includes('زرع') || proc.includes('زراعة');
+    const sec = document.getElementById('implantLabSection');
+    if (sec) {
+        sec.classList.toggle('hidden', !isImplant);
+        if (isImplant) {
+            try {
+                const labOrders = await (window.dbGetAll ? window.dbGetAll('lab_orders') : []);
+                const labs = [...new Set(labOrders.map(o => (o.lab_name || o.labName || '').trim()).filter(Boolean))];
+                const dl = document.getElementById('implantLabsDatalist');
+                if (dl && labs.length) {
+                    dl.innerHTML = labs.map(l => `<option value="${escapeHtml(l)}">`).join('');
+                }
+            } catch (_) {}
+            window.updateImplantBreakdown();
+        } else {
+            const costInput = document.getElementById('treatmentImplantLabCost');
+            if (costInput) costInput.value = '';
+            const nameInput = document.getElementById('treatmentImplantLabName');
+            if (nameInput) nameInput.value = '';
+            document.getElementById('implantTreasuryBreakdown')?.classList.add('hidden');
+        }
+    }
+    if (typeof window.onTreatmentDoctorChange === 'function') {
+        window.onTreatmentDoctorChange();
+    }
+};
 
 // New Expense
 document.getElementById('newExpenseForm').addEventListener('submit', async e => {
@@ -3668,11 +3873,47 @@ async function updateDashboard() {
     expenses.forEach(e => { if (normalizeDateOnly(e.date) === todayStr) dailyExpense += toMoneyNumber(e.amount); });
     const net = dailyRevenue - dailyExpense;
 
-    document.getElementById('todayRevenue').innerText  = `${dailyRevenue} ${curr}`;
-    document.getElementById('todayExpenses').innerText = `${dailyExpense} ${curr}`;
-    document.getElementById('netProfit').innerText     = `${net} ${curr}`;
+    document.getElementById('todayRevenue').innerText  = `${dailyRevenue.toLocaleString()} ${curr}`;
+    document.getElementById('todayExpenses').innerText = `${dailyExpense.toLocaleString()} ${curr}`;
+    document.getElementById('netProfit').innerText     = `${net.toLocaleString()} ${curr}`;
 
-    document.getElementById('dashDate').innerText = new Date().toLocaleDateString(currentLang === 'ar' ? 'ar-EG' : 'en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+    // Update luxury midnight welcome banner
+    const bannerNet = document.getElementById('dashBannerNet');
+    if (bannerNet) {
+        bannerNet.innerHTML = `${net.toLocaleString()} <small class="text-xs font-normal text-white">${curr}</small>`;
+        bannerNet.className = `text-2xl lg:text-3xl font-black tracking-tight ${net >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
+    }
+    const bannerNetLabel = document.getElementById('dashBannerNetLabel');
+    if (bannerNetLabel) {
+        bannerNetLabel.innerText = currentLang === 'ar' ? 'صافي الخزينة اليوم' : 'Net Treasury Today';
+    }
+    // Ensure clinic name is always synced directly from database / settings
+    applyClinicNameToUI();
+
+    const todayApptsCount = appointments.filter(a => a.date === todayStr).length;
+    const bannerAppts = document.getElementById('dashBannerAppts');
+    const bannerApptsText = document.getElementById('dashBannerApptsText');
+    if (bannerAppts && bannerApptsText) {
+        if (todayApptsCount > 0) {
+            bannerApptsText.innerText = currentLang === 'ar' ? `${todayApptsCount} موعد اليوم` : `${todayApptsCount} Appts Today`;
+            bannerAppts.classList.remove('hidden');
+            bannerAppts.classList.add('inline-flex');
+        } else {
+            bannerAppts.classList.add('hidden');
+            bannerAppts.classList.remove('inline-flex');
+        }
+    }
+    const bannerStatus = document.getElementById('dashBannerStatus');
+    if (bannerStatus) {
+        bannerStatus.innerText = currentLang === 'ar' ? 'الخزينة نشطة' : 'Treasury Live';
+    }
+
+    const dateFormatted = new Date().toLocaleDateString(currentLang === 'ar' ? 'ar-EG' : 'en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+    const dashDateEl = document.getElementById('dashDate');
+    if (dashDateEl) {
+        dashDateEl.innerHTML = `<i class="fa-regular fa-calendar-check text-blue-400"></i> <span>${dateFormatted}</span>`;
+    }
+
     const hr = new Date().getHours();
     document.getElementById('dashGreeting').innerText = hr < 12 ? t('dash.greeting.morning') : hr < 17 ? t('dash.greeting.afternoon') : t('dash.greeting.evening');
 
@@ -3809,266 +4050,728 @@ document.addEventListener('DOMContentLoaded', function() {
     if (btnMonthly)  btnMonthly.addEventListener('click',  function() { window.switchReportTab('monthly'); });
 });
 
-window.renderMonthlyReport = async function() {
-    // استخدم الـ cache لو متاح
-    const { collectionEntries, expenses, payables } = await getCleanReportCollections();
-    const curr       = getCurrency();
-    const yearsSet   = new Set();
-    collectionEntries.forEach(entry => { const y = (entry.date || '').slice(0, 4); if (y) yearsSet.add(y); });
-    expenses.forEach(e => { const y = normalizeDateOnly(e.date).slice(0, 4); if (y) yearsSet.add(y); });
-    payables.forEach(payable => {
-        const effectiveDate = normalizeDateOnly(payable?.due_date ?? payable?.dueDate ?? payable?.date);
-        const y = effectiveDate.slice(0, 4);
-        if (y) yearsSet.add(y);
-    });
-    const years = [...yearsSet].sort((a,b)=>b-a);
-    const sel = document.getElementById('monthlyReportYear');
-    if (sel) {
-        const cur = sel.value || years[0] || String(new Date().getFullYear());
-        sel.innerHTML = years.map(y=>`<option value="${y}" ${y===cur?'selected':''}>${y}</option>`).join('');
-        if (!sel.value && years.length) sel.value = years[0];
-    }
-    const selectedYear = sel ? sel.value : (years[0] || String(new Date().getFullYear()));
-    const MONTHS = currentLang==='ar'
-        ? ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر']
-        : ['January','February','March','April','May','June','July','August','September','October','November','December'];
-    const monthData = MONTHS.map((month, m) => {
-        const mStr = `${selectedYear}-${String(m+1).padStart(2,'0')}`;
-        const rev  = collectionEntries.filter(entry => (entry.date || '').startsWith(mStr)).reduce((sum, entry) => sum + toMoneyNumber(entry.amount), 0);
-        const exp  = expenses.filter(e => normalizeDateOnly(e.date).startsWith(mStr)).reduce((sum, e) => sum + toMoneyNumber(e.amount), 0);
-        const debt = payables
-            .filter(payable => normalizeDateOnly(payable?.due_date ?? payable?.dueDate ?? payable?.date).startsWith(mStr))
-            .reduce((sum, payable) => sum + toMoneyNumber(payable?.remaining_amount ?? payable?.remainingAmount), 0);
-        return { month, rev, exp, debt, net: rev-exp };
-    });
-    const totalRev = monthData.reduce((s,d)=>s+d.rev,0);
-    const totalExp = monthData.reduce((s,d)=>s+d.exp,0);
-    const totalDebt = monthData.reduce((s,d)=>s+d.debt,0);
-    const totalNet = totalRev - totalExp;
-    const totalProfitPct = totalRev > 0 ? Math.round(totalNet / totalRev * 100) : 0;
-    document.getElementById('monthlyReportBody').innerHTML = `
-    <div class="overflow-x-auto"><table class="w-full text-sm">
-        <thead><tr class="bg-slate-50 text-gray-400 text-xs uppercase border-b">
-            <th class="text-left px-4 py-3">الشهر</th>
-            <th class="text-left px-4 py-3 text-green-600">الإيراد</th>
-            <th class="text-left px-4 py-3 text-red-400">المصروف</th>
-            <th class="text-left px-4 py-3 text-blue-600">صافي الربح</th>
-            <th class="px-4 py-3 w-36">نسبة الربح</th>
-        </tr></thead>
-        <tbody>${monthData.map(d => {
-            const profitPct = d.rev > 0 ? Math.round(d.net / d.rev * 100) : 0;
-            const barPct    = Math.max(0, Math.min(100, profitPct));
-            const hasData   = d.rev > 0 || d.exp > 0;
-            const barColor  = profitPct >= 50 ? 'bg-green-400' : profitPct >= 0 ? 'bg-yellow-400' : 'bg-red-400';
-            const pctColor  = profitPct >= 0 ? 'text-gray-500' : 'text-red-400';
-            return `<tr class="border-b border-gray-50 ${hasData?'hover:bg-blue-50':'opacity-40'} transition">
-                <td class="px-4 py-3 font-semibold text-gray-700">${d.month}</td>
-                <td class="px-4 py-3 text-green-600 font-semibold">${d.rev>0?d.rev.toLocaleString()+' '+curr:'—'}</td>
-                <td class="px-4 py-3 text-red-400">${d.exp>0?d.exp.toLocaleString()+' '+curr:'—'}</td>
-                <td class="px-4 py-3 font-bold ${d.net>=0?'text-green-600':'text-red-500'}">${hasData?d.net.toLocaleString()+' '+curr:'—'}</td>
-                <td class="px-4 py-3"><div class="flex items-center gap-2"><div class="flex-1 bg-gray-100 rounded-full h-2 overflow-hidden"><div class="h-2 rounded-full ${hasData?barColor:'bg-gray-200'}" style="width:${barPct}%"></div></div><span class="text-[11px] ${hasData?pctColor:'text-gray-300'} w-8">${hasData?profitPct+'%':'0%'}</span></div></td>
-            </tr>`;
-        }).join('')}</tbody>
-        <tfoot><tr class="bg-slate-50 font-bold border-t-2 border-gray-200">
-            <td class="px-4 py-3 text-gray-700">الإجمالي</td>
-            <td class="px-4 py-3 text-green-700">${totalRev.toLocaleString()} ${curr}</td>
-            <td class="px-4 py-3 text-red-500">${totalExp.toLocaleString()} ${curr}</td>
-            <td class="px-4 py-3 ${totalNet>=0?'text-green-700':'text-red-500'}">${totalNet.toLocaleString()} ${curr}</td>
-            <td class="px-4 py-3"><span class="text-xs font-bold ${totalProfitPct>=0?'text-green-600':'text-red-500'}">${totalProfitPct}%</span></td>
-        </tr></tfoot>
-    </table></div>`;
-};
+let monthlyDailyFlowChartInstance = null;
+let monthlyCostStructureChartInstance = null;
 
-// ── 21.5 PRINT PATIENT SHEET ──
 window.renderMonthlyReport = async function() {
-    const { collectionEntries, expenses, payables } = await getCleanReportCollections();
-    const curr = getCurrency();
+    const { collectionEntries, expenses, payables, treatments } = await getCleanReportCollections();
+    const labOrders = await (window.dbGetAll ? window.dbGetAll('lab_orders') : Promise.resolve([])).catch(() => []);
+    const doctors = await (window.dbGetAll ? window.dbGetAll('doctors') : Promise.resolve([])).catch(() => []);
+    const curr = typeof getCurrency === 'function' ? getCurrency() : 'EGP';
+    const isAr = currentLang === 'ar';
+
+    // 1. Gather all available years
     const yearsSet = new Set();
-
     collectionEntries.forEach(entry => {
         const y = (entry.date || '').slice(0, 4);
-        if (y) yearsSet.add(y);
+        if (y && y.length === 4) yearsSet.add(y);
     });
-    expenses.forEach(expense => {
-        const y = normalizeDateOnly(expense.date).slice(0, 4);
-        if (y) yearsSet.add(y);
+    expenses.forEach(e => {
+        const y = normalizeDateOnly(e.date).slice(0, 4);
+        if (y && y.length === 4) yearsSet.add(y);
     });
-    payables.forEach(payable => {
-        const effectiveDate = normalizeDateOnly(payable?.due_date ?? payable?.dueDate ?? payable?.date);
-        const y = effectiveDate.slice(0, 4);
-        if (y) yearsSet.add(y);
+    labOrders.forEach(o => {
+        const y = normalizeDateOnly(o.created_at || o.date).slice(0, 4);
+        if (y && y.length === 4) yearsSet.add(y);
+    });
+    treatments.forEach(t => {
+        const y = normalizeDateOnly(t.date || t.created_at).slice(0, 4);
+        if (y && y.length === 4) yearsSet.add(y);
     });
 
+    const now = new Date();
+    const currentYear = String(now.getFullYear());
+    const currentMonthNum = now.getMonth() + 1;
+    yearsSet.add(currentYear);
     const years = [...yearsSet].sort((a, b) => b - a);
-    const sel = document.getElementById('monthlyReportYear');
-    if (sel) {
-        const cur = sel.value || years[0] || String(new Date().getFullYear());
-        sel.innerHTML = years.map(y => `<option value="${y}" ${y === cur ? 'selected' : ''}>${y}</option>`).join('');
-        if (!sel.value && years.length) sel.value = years[0];
-    }
 
-    const selectedYear = sel ? sel.value : (years[0] || String(new Date().getFullYear()));
-    const months = currentLang === 'ar'
+    const yearSel = document.getElementById('monthlyReportYear');
+    if (yearSel) {
+        const curY = yearSel.value || years[0] || currentYear;
+        yearSel.innerHTML = years.map(y => `<option value="${y}" ${y === curY ? 'selected' : ''}>${y}</option>`).join('');
+        if (!yearSel.value && years.length) yearSel.value = curY;
+    }
+    const selectedYear = yearSel ? yearSel.value : (years[0] || currentYear);
+
+    const MONTH_NAMES = isAr
         ? ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر']
         : ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
-    const monthData = months.map((month, index) => {
-        const monthKey = `${selectedYear}-${String(index + 1).padStart(2, '0')}`;
-        const revenue = collectionEntries
-            .filter(entry => (entry.date || '').startsWith(monthKey))
-            .reduce((sum, entry) => sum + toMoneyNumber(entry.amount), 0);
-        const expense = expenses
-            .filter(item => normalizeDateOnly(item.date).startsWith(monthKey))
-            .reduce((sum, item) => sum + toMoneyNumber(item.amount), 0);
-        const debt = getMonthlyPayablesAmount(payables, monthKey);
+    const monthSel = document.getElementById('monthlyReportMonth');
+    if (monthSel) {
+        const curM = monthSel.value ? parseInt(monthSel.value) : currentMonthNum;
+        monthSel.innerHTML = MONTH_NAMES.map((mName, idx) => {
+            const mVal = idx + 1;
+            return `<option value="${mVal}" ${mVal === curM ? 'selected' : ''}>${mName}</option>`;
+        }).join('');
+        if (!monthSel.value) monthSel.value = String(curM);
+    }
+    const selectedMonth = monthSel ? parseInt(monthSel.value) : currentMonthNum;
+    const selectedMonthName = MONTH_NAMES[selectedMonth - 1] || '';
 
-        return { month, revenue, expense, debt, net: revenue - expense };
+    const viewMode = document.getElementById('monthlyViewMode')?.value || 'single';
+    const bodyEl = document.getElementById('monthlyReportBody');
+    if (!bodyEl) return;
+
+    // Destroy existing monthly charts if any
+    if (monthlyDailyFlowChartInstance) {
+        monthlyDailyFlowChartInstance.destroy();
+        monthlyDailyFlowChartInstance = null;
+    }
+    if (monthlyCostStructureChartInstance) {
+        monthlyCostStructureChartInstance.destroy();
+        monthlyCostStructureChartInstance = null;
+    }
+
+    // =========================================================================
+    // MODE 1: SINGLE MONTH DEEP DIVE & CHARTS (رسومات وتفاصيل الشهر المحدد)
+    // =========================================================================
+    if (viewMode === 'single') {
+        const monthKey = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}`;
+
+        // 1. Collections in this month
+        const monthCollections = collectionEntries.filter(entry => (entry.date || '').startsWith(monthKey));
+        const monthRevenue = monthCollections.reduce((sum, entry) => sum + toMoneyNumber(entry.amount), 0);
+
+        // 2. Clinic Expenses in this month
+        const monthExpenses = expenses.filter(e => normalizeDateOnly(e.date).startsWith(monthKey));
+        const totalExpenses = monthExpenses.reduce((sum, e) => sum + toMoneyNumber(e.amount), 0);
+
+        // 3. Lab Orders & Implants in this month
+        const monthLabOrders = labOrders.filter(o => normalizeDateOnly(o.created_at || o.date).startsWith(monthKey));
+        const totalLabCost = monthLabOrders.reduce((sum, o) => sum + toMoneyNumber(o.cost || o.amount || 0), 0);
+        const implantOrders = monthLabOrders.filter(o => {
+            const w = (o.work_type || '').toLowerCase();
+            return w.includes('implant') || w.includes('زرع') || w.includes('زراعة');
+        });
+        const totalImplantLabCost = implantOrders.reduce((sum, o) => sum + toMoneyNumber(o.cost || o.amount || 0), 0);
+
+        // 4. Treatments & Doctor Commissions in this month
+        const monthTreatments = treatments.filter(t => normalizeDateOnly(t.date || t.created_at).startsWith(monthKey));
+        const totalDoctorCommissions = monthTreatments.reduce((sum, t) => sum + toMoneyNumber(t.doctor_commission_amt || 0), 0);
+
+        // 5. Net Clinic Profit
+        const totalOutflows = totalExpenses + totalLabCost + totalDoctorCommissions;
+        const netProfit = monthRevenue - totalOutflows;
+        const profitMargin = monthRevenue > 0 ? Math.round((netProfit / monthRevenue) * 100) : 0;
+
+        // 6. Days of the Month Daily Breakdown
+        const daysInMonth = new Date(parseInt(selectedYear), selectedMonth, 0).getDate();
+        const dailyLabels = [];
+        const dailyRevValues = [];
+        const dailyExpValues = [];
+        const dailyNetValues = [];
+
+        for (let day = 1; day <= daysInMonth; day++) {
+            const dayStr = `${monthKey}-${String(day).padStart(2, '0')}`;
+            dailyLabels.push(String(day));
+
+            const dayRev = monthCollections
+                .filter(e => (e.date || '') === dayStr)
+                .reduce((s, e) => s + toMoneyNumber(e.amount), 0);
+
+            const dayExp = monthExpenses
+                .filter(e => normalizeDateOnly(e.date) === dayStr)
+                .reduce((s, e) => s + toMoneyNumber(e.amount), 0);
+
+            const dayLab = monthLabOrders
+                .filter(o => normalizeDateOnly(o.created_at || o.date) === dayStr)
+                .reduce((s, o) => s + toMoneyNumber(o.cost || o.amount || 0), 0);
+
+            const totalDayCost = dayExp + dayLab;
+            dailyRevValues.push(dayRev);
+            dailyExpValues.push(totalDayCost);
+            dailyNetValues.push(dayRev - totalDayCost);
+        }
+
+        // 7. Group Treatments by Doctor
+        const doctorStats = {};
+        monthTreatments.forEach(tr => {
+            const docId = tr.doctor_id || tr.doctorId || 'none';
+            const docName = tr.doctor_name || tr.doctorName || (isAr ? 'طبيب عام / العيادة' : 'General / Clinic');
+            if (!doctorStats[docId]) {
+                doctorStats[docId] = {
+                    name: docName,
+                    sessions: 0,
+                    totalBilled: 0,
+                    totalPaid: 0,
+                    commRate: tr.doctor_commission_pct || tr.doctorCommissionPct || 0,
+                    totalComm: 0
+                };
+            }
+            doctorStats[docId].sessions += 1;
+            doctorStats[docId].totalBilled += toMoneyNumber(tr.total_cost || tr.totalCost || 0);
+            doctorStats[docId].totalPaid += toMoneyNumber(tr.paid || 0);
+            doctorStats[docId].totalComm += toMoneyNumber(tr.doctor_commission_amt || 0);
+        });
+
+        // 8. Top Procedures in this month
+        const procStats = {};
+        monthTreatments.forEach(tr => {
+            const proc = (tr.procedure || (isAr ? 'علاج غير محدد' : 'Unspecified')).trim();
+            if (!procStats[proc]) procStats[proc] = { count: 0, revenue: 0 };
+            procStats[proc].count += 1;
+            procStats[proc].revenue += toMoneyNumber(tr.total_cost || tr.totalCost || 0);
+        });
+        const topProcedures = Object.entries(procStats)
+            .sort((a, b) => b[1].revenue - a[1].revenue)
+            .slice(0, 6);
+
+        // Build HTML for Single Month Deep-Dive
+        bodyEl.innerHTML = `
+            <!-- 1. Header Banner -->
+            <div class="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 rounded-2xl p-5 mb-6 text-white shadow-md relative overflow-hidden">
+                <div class="absolute -right-10 -bottom-10 w-44 h-44 bg-blue-500/10 rounded-full blur-2xl"></div>
+                <div class="relative z-10 flex flex-wrap items-center justify-between gap-4">
+                    <div>
+                        <span class="text-xs font-semibold text-blue-300 uppercase tracking-wider block mb-1">
+                            ${isAr ? 'الملخص المالي والتشغيلي المعتمد' : 'Official Financial & Clinical Summary'}
+                        </span>
+                        <h2 class="text-2xl font-black flex items-center gap-2">
+                            <span>${selectedMonthName} ${selectedYear}</span>
+                            <span class="text-xs bg-white/20 font-bold px-2.5 py-0.5 rounded-full text-blue-100">
+                                ${monthTreatments.length} ${isAr ? 'جلسة علاجية' : 'Sessions'}
+                            </span>
+                        </h2>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-xs text-blue-200 block mb-0.5">${isAr ? 'صافي أرباح العيادة النهائي' : 'Net Clinic Profit'}</span>
+                        <div class="text-2xl font-black ${netProfit >= 0 ? 'text-emerald-400' : 'text-rose-400'}">
+                            ${netProfit.toLocaleString()} <small class="text-sm font-normal text-white">${curr}</small>
+                        </div>
+                        <span class="text-[11px] font-bold ${profitMargin >= 30 ? 'bg-emerald-500/30 text-emerald-300' : 'bg-amber-500/30 text-amber-300'} px-2 py-0.5 rounded-md inline-block mt-1">
+                            ${profitMargin}% ${isAr ? 'هامش ربحية العيادة' : 'Profit Margin'}
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. KPI 5 Cards -->
+            <div class="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
+                <!-- Revenue -->
+                <div class="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm hover:shadow transition">
+                    <div class="flex items-center justify-between text-gray-400 mb-2">
+                        <span class="text-xs font-bold text-gray-500">${isAr ? 'الإيرادات المحصلة' : 'Collected Revenue'}</span>
+                        <div class="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-sm"><i class="fa-solid fa-arrow-trend-up"></i></div>
+                    </div>
+                    <div class="text-xl font-black text-emerald-700">${monthRevenue.toLocaleString()} <small class="text-xs font-normal text-gray-400">${curr}</small></div>
+                    <div class="text-[11px] text-gray-400 mt-1">${monthCollections.length} ${isAr ? 'عملية سداد' : 'Collections'}</div>
+                </div>
+
+                <!-- Expenses -->
+                <div class="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm hover:shadow transition">
+                    <div class="flex items-center justify-between text-gray-400 mb-2">
+                        <span class="text-xs font-bold text-gray-500">${isAr ? 'المصروفات العامة' : 'Clinic Expenses'}</span>
+                        <div class="w-8 h-8 rounded-xl bg-rose-50 text-rose-500 flex items-center justify-center text-sm"><i class="fa-solid fa-receipt"></i></div>
+                    </div>
+                    <div class="text-xl font-black text-rose-600">${totalExpenses.toLocaleString()} <small class="text-xs font-normal text-gray-400">${curr}</small></div>
+                    <div class="text-[11px] text-gray-400 mt-1">${monthExpenses.length} ${isAr ? 'بند مصروف' : 'Expense items'}</div>
+                </div>
+
+                <!-- Lab & Implants -->
+                <div class="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm hover:shadow transition">
+                    <div class="flex items-center justify-between text-gray-400 mb-2">
+                        <span class="text-xs font-bold text-gray-500">${isAr ? 'المعامل والزرعات' : 'Lab & Implants'}</span>
+                        <div class="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-sm"><i class="fa-solid fa-tooth"></i></div>
+                    </div>
+                    <div class="text-xl font-black text-amber-700">${totalLabCost.toLocaleString()} <small class="text-xs font-normal text-gray-400">${curr}</small></div>
+                    <div class="text-[11px] text-amber-800 font-semibold mt-1">
+                        ${implantOrders.length > 0 ? `منها ${implantOrders.length} زرعة (${totalImplantLabCost.toLocaleString()} ${curr})` : `${monthLabOrders.length} طلبات معمل`}
+                    </div>
+                </div>
+
+                <!-- Doctor Commissions -->
+                <div class="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm hover:shadow transition">
+                    <div class="flex items-center justify-between text-gray-400 mb-2">
+                        <span class="text-xs font-bold text-gray-500">${isAr ? 'عمولات الأطباء' : 'Doctor Commissions'}</span>
+                        <div class="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center text-sm"><i class="fa-solid fa-user-doctor"></i></div>
+                    </div>
+                    <div class="text-xl font-black text-purple-700">${totalDoctorCommissions.toLocaleString()} <small class="text-xs font-normal text-gray-400">${curr}</small></div>
+                    <div class="text-[11px] text-gray-400 mt-1">${Object.keys(doctorStats).length} ${isAr ? 'أطباء معالجين' : 'Doctors'}</div>
+                </div>
+
+                <!-- Net Clinic Profit -->
+                <div class="col-span-2 lg:col-span-1 bg-gradient-to-br ${netProfit >= 0 ? 'from-emerald-500 to-teal-700 text-white' : 'from-rose-500 to-red-700 text-white'} rounded-2xl p-4 shadow-md">
+                    <div class="flex items-center justify-between opacity-80 mb-2">
+                        <span class="text-xs font-bold">${isAr ? 'صافي ربح العيادة' : 'Net Clinic Profit'}</span>
+                        <i class="fa-solid fa-sack-dollar text-base"></i>
+                    </div>
+                    <div class="text-xl font-black">${netProfit.toLocaleString()} <small class="text-xs font-normal opacity-80">${curr}</small></div>
+                    <div class="text-[11px] font-bold opacity-90 mt-1">${profitMargin}% ${isAr ? 'هامش الربح' : 'Margin'}</div>
+                </div>
+            </div>
+
+            <!-- 3. Interactive Charts Row -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-6">
+                <!-- Daily Cashflow Trend (2 cols) -->
+                <div class="lg:col-span-2 bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
+                    <div class="flex items-center justify-between mb-4 border-b pb-3">
+                        <h4 class="font-bold text-gray-800 text-sm flex items-center gap-2">
+                            <i class="fa-solid fa-chart-area text-blue-500"></i>
+                            <span>${isAr ? 'حركة التدفق المالي اليومي خلال الشهر (إيرادات ومصروفات)' : 'Daily Cash Flow Trend (Days 1 - ' + daysInMonth + ')'}</span>
+                        </h4>
+                        <span class="text-xs text-gray-400">${selectedMonthName} ${selectedYear}</span>
+                    </div>
+                    <div class="relative w-full h-[220px]">
+                        <canvas id="monthlyDailyFlowChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Cost Structure (1 col) -->
+                <div class="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
+                    <div class="flex items-center justify-between mb-4 border-b pb-3">
+                        <h4 class="font-bold text-gray-800 text-sm flex items-center gap-2">
+                            <i class="fa-solid fa-chart-pie text-indigo-500"></i>
+                            <span>${isAr ? 'توزيع التكاليف وصافي الأرباح' : 'Monthly Cost & Profit Distribution'}</span>
+                        </h4>
+                    </div>
+                    <div class="relative w-full h-[220px] flex items-center justify-center">
+                        <canvas id="monthlyCostStructureChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4. Operational Tables Grid -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-6">
+                <!-- Doctor Commissions in Month Table -->
+                <div class="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
+                    <div class="flex items-center justify-between mb-4 border-b pb-3">
+                        <h4 class="font-bold text-gray-800 text-sm flex items-center gap-2">
+                            <i class="fa-solid fa-user-doctor text-purple-600"></i>
+                            <span>${isAr ? 'كشف عمولات الأطباء لشهر ' + selectedMonthName : 'Doctor Commissions for ' + selectedMonthName}</span>
+                        </h4>
+                        <span class="text-xs font-bold text-purple-700 bg-purple-50 px-2.5 py-1 rounded-full">
+                            ${totalDoctorCommissions.toLocaleString()} ${curr}
+                        </span>
+                    </div>
+                    ${Object.keys(doctorStats).length === 0 ? `
+                        <div class="text-center py-8 text-gray-400 text-xs">${isAr ? 'لا توجد علاجات مسندة لأطباء هذا الشهر' : 'No doctor treatments this month'}</div>
+                    ` : `
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-xs">
+                                <thead>
+                                    <tr class="bg-slate-50 text-gray-500 uppercase border-b border-gray-100">
+                                        <th class="text-left p-2.5">${isAr ? 'الطبيب' : 'Doctor'}</th>
+                                        <th class="text-center p-2.5">${isAr ? 'الجلسات' : 'Sessions'}</th>
+                                        <th class="text-left p-2.5">${isAr ? 'المحصل' : 'Collected'}</th>
+                                        <th class="text-left p-2.5">${isAr ? 'العمولة المستحقة' : 'Commission'}</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${Object.values(doctorStats).map(ds => `
+                                        <tr class="border-b border-gray-50 hover:bg-slate-50/70">
+                                            <td class="p-2.5 font-bold text-gray-800">${escapeHtml(ds.name)}</td>
+                                            <td class="p-2.5 text-center text-gray-500 font-semibold">${ds.sessions}</td>
+                                            <td class="p-2.5 text-green-600 font-semibold">${ds.totalPaid.toLocaleString()} ${curr}</td>
+                                            <td class="p-2.5 font-bold text-purple-700">${ds.totalComm.toLocaleString()} ${curr}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    `}
+                </div>
+
+                <!-- Lab & Implant Orders in Month Table -->
+                <div class="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
+                    <div class="flex items-center justify-between mb-4 border-b pb-3">
+                        <h4 class="font-bold text-gray-800 text-sm flex items-center gap-2">
+                            <i class="fa-solid fa-flask text-amber-600"></i>
+                            <span>${isAr ? 'طلبات المعامل والزرعات لشهر ' + selectedMonthName : 'Lab & Implant Orders for ' + selectedMonthName}</span>
+                        </h4>
+                        <span class="text-xs font-bold text-amber-800 bg-amber-50 px-2.5 py-1 rounded-full">
+                            ${totalLabCost.toLocaleString()} ${curr}
+                        </span>
+                    </div>
+                    ${monthLabOrders.length === 0 ? `
+                        <div class="text-center py-8 text-gray-400 text-xs">${isAr ? 'لا توجد طلبات معمل أو زرع مسجلة هذا الشهر' : 'No lab orders recorded this month'}</div>
+                    ` : `
+                        <div class="overflow-x-auto max-h-64 overflow-y-auto">
+                            <table class="w-full text-xs">
+                                <thead>
+                                    <tr class="bg-slate-50 text-gray-500 uppercase border-b border-gray-100">
+                                        <th class="text-left p-2.5">${isAr ? 'المريض' : 'Patient'}</th>
+                                        <th class="text-left p-2.5">${isAr ? 'المعمل والنوع' : 'Lab & Type'}</th>
+                                        <th class="text-left p-2.5">${isAr ? 'التكلفة' : 'Cost'}</th>
+                                        <th class="text-center p-2.5">${isAr ? 'الحالة' : 'Status'}</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${monthLabOrders.map(lo => {
+                                        const isImp = (lo.work_type || '').toLowerCase().includes('implant') || (lo.work_type || '').includes('زرع');
+                                        return `
+                                        <tr class="border-b border-gray-50 hover:bg-slate-50/70">
+                                            <td class="p-2.5 font-medium text-gray-800">${escapeHtml(lo.patient_name || lo.patientName || '—')}</td>
+                                            <td class="p-2.5">
+                                                <div class="font-semibold text-gray-700">${escapeHtml(lo.lab_name || lo.labName || '—')}</div>
+                                                <span class="text-[10px] ${isImp ? 'bg-amber-100 text-amber-800 font-bold' : 'text-gray-400'} px-1.5 py-0.5 rounded">
+                                                    ${escapeHtml(lo.work_type || lo.workType || 'معمل')}
+                                                </span>
+                                            </td>
+                                            <td class="p-2.5 font-bold text-amber-700">${toMoneyNumber(lo.cost || lo.amount || 0).toLocaleString()} ${curr}</td>
+                                            <td class="p-2.5 text-center">
+                                                <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full ${lo.status === 'delivered' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}">
+                                                    ${lo.status === 'delivered' ? (isAr ? 'تم التسليم' : 'Delivered') : (isAr ? 'قيد التنفيذ' : 'Pending')}
+                                                </span>
+                                            </td>
+                                        </tr>`;
+                                    }).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    `}
+                </div>
+            </div>
+
+            <!-- 5. Top Procedures in Month -->
+            ${topProcedures.length > 0 ? `
+                <div class="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
+                    <div class="flex items-center justify-between mb-4 border-b pb-3">
+                        <h4 class="font-bold text-gray-800 text-sm flex items-center gap-2">
+                            <i class="fa-solid fa-stethoscope text-cyan-600"></i>
+                            <span>${isAr ? 'أعلى الإجراءات الطبية المنجزة خلال الشهر' : 'Top Procedures by Revenue in ' + selectedMonthName}</span>
+                        </h4>
+                    </div>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                        ${topProcedures.map(([procName, stat]) => `
+                            <div class="bg-slate-50 border border-gray-100 rounded-xl p-3 text-center">
+                                <span class="text-xs font-bold text-gray-700 block truncate mb-1" title="${escapeHtml(procName)}">${escapeHtml(procName)}</span>
+                                <div class="text-sm font-black text-cyan-700">${stat.revenue.toLocaleString()} <small class="text-[10px] text-gray-400 font-normal">${curr}</small></div>
+                                <span class="text-[10px] text-gray-400 mt-0.5 block">${stat.count} ${isAr ? 'حالة' : 'Cases'}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            ` : ''}
+        `;
+
+        // Render Chart.js charts
+        setTimeout(() => {
+            const flowCanvas = document.getElementById('monthlyDailyFlowChart');
+            if (flowCanvas && typeof Chart !== 'undefined') {
+                monthlyDailyFlowChartInstance = new Chart(flowCanvas, {
+                    type: 'bar',
+                    data: {
+                        labels: dailyLabels,
+                        datasets: [
+                            {
+                                label: isAr ? 'الإيرادات المحصلة' : 'Revenue',
+                                data: dailyRevValues,
+                                backgroundColor: 'rgba(34, 197, 94, 0.75)',
+                                borderRadius: 4,
+                                order: 2
+                            },
+                            {
+                                label: isAr ? 'المصروفات والمعامل' : 'Expenses & Lab',
+                                data: dailyExpValues,
+                                backgroundColor: 'rgba(239, 68, 68, 0.7)',
+                                borderRadius: 4,
+                                order: 2
+                            },
+                            {
+                                label: isAr ? 'صافي التدفق اليومي' : 'Daily Net Flow',
+                                data: dailyNetValues,
+                                type: 'line',
+                                borderColor: '#2563eb',
+                                backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                                fill: false,
+                                tension: 0.3,
+                                borderWidth: 2.5,
+                                pointRadius: 2,
+                                order: 1
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'top', labels: { font: { size: 11 } } },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(ctx) {
+                                        return `${ctx.dataset.label}: ${ctx.raw.toLocaleString()} ${curr}`;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+                            y: { grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { font: { size: 10 } } }
+                        }
+                    }
+                });
+            }
+
+            const costCanvas = document.getElementById('monthlyCostStructureChart');
+            if (costCanvas && typeof Chart !== 'undefined') {
+                const safeNet = Math.max(0, netProfit);
+                const hasAnyData = safeNet > 0 || totalExpenses > 0 || totalLabCost > 0 || totalDoctorCommissions > 0;
+                monthlyCostStructureChartInstance = new Chart(costCanvas, {
+                    type: 'doughnut',
+                    data: {
+                        labels: isAr
+                            ? ['صافي ربح العيادة', 'المصروفات العامة', 'تكاليف المعامل والزرع', 'عمولات الأطباء']
+                            : ['Clinic Net Profit', 'General Expenses', 'Lab & Implants', 'Doctor Commissions'],
+                        datasets: [{
+                            data: hasAnyData
+                                ? [safeNet, totalExpenses, totalLabCost, totalDoctorCommissions]
+                                : [1],
+                            backgroundColor: hasAnyData
+                                ? ['#10b981', '#ef4444', '#f59e0b', '#8b5cf6']
+                                : ['#e2e8f0'],
+                            borderWidth: 2,
+                            borderColor: '#ffffff'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 10 } } },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(ctx) {
+                                        if (!hasAnyData) return isAr ? 'لا توجد بيانات' : 'No data';
+                                        return `${ctx.label}: ${ctx.raw.toLocaleString()} ${curr}`;
+                                    }
+                                }
+                            }
+                        },
+                        cutout: '65%'
+                    }
+                });
+            }
+        }, 50);
+
+        return;
+    }
+
+    // =========================================================================
+    // MODE 2: ALL MONTHS COMPARISON TABLE (مقارنة كافة شهور السنة)
+    // =========================================================================
+    const monthData = MONTH_NAMES.map((month, m) => {
+        const mStr = `${selectedYear}-${String(m + 1).padStart(2, '0')}`;
+        const revenue = collectionEntries
+            .filter(entry => (entry.date || '').startsWith(mStr))
+            .reduce((sum, entry) => sum + toMoneyNumber(entry.amount), 0);
+
+        const clinicExpenses = expenses
+            .filter(e => normalizeDateOnly(e.date).startsWith(mStr))
+            .reduce((sum, e) => sum + toMoneyNumber(e.amount), 0);
+
+        const labCosts = labOrders
+            .filter(o => normalizeDateOnly(o.created_at || o.date).startsWith(mStr))
+            .reduce((sum, o) => sum + toMoneyNumber(o.cost || o.amount || 0), 0);
+
+        const doctorCommissions = treatments
+            .filter(t => normalizeDateOnly(t.date || t.created_at).startsWith(mStr))
+            .reduce((sum, t) => sum + toMoneyNumber(t.doctor_commission_amt || 0), 0);
+
+        const debts = payables
+            .filter(payable => normalizeDateOnly(payable?.due_date ?? payable?.dueDate ?? payable?.date).startsWith(mStr))
+            .reduce((sum, payable) => sum + toMoneyNumber(payable?.remaining_amount ?? payable?.remainingAmount), 0);
+
+        const totalExpensesAndCosts = clinicExpenses + labCosts + doctorCommissions;
+        const net = revenue - totalExpensesAndCosts;
+
+        return {
+            month,
+            revenue,
+            clinicExpenses,
+            labCosts,
+            doctorCommissions,
+            totalExpensesAndCosts,
+            debts,
+            net
+        };
     });
 
-    const totalRevenue = monthData.reduce((sum, item) => sum + item.revenue, 0);
-    const totalExpense = monthData.reduce((sum, item) => sum + item.expense, 0);
-    const totalDebt = monthData.reduce((sum, item) => sum + item.debt, 0);
-    const totalNet = totalRevenue - totalExpense;
-    const totalProfitPct = totalRevenue > 0 ? Math.round((totalNet / totalRevenue) * 100) : 0;
+    const totalRev = monthData.reduce((s, d) => s + d.revenue, 0);
+    const totalClinicExp = monthData.reduce((s, d) => s + d.clinicExpenses, 0);
+    const totalLab = monthData.reduce((s, d) => s + d.labCosts, 0);
+    const totalDoc = monthData.reduce((s, d) => s + d.doctorCommissions, 0);
+    const totalAllExp = totalClinicExp + totalLab + totalDoc;
+    const totalNet = totalRev - totalAllExp;
+    const totalProfitPct = totalRev > 0 ? Math.round((totalNet / totalRev) * 100) : 0;
 
-    const monthLabel = currentLang === 'ar' ? 'الشهر' : 'Month';
-    const revenueLabel = currentLang === 'ar' ? 'الإيراد' : 'Revenue';
-    const expenseLabel = currentLang === 'ar' ? 'المصروف' : 'Expenses';
-    const debtLabel = currentLang === 'ar' ? 'الديون عليّ' : 'Payables Due';
-    const netLabel = currentLang === 'ar' ? 'صافي الربح' : 'Net Profit';
-    const pctLabel = currentLang === 'ar' ? 'نسبة الربح' : 'Profit %';
-    const totalLabel = currentLang === 'ar' ? 'الإجمالي' : 'Total';
+    bodyEl.innerHTML = `
+        <!-- KPI Summary Cards -->
+        <div class="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
+            <div class="bg-gradient-to-br from-green-50 to-emerald-50 border border-green-100 rounded-xl p-3.5 shadow-sm">
+                <span class="text-xs text-green-700 font-semibold block mb-1">${isAr ? 'إجمالي الإيرادات' : 'Total Revenue'}</span>
+                <span class="text-lg font-black text-green-700">${totalRev.toLocaleString()} <small class="text-xs font-normal">${curr}</small></span>
+            </div>
+            <div class="bg-gradient-to-br from-red-50 to-rose-50 border border-red-100 rounded-xl p-3.5 shadow-sm">
+                <span class="text-xs text-red-700 font-semibold block mb-1">${isAr ? 'المصروفات العامة' : 'Clinic Expenses'}</span>
+                <span class="text-lg font-black text-red-600">${totalClinicExp.toLocaleString()} <small class="text-xs font-normal">${curr}</small></span>
+            </div>
+            <div class="bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-100 rounded-xl p-3.5 shadow-sm">
+                <span class="text-xs text-amber-700 font-semibold block mb-1">${isAr ? 'تكاليف المعامل والزرع' : 'Lab & Implant Costs'}</span>
+                <span class="text-lg font-black text-amber-700">${totalLab.toLocaleString()} <small class="text-xs font-normal">${curr}</small></span>
+            </div>
+            <div class="bg-gradient-to-br from-purple-50 to-indigo-50 border border-purple-100 rounded-xl p-3.5 shadow-sm">
+                <span class="text-xs text-purple-700 font-semibold block mb-1">${isAr ? 'عمولات الأطباء' : 'Doctor Commissions'}</span>
+                <span class="text-lg font-black text-purple-700">${totalDoc.toLocaleString()} <small class="text-xs font-normal">${curr}</small></span>
+            </div>
+            <div class="col-span-2 lg:col-span-1 bg-gradient-to-br ${totalNet >= 0 ? 'from-blue-50 to-teal-50 border-blue-100 text-blue-700' : 'from-rose-50 to-red-50 border-red-100 text-red-600'} border rounded-xl p-3.5 shadow-sm">
+                <span class="text-xs font-semibold block mb-1">${isAr ? 'صافي أرباح العيادة' : 'Clinic Net Profit'}</span>
+                <span class="text-lg font-black">${totalNet.toLocaleString()} <small class="text-xs font-normal">${curr}</small></span>
+                <div class="text-[11px] font-semibold opacity-75 mt-0.5">${totalProfitPct}% ${isAr ? 'هامش ربح' : 'Margin'}</div>
+            </div>
+        </div>
 
-    document.getElementById('monthlyReportBody').innerHTML = `
-    <div class="overflow-x-auto"><table class="w-full text-sm">
-        <thead><tr class="bg-slate-50 text-gray-400 text-xs uppercase border-b">
-            <th class="text-left px-4 py-3">${monthLabel}</th>
-            <th class="text-left px-4 py-3 text-green-600">${revenueLabel}</th>
-            <th class="text-left px-4 py-3 text-red-400">${expenseLabel}</th>
-            <th class="text-left px-4 py-3 text-amber-600">${debtLabel}</th>
-            <th class="text-left px-4 py-3 text-blue-600">${netLabel}</th>
-            <th class="px-4 py-3 w-36">${pctLabel}</th>
-        </tr></thead>
-        <tbody>${monthData.map(item => {
-            const profitPct = item.revenue > 0 ? Math.round((item.net / item.revenue) * 100) : 0;
-            const barPct = Math.max(0, Math.min(100, profitPct));
-            const hasData = item.revenue > 0 || item.expense > 0 || item.debt > 0;
-            const barColor = profitPct >= 50 ? 'bg-green-400' : profitPct >= 0 ? 'bg-yellow-400' : 'bg-red-400';
-            const pctColor = profitPct >= 0 ? 'text-gray-500' : 'text-red-400';
-            return `<tr class="border-b border-gray-50 hover:bg-blue-50 transition">
-                <td class="px-4 py-3 font-semibold text-gray-700">${item.month}</td>
-                <td class="px-4 py-3 text-green-600 font-semibold">${item.revenue > 0 ? item.revenue.toLocaleString() + ' ' + curr : '—'}</td>
-                <td class="px-4 py-3 text-red-400">${item.expense > 0 ? item.expense.toLocaleString() + ' ' + curr : '—'}</td>
-                <td class="px-4 py-3 text-amber-600 font-semibold">${item.debt > 0 ? item.debt.toLocaleString() + ' ' + curr : '—'}</td>
-                <td class="px-4 py-3 font-bold ${item.net >= 0 ? 'text-green-600' : 'text-red-500'}">${hasData ? item.net.toLocaleString() + ' ' + curr : '—'}</td>
-                <td class="px-4 py-3"><div class="flex items-center gap-2"><div class="flex-1 bg-gray-100 rounded-full h-2 overflow-hidden"><div class="h-2 rounded-full ${hasData ? barColor : 'bg-gray-200'}" style="width:${barPct}%"></div></div><span class="text-[11px] ${hasData ? pctColor : 'text-gray-300'} w-8">${hasData ? profitPct + '%' : '0%'}</span></div></td>
-            </tr>`;
-        }).join('')}</tbody>
-        <tfoot><tr class="bg-slate-50 font-bold border-t-2 border-gray-200">
-            <td class="px-4 py-3 text-gray-700">${totalLabel}</td>
-            <td class="px-4 py-3 text-green-700">${totalRevenue.toLocaleString()} ${curr}</td>
-            <td class="px-4 py-3 text-red-500">${totalExpense.toLocaleString()} ${curr}</td>
-            <td class="px-4 py-3 text-amber-600">${totalDebt.toLocaleString()} ${curr}</td>
-            <td class="px-4 py-3 ${totalNet >= 0 ? 'text-green-700' : 'text-red-500'}">${totalNet.toLocaleString()} ${curr}</td>
-            <td class="px-4 py-3"><span class="text-xs font-bold ${totalProfitPct >= 0 ? 'text-green-600' : 'text-red-500'}">${totalProfitPct}%</span></td>
-        </tr></tfoot>
-    </table></div>`;
+        <!-- Monthly Breakdown Table -->
+        <div class="overflow-x-auto rounded-xl border border-gray-100 shadow-sm">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="bg-slate-50 text-gray-500 text-xs uppercase border-b border-gray-100">
+                        <th class="text-left px-4 py-3">${isAr ? 'الشهر' : 'Month'}</th>
+                        <th class="text-left px-4 py-3 text-green-600">${isAr ? 'الإيراد' : 'Revenue'}</th>
+                        <th class="text-left px-4 py-3 text-red-500">${isAr ? 'المصروفات' : 'Expenses'}</th>
+                        <th class="text-left px-4 py-3 text-amber-600">${isAr ? 'المعامل والزرع' : 'Lab Costs'}</th>
+                        <th class="text-left px-4 py-3 text-purple-600">${isAr ? 'عمولات الأطباء' : 'Doctor Comm.'}</th>
+                        <th class="text-left px-4 py-3 text-blue-600">${isAr ? 'صافي الربح' : 'Net Profit'}</th>
+                        <th class="px-4 py-3 w-36">${isAr ? 'مؤشر الربحية' : 'Profit %'}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${monthData.map(d => {
+                        const profitPct = d.revenue > 0 ? Math.round((d.net / d.revenue) * 100) : 0;
+                        const barPct = Math.max(0, Math.min(100, Math.abs(profitPct)));
+                        const hasActivity = d.revenue > 0 || d.clinicExpenses > 0 || d.labCosts > 0 || d.doctorCommissions > 0;
+                        const barColor = profitPct >= 50 ? 'bg-green-500' : profitPct >= 20 ? 'bg-teal-500' : profitPct >= 0 ? 'bg-amber-400' : 'bg-red-400';
+                        const pctColor = profitPct >= 0 ? 'text-gray-600' : 'text-red-500 font-bold';
+                        return `
+                        <tr class="border-b border-gray-50 ${hasActivity ? 'hover:bg-blue-50/60' : 'opacity-40'} transition">
+                            <td class="px-4 py-3 font-semibold text-gray-800">${d.month}</td>
+                            <td class="px-4 py-3 text-green-600 font-semibold">${d.revenue > 0 ? d.revenue.toLocaleString() + ' ' + curr : '—'}</td>
+                            <td class="px-4 py-3 text-red-500">${d.clinicExpenses > 0 ? d.clinicExpenses.toLocaleString() + ' ' + curr : '—'}</td>
+                            <td class="px-4 py-3 text-amber-600 font-medium">${d.labCosts > 0 ? d.labCosts.toLocaleString() + ' ' + curr : '—'}</td>
+                            <td class="px-4 py-3 text-purple-600 font-medium">${d.doctorCommissions > 0 ? d.doctorCommissions.toLocaleString() + ' ' + curr : '—'}</td>
+                            <td class="px-4 py-3 font-bold ${d.net >= 0 ? 'text-green-600' : 'text-red-500'}">${hasActivity ? d.net.toLocaleString() + ' ' + curr : '—'}</td>
+                            <td class="px-4 py-3">
+                                <div class="flex items-center gap-2">
+                                    <div class="flex-1 bg-gray-100 rounded-full h-2 overflow-hidden">
+                                        <div class="h-2 rounded-full ${hasActivity ? barColor : 'bg-gray-200'}" style="width:${hasActivity ? barPct : 0}%"></div>
+                                    </div>
+                                    <span class="text-[11px] ${hasActivity ? pctColor : 'text-gray-300'} w-10 text-right">${hasActivity ? profitPct + '%' : '0%'}</span>
+                                </div>
+                            </td>
+                        </tr>`;
+                    }).join('')}
+                </tbody>
+                <tfoot>
+                    <tr class="bg-slate-100/80 font-bold border-t-2 border-gray-200 text-xs">
+                        <td class="px-4 py-3.5 text-gray-800">${isAr ? 'الإجمالي السنوي' : 'Annual Total'}</td>
+                        <td class="px-4 py-3.5 text-green-700">${totalRev.toLocaleString()} ${curr}</td>
+                        <td class="px-4 py-3.5 text-red-600">${totalClinicExp.toLocaleString()} ${curr}</td>
+                        <td class="px-4 py-3.5 text-amber-700">${totalLab.toLocaleString()} ${curr}</td>
+                        <td class="px-4 py-3.5 text-purple-700">${totalDoc.toLocaleString()} ${curr}</td>
+                        <td class="px-4 py-3.5 ${totalNet >= 0 ? 'text-green-700' : 'text-red-500'}">${totalNet.toLocaleString()} ${curr}</td>
+                        <td class="px-4 py-3.5">
+                            <span class="text-xs font-bold ${totalProfitPct >= 0 ? 'text-green-700' : 'text-red-500'}">${totalProfitPct}%</span>
+                        </td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    `;
 };
 
-window.renderMonthlyReport = async function() {
-    const { collectionEntries, expenses, payables } = await getCleanReportCollections();
-    const curr = getCurrency();
-    const yearsSet = new Set();
+// ── PRINT OFFICIAL MONTHLY REPORT ──
+window.printMonthlyReport = async function() {
+    const { collectionEntries, expenses, treatments } = await getCleanReportCollections();
+    const labOrders = await (window.dbGetAll ? window.dbGetAll('lab_orders') : Promise.resolve([])).catch(() => []);
+    const curr = typeof getCurrency === 'function' ? getCurrency() : 'EGP';
+    const isAr = currentLang === 'ar';
+    const s = typeof getSettings === 'function' ? getSettings() : {};
 
-    collectionEntries.forEach(entry => {
-        const year = (entry.date || '').slice(0, 4);
-        if (year) yearsSet.add(year);
-    });
-    expenses.forEach(expense => {
-        const year = normalizeDateOnly(expense.date).slice(0, 4);
-        if (year) yearsSet.add(year);
-    });
-    payables.forEach(payable => {
-        const recordYear = normalizeDateOnly(payable?.date).slice(0, 4);
-        const dueYear = normalizeDateOnly(payable?.due_date ?? payable?.dueDate).slice(0, 4);
-        if (recordYear) yearsSet.add(recordYear);
-        if (dueYear) yearsSet.add(dueYear);
-    });
+    const monthSel = document.getElementById('monthlyReportMonth');
+    const yearSel = document.getElementById('monthlyReportYear');
+    const selectedYear = yearSel ? yearSel.value : String(new Date().getFullYear());
+    const selectedMonth = monthSel ? parseInt(monthSel.value) : (new Date().getMonth() + 1);
 
-    const years = [...yearsSet].sort((a, b) => b - a);
-    const sel = document.getElementById('monthlyReportYear');
-    if (sel) {
-        const cur = sel.value || years[0] || String(new Date().getFullYear());
-        sel.innerHTML = years.map(year => `<option value="${year}" ${year === cur ? 'selected' : ''}>${year}</option>`).join('');
-        if (!sel.value && years.length) sel.value = years[0];
-    }
-
-    const selectedYear = sel ? sel.value : (years[0] || String(new Date().getFullYear()));
-    const months = currentLang === 'ar'
+    const MONTH_NAMES = isAr
         ? ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر']
         : ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    const selectedMonthName = MONTH_NAMES[selectedMonth - 1] || '';
+    const monthKey = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}`;
 
-    const monthData = months.map((month, index) => {
-        const monthKey = `${selectedYear}-${String(index + 1).padStart(2, '0')}`;
-        const revenue = collectionEntries
-            .filter(entry => (entry.date || '').startsWith(monthKey))
-            .reduce((sum, entry) => sum + toMoneyNumber(entry.amount), 0);
-        const expense = expenses
-            .filter(item => normalizeDateOnly(item.date).startsWith(monthKey))
-            .reduce((sum, item) => sum + toMoneyNumber(item.amount), 0);
-        const debt = getMonthlyPayablesAmount(payables, monthKey);
+    const monthCollections = collectionEntries.filter(entry => (entry.date || '').startsWith(monthKey));
+    const monthRevenue = monthCollections.reduce((sum, entry) => sum + toMoneyNumber(entry.amount), 0);
 
-        return { month, revenue, expense, debt, net: revenue - expense };
-    });
+    const monthExpenses = expenses.filter(e => normalizeDateOnly(e.date).startsWith(monthKey));
+    const totalExpenses = monthExpenses.reduce((sum, e) => sum + toMoneyNumber(e.amount), 0);
 
-    const totalRevenue = monthData.reduce((sum, item) => sum + item.revenue, 0);
-    const totalExpense = monthData.reduce((sum, item) => sum + item.expense, 0);
-    const totalDebt = monthData.reduce((sum, item) => sum + item.debt, 0);
-    const totalNet = totalRevenue - totalExpense;
-    const totalProfitPct = totalRevenue > 0 ? Math.round((totalNet / totalRevenue) * 100) : 0;
+    const monthLabOrders = labOrders.filter(o => normalizeDateOnly(o.created_at || o.date).startsWith(monthKey));
+    const totalLabCost = monthLabOrders.reduce((sum, o) => sum + toMoneyNumber(o.cost || o.amount || 0), 0);
 
-    const monthLabel = currentLang === 'ar' ? 'الشهر' : 'Month';
-    const revenueLabel = currentLang === 'ar' ? 'الإيراد' : 'Revenue';
-    const expenseLabel = currentLang === 'ar' ? 'المصروف' : 'Expenses';
-    const debtLabel = currentLang === 'ar' ? 'الديون عليك' : 'Payables Due';
-    const netLabel = currentLang === 'ar' ? 'صافي الربح' : 'Net Profit';
-    const pctLabel = currentLang === 'ar' ? 'نسبة الربح' : 'Profit %';
-    const totalLabel = currentLang === 'ar' ? 'الإجمالي' : 'Total';
+    const monthTreatments = treatments.filter(t => normalizeDateOnly(t.date || t.created_at).startsWith(monthKey));
+    const totalDocComm = monthTreatments.reduce((sum, t) => sum + toMoneyNumber(t.doctor_commission_amt || 0), 0);
 
-    document.getElementById('monthlyReportBody').innerHTML = `
-    <div class="overflow-x-auto"><table class="w-full text-sm">
-        <thead><tr class="bg-slate-50 text-gray-400 text-xs uppercase border-b">
-            <th class="text-left px-4 py-3">${monthLabel}</th>
-            <th class="text-left px-4 py-3 text-green-600">${revenueLabel}</th>
-            <th class="text-left px-4 py-3 text-red-400">${expenseLabel}</th>
-            <th class="text-left px-4 py-3 text-amber-600">${debtLabel}</th>
-            <th class="text-left px-4 py-3 text-blue-600">${netLabel}</th>
-            <th class="px-4 py-3 w-36">${pctLabel}</th>
-        </tr></thead>
-        <tbody>${monthData.map(item => {
-            const profitPct = item.revenue > 0 ? Math.round((item.net / item.revenue) * 100) : 0;
-            const barPct = Math.max(0, Math.min(100, profitPct));
-            const hasData = item.revenue > 0 || item.expense > 0 || item.debt > 0;
-            const barColor = profitPct >= 50 ? 'bg-green-400' : profitPct >= 0 ? 'bg-yellow-400' : 'bg-red-400';
-            const pctColor = profitPct >= 0 ? 'text-gray-500' : 'text-red-400';
-            return `<tr class="border-b border-gray-50 hover:bg-blue-50 transition">
-                <td class="px-4 py-3 font-semibold text-gray-700">${item.month}</td>
-                <td class="px-4 py-3 text-green-600 font-semibold">${item.revenue.toLocaleString()} ${curr}</td>
-                <td class="px-4 py-3 text-red-400">${item.expense.toLocaleString()} ${curr}</td>
-                <td class="px-4 py-3 text-amber-600 font-semibold">${item.debt.toLocaleString()} ${curr}</td>
-                <td class="px-4 py-3 font-bold ${item.net >= 0 ? 'text-green-600' : 'text-red-500'}">${item.net.toLocaleString()} ${curr}</td>
-                <td class="px-4 py-3"><div class="flex items-center gap-2"><div class="flex-1 bg-gray-100 rounded-full h-2 overflow-hidden"><div class="h-2 rounded-full ${hasData ? barColor : 'bg-gray-200'}" style="width:${hasData ? barPct : 0}%"></div></div><span class="text-[11px] ${hasData ? pctColor : 'text-gray-300'} w-8">${hasData ? profitPct + '%' : '0%'}</span></div></td>
-            </tr>`;
-        }).join('')}</tbody>
-        <tfoot><tr class="bg-slate-50 font-bold border-t-2 border-gray-200">
-            <td class="px-4 py-3 text-gray-700">${totalLabel}</td>
-            <td class="px-4 py-3 text-green-700">${totalRevenue.toLocaleString()} ${curr}</td>
-            <td class="px-4 py-3 text-red-500">${totalExpense.toLocaleString()} ${curr}</td>
-            <td class="px-4 py-3 text-amber-600">${totalDebt.toLocaleString()} ${curr}</td>
-            <td class="px-4 py-3 ${totalNet >= 0 ? 'text-green-700' : 'text-red-500'}">${totalNet.toLocaleString()} ${curr}</td>
-            <td class="px-4 py-3"><span class="text-xs font-bold ${totalProfitPct >= 0 ? 'text-green-600' : 'text-red-500'}">${totalProfitPct}%</span></td>
-        </tr></tfoot>
-    </table></div>`;
+    const netProfit = monthRevenue - totalExpenses - totalLabCost - totalDocComm;
+    const profitMargin = monthRevenue > 0 ? Math.round((netProfit / monthRevenue) * 100) : 0;
+
+    const w = window.open('', '_blank');
+    w.document.write(`
+        <!DOCTYPE html>
+        <html dir="${isAr ? 'rtl' : 'ltr'}">
+        <head>
+            <meta charset="utf-8">
+            <title>التقرير المالي لشهر ${selectedMonthName} ${selectedYear}</title>
+            <style>
+                body { font-family: 'Segoe UI', Tahoma, Arial, sans-serif; padding: 25px; color: #1e293b; direction: ${isAr ? 'rtl' : 'ltr'}; }
+                .header { border-bottom: 2px solid #2563eb; padding-bottom: 12px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
+                .title { font-size: 20px; font-weight: bold; color: #1e3a8a; }
+                .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+                .card { border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; background: #f8fafc; text-align: center; }
+                .card-title { font-size: 11px; color: #64748b; font-weight: 600; margin-bottom: 4px; }
+                .card-val { font-size: 16px; font-weight: bold; }
+                table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 12px; }
+                th, td { border: 1px solid #e2e8f0; padding: 8px; text-align: ${isAr ? 'right' : 'left'}; }
+                th { background: #f1f5f9; color: #475569; }
+                .footer { margin-top: 30px; border-top: 1px solid #cbd5e1; padding-top: 10px; font-size: 10px; color: #94a3b8; display: flex; justify-content: space-between; }
+                @media print { button { display: none; } }
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <div>
+                    <div class="title">${s.clinicName || 'BitDentra Dental Clinic'}</div>
+                    <div style="font-size:13px;color:#64748b;">التقرير المالي والتشغيلي المعتمد - ${selectedMonthName} ${selectedYear}</div>
+                </div>
+                <div style="text-align:${isAr ? 'left' : 'right'};font-size:11px;color:#64748b;">
+                    <div>تاريخ الإصدار: ${new Date().toLocaleDateString('ar-EG')}</div>
+                    <div>${monthTreatments.length} جلسة علاجية</div>
+                </div>
+            </div>
+
+            <div class="grid">
+                <div class="card"><div class="card-title">إجمالي الإيرادات المحصلة</div><div class="card-val" style="color:#16a34a;">${monthRevenue.toLocaleString()} ${curr}</div></div>
+                <div class="card"><div class="card-title">المصروفات العامة</div><div class="card-val" style="color:#dc2626;">${totalExpenses.toLocaleString()} ${curr}</div></div>
+                <div class="card"><div class="card-title">تكاليف المعامل والزرعات</div><div class="card-val" style="color:#d97706;">${totalLabCost.toLocaleString()} ${curr}</div></div>
+                <div class="card"><div class="card-title">صافي أرباح العيادة النهائي</div><div class="card-val" style="color:#2563eb;">${netProfit.toLocaleString()} ${curr} (${profitMargin}%)</div></div>
+            </div>
+
+            <h4 style="margin:20px 0 5px;color:#334155;">أبرز المصروفات والمعامل المسجلة خلال الشهر</h4>
+            <table>
+                <thead><tr><th>البند / الطلب</th><th>التصنيف</th><th>المبلغ</th></tr></thead>
+                <tbody>
+                    ${monthExpenses.slice(0, 8).map(e => `<tr><td>${escapeHtml(e.item || 'مصروف')}</td><td>مصروف عام</td><td style="color:#dc2626;font-weight:bold;">${toMoneyNumber(e.amount).toLocaleString()} ${curr}</td></tr>`).join('')}
+                    ${monthLabOrders.slice(0, 8).map(l => `<tr><td>معمل: ${escapeHtml(l.lab_name || 'معمل')} (${escapeHtml(l.work_type || 'طلب')})</td><td>معامل وزرع</td><td style="color:#d97706;font-weight:bold;">${toMoneyNumber(l.cost || 0).toLocaleString()} ${curr}</td></tr>`).join('')}
+                </tbody>
+            </table>
+
+            <div class="footer">
+                <div>© 2026 BitMaster · All rights reserved · Eng. Abdelhameed Elkhadrgy</div>
+                <div>BitDentra Dental Management System</div>
+            </div>
+            <script>window.print();</script>
+        </body>
+        </html>
+    `);
+    w.document.close();
 };
 
 window.printPatientSheet = async function() {
@@ -5705,18 +6408,8 @@ window.loadLabReport = async function() {
     `;
 };
 
-function toggleSidebar(){
-    const sidebar = document.querySelector("aside");
-    sidebar.classList.toggle("mobile-open");
-}
-
-document.querySelectorAll("table").forEach(table=>{
-    const wrapper = document.createElement("div");
-    wrapper.style.overflowX="auto";
-    wrapper.style.width="100%";
-    table.parentNode.insertBefore(wrapper, table);
-    wrapper.appendChild(table);
-});
+// Sidebar toggle is handled by window.toggleSidebar() with desktop collapse & mobile drawer support
+if (typeof window.ensureTablesResponsive === 'function') window.ensureTablesResponsive();
 
 // old offline_queue helper removed in favour of offline_first_patch queue
 window.addEventListener('online', async () => {

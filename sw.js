@@ -1,5 +1,4 @@
-// ✅ غيّر الرقم هنا كل ما تعمل تحديث لأي ملف JS
-const CACHE_NAME = 'clinic-app-v15';
+const CACHE_NAME = 'clinic-app-v27';
 
 const LOCAL_FILES = [
     'login.html',
@@ -18,8 +17,7 @@ const LOCAL_FILES = [
     'doctors_module.js',
     'doctors_and_patient_fix.js',
     'appointments_upgrade.js',
-    'app_optimized_patch.js',
-    'app_performance_patch.js',
+    'audit_log.js',
     'tooth_picker_patch.js',
     'fix_patch.js',
     'fix_tooth_display.js',
