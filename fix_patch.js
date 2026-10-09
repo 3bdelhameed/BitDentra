@@ -275,16 +275,16 @@ document.addEventListener('DOMContentLoaded', function () {
 window.toggleSidebar = function () {
     const sidebar   = document.getElementById('sidebar');
     const backdrop  = document.getElementById('sidebarBackdrop');
-    const isMobile  = window.innerWidth <= 900;
+    const isMobile  = window.innerWidth <= 768;
     if (!sidebar) return;
     if (isMobile) {
         const isOpen = sidebar.classList.contains('mobile-open');
         if (isOpen) {
             sidebar.classList.remove('mobile-open');
-            if (backdrop) backdrop.style.display = 'none';
+            if (backdrop) { backdrop.style.display = 'none'; backdrop.classList.remove('active'); }
         } else {
             sidebar.classList.add('mobile-open');
-            if (backdrop) backdrop.style.display = 'block';
+            if (backdrop) { backdrop.style.display = 'block'; backdrop.classList.add('active'); }
         }
     } else {
         sidebar.classList.toggle('sidebar-collapsed');
@@ -297,6 +297,7 @@ document.addEventListener('DOMContentLoaded', function () {
         backdrop.onclick = function () {
             const sidebar = document.getElementById('sidebar');
             if (sidebar) sidebar.classList.remove('mobile-open');
+            backdrop.classList.remove('active');
             backdrop.style.display = 'none';
         };
     }
@@ -323,18 +324,86 @@ document.addEventListener('DOMContentLoaded', function () {
         #bookedSlotsHint { margin-top: 2px; }
         #appointmentDuration { width: 100%; border: 1.5px solid #e2e8f0; border-radius: 11px; padding: 10px 14px; font-size: 13.5px; outline: none; transition: border-color .18s; }
         #appointmentDuration:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,.1); }
-        @media (max-width: 900px) {
-            #sidebar { position: fixed !important; left: 0 !important; top: 0 !important; height: 100% !important; z-index: 60 !important; transform: translateX(-100%) !important; transition: transform 0.3s ease !important; width: 240px !important; }
-            #sidebar.mobile-open { transform: translateX(0) !important; }
-            #sidebarBackdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 50; }
+
+        /* Mobile Drawer (<= 768px) */
+        @media (max-width: 768px) {
+            #sidebar {
+                position: fixed !important;
+                left: 0 !important;
+                right: auto !important;
+                top: 0 !important;
+                bottom: 0 !important;
+                height: 100vh !important;
+                z-index: 70 !important;
+                transform: translateX(-100%) !important;
+                transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+                width: 240px !important;
+                box-shadow: 4px 0 24px rgba(0,0,0,0.18) !important;
+            }
+            #sidebar.mobile-open {
+                transform: translateX(0) !important;
+            }
+            [dir="rtl"] #sidebar,
+            html[dir="rtl"] #sidebar,
+            body[dir="rtl"] #sidebar,
+            .rtl #sidebar {
+                left: auto !important;
+                right: 0 !important;
+                transform: translateX(100%) !important;
+                box-shadow: -4px 0 24px rgba(0,0,0,0.18) !important;
+            }
+            [dir="rtl"] #sidebar.mobile-open,
+            html[dir="rtl"] #sidebar.mobile-open,
+            body[dir="rtl"] #sidebar.mobile-open,
+            .rtl #sidebar.mobile-open {
+                transform: translateX(0) !important;
+            }
+            #sidebarBackdrop {
+                position: fixed !important;
+                inset: 0 !important;
+                background: rgba(0,0,0,0.45) !important;
+                z-index: 65 !important;
+            }
         }
-        @media (min-width: 901px) {
-            #sidebar { transition: width 0.25s ease !important; }
+
+        /* Desktop & Tablet (> 768px) - Flexbox flow */
+        @media (min-width: 769px) {
+            #sidebar {
+                position: relative !important;
+                top: auto !important;
+                bottom: auto !important;
+                left: auto !important;
+                right: auto !important;
+                height: 100vh !important;
+                transform: none !important;
+                box-shadow: none !important;
+                transition: width 0.25s ease !important;
+                width: 240px;
+            }
+            [dir="rtl"] #sidebar,
+            html[dir="rtl"] #sidebar,
+            body[dir="rtl"] #sidebar,
+            .rtl #sidebar {
+                position: relative !important;
+                transform: none !important;
+                left: auto !important;
+                right: auto !important;
+            }
+            #sidebarBackdrop {
+                display: none !important;
+            }
             #sidebar.sidebar-collapsed { width: 56px !important; overflow: hidden; }
-            #sidebar.sidebar-collapsed .sidebar-link span, #sidebar.sidebar-collapsed [data-t], #sidebar.sidebar-collapsed .nav-label, #sidebar.sidebar-collapsed .sidebar-logo-text, #sidebar.sidebar-collapsed .logout-label { display: none !important; }
+            #sidebar.sidebar-collapsed .sidebar-link span,
+            #sidebar.sidebar-collapsed [data-t],
+            #sidebar.sidebar-collapsed .nav-label,
+            #sidebar.sidebar-collapsed .sidebar-logo-text,
+            #sidebar.sidebar-collapsed .logout-label,
+            #sidebar.sidebar-collapsed .sidebar-footer-card,
+            #sidebar.sidebar-collapsed .sidebar-footer-text { display: none !important; }
             #sidebar.sidebar-collapsed .sidebar-link { justify-content: center !important; padding-left: 0 !important; padding-right: 0 !important; }
             #sidebar.sidebar-collapsed #sidebarLogoArea { justify-content: center !important; padding: 0 !important; }
         }
+
         #tpUpperRow, #tpLowerRow { display: flex !important; flex-wrap: nowrap !important; justify-content: center !important; align-items: center !important; overflow-x: auto !important; padding: 4px 2px !important; gap: 0 !important; }
         #femaleOnlyFields { grid-template-columns: 1fr 1fr; }
     `;

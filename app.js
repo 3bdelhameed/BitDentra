@@ -690,7 +690,17 @@ function setLanguage(lang) {
     const isAr = lang === 'ar';
     document.documentElement.lang = lang;
     document.documentElement.dir = isAr ? 'rtl' : 'ltr';
-    document.body.style.fontFamily = isAr ? "'Cairo', 'DM Sans', sans-serif" : "'DM Sans', 'Cairo', sans-serif";
+    if (document.body) {
+        document.body.dir = isAr ? 'rtl' : 'ltr';
+        if (isAr) {
+            document.documentElement.classList.add('rtl');
+            document.body.classList.add('rtl');
+        } else {
+            document.documentElement.classList.remove('rtl');
+            document.body.classList.remove('rtl');
+        }
+        document.body.style.fontFamily = isAr ? "'Cairo', 'DM Sans', sans-serif" : "'DM Sans', 'Cairo', sans-serif";
+    }
     refreshAllUI();
 }
 
@@ -708,9 +718,19 @@ function refreshAllUI() {
     // RTL / LTR layout
     document.documentElement.dir = isAr ? 'rtl' : 'ltr';
     document.documentElement.lang = currentLang;
-    document.body.style.fontFamily = isAr
-        ? "'Cairo', 'DM Sans', sans-serif"
-        : "'DM Sans', 'Cairo', sans-serif";
+    if (document.body) {
+        document.body.dir = isAr ? 'rtl' : 'ltr';
+        if (isAr) {
+            document.documentElement.classList.add('rtl');
+            document.body.classList.add('rtl');
+        } else {
+            document.documentElement.classList.remove('rtl');
+            document.body.classList.remove('rtl');
+        }
+        document.body.style.fontFamily = isAr
+            ? "'Cairo', 'DM Sans', sans-serif"
+            : "'DM Sans', 'Cairo', sans-serif";
+    }
 
     // Update all data-t elements
     document.querySelectorAll('[data-t]').forEach(el => {
@@ -1133,7 +1153,7 @@ function switchView(viewName) {
     document.getElementById('headerTitle').innerText = title;
 
     // Mobile UX: auto close drawer and backdrop on navigation
-    if (window.innerWidth <= 900) {
+    if (window.innerWidth <= 768) {
         const sb = document.getElementById('sidebar');
         const bd = document.getElementById('sidebarBackdrop');
         if (sb) sb.classList.remove('mobile-open');
@@ -1163,7 +1183,7 @@ function toggleSidebar() {
     const sb = document.getElementById('sidebar');
     const bd = document.getElementById('sidebarBackdrop');
     if (!sb) return;
-    if (window.innerWidth <= 900) {
+    if (window.innerWidth <= 768) {
         const isOpen = sb.classList.toggle('mobile-open');
         if (bd) {
             if (isOpen) {
@@ -5807,9 +5827,20 @@ window.onload = async function() {
     }
     const savedLang = localStorage.getItem('clinicLang') || 'en';
     currentLang = savedLang;
+    const isAr = savedLang === 'ar';
     document.documentElement.lang = savedLang;
-    document.documentElement.dir = savedLang === 'ar' ? 'rtl' : 'ltr';
-    document.body.style.fontFamily = savedLang === 'ar' ? "'Cairo', 'DM Sans', sans-serif" : "'DM Sans', 'Cairo', sans-serif";
+    document.documentElement.dir = isAr ? 'rtl' : 'ltr';
+    if (document.body) {
+        document.body.dir = isAr ? 'rtl' : 'ltr';
+        if (isAr) {
+            document.documentElement.classList.add('rtl');
+            document.body.classList.add('rtl');
+        } else {
+            document.documentElement.classList.remove('rtl');
+            document.body.classList.remove('rtl');
+        }
+        document.body.style.fontFamily = isAr ? "'Cairo', 'DM Sans', sans-serif" : "'DM Sans', 'Cairo', sans-serif";
+    }
 
     applyRoleUI();
 
