@@ -1061,10 +1061,10 @@ function showToast(msg, type = 'success') {
 
 // ── 5. NAVIGATION ────────────────────────
 const viewIds = ['dashboardView','patientsView','profileView','appointmentsView',
-                 'calendarView','prescriptionsView','expensesView','payablesView','reportsView','invoicesView',
+                 'calendarView','prescriptionsView','proceduresView','expensesView','payablesView','reportsView','invoicesView',
                  'remindersView','inventoryView','labView','doctorsView','settingsView','usersView','auditView'];
 const navIds  = ['nav-dashboard','nav-patients','nav-appointments','nav-calendar',
-                 'nav-prescriptions','nav-invoices','nav-expenses','nav-payables','nav-reports',
+                 'nav-prescriptions','nav-proc-catalog','nav-invoices','nav-expenses','nav-payables','nav-reports',
                  'nav-inventory','nav-lab','nav-doctors','nav-reminders',
                  'nav-settings','nav-users','nav-audit'];
 
@@ -1131,6 +1131,7 @@ function switchView(viewName) {
         appointments:  ['appointmentsView','nav-appointments','Appointments',      loadAppointments],
         calendar:      ['calendarView',    'nav-calendar',    'Calendar',          renderCalendar],
         prescriptions: ['prescriptionsView','nav-prescriptions','Prescriptions',   loadPrescriptions],
+        procedures:    ['proceduresView',  'nav-proc-catalog', currentLang === 'ar' ? 'كتالوج الإجراءات والأسعار' : 'Procedures & Pricing', function(){ if(typeof window.loadProceduresView==='function') window.loadProceduresView(); }],
         expenses:      ['expensesView',    'nav-expenses',    'Expenses',          loadExpenses],
         payables:      ['payablesView',    'nav-payables',    currentLang === 'ar' ? 'الديون' : 'Payables', loadPayablesView],
         reports:       ['reportsView',     'nav-reports',     currentLang === 'ar' ? 'التقارير' : 'Reports',           loadReports],

@@ -23,6 +23,7 @@
         { id: 'nav-appointments', labelAr: 'المواعيد', labelEn: 'Appointments' },
         { id: 'nav-calendar', labelAr: 'التقويم', labelEn: 'Calendar' },
         { id: 'nav-prescriptions', labelAr: 'الوصفات الطبية', labelEn: 'Prescriptions' },
+        { id: 'nav-proc-catalog', labelAr: 'قائمة الإجراءات', labelEn: 'Procedures Catalog' },
         { id: 'nav-invoices', labelAr: 'الفواتير', labelEn: 'Invoices' },
         { id: 'nav-expenses', labelAr: 'المصروفات', labelEn: 'Expenses' },
         { id: 'nav-reports', labelAr: 'التقارير والإحصائيات', labelEn: 'Reports' },
@@ -32,7 +33,7 @@
         { id: 'nav-reminders', labelAr: 'التذكيرات', labelEn: 'Reminders' },
         { id: 'nav-settings', labelAr: 'الإعدادات', labelEn: 'Settings' }
     ];
-    PERMISSIONS_LIST.splice(7, 0, { id: 'nav-payables', labelAr: 'الديون', labelEn: 'Payables' });
+    PERMISSIONS_LIST.splice(8, 0, { id: 'nav-payables', labelAr: 'الديون', labelEn: 'Payables' });
 
     let _usersList = [];
 
@@ -62,10 +63,10 @@
         }
 
         if (role === 'doctor') {
-            return ['nav-dashboard', 'nav-patients', 'nav-appointments', 'nav-calendar', 'nav-prescriptions', 'nav-invoices', 'nav-payables', 'nav-reports'];
+            return ['nav-dashboard', 'nav-patients', 'nav-appointments', 'nav-calendar', 'nav-prescriptions', 'nav-proc-catalog', 'nav-invoices', 'nav-payables', 'nav-reports'];
         }
 
-        return ['nav-dashboard', 'nav-patients', 'nav-appointments', 'nav-calendar', 'nav-prescriptions', 'nav-invoices'];
+        return ['nav-dashboard', 'nav-patients', 'nav-appointments', 'nav-calendar', 'nav-prescriptions', 'nav-proc-catalog', 'nav-invoices'];
     }
 
     function resolveUserPermissions(user, fallbackRole = '') {
@@ -89,7 +90,7 @@
         const perms = Array.from(new Set(parsePermissions(permissionIds)));
         const sectionMap = {
             'nav-section-main': ['nav-dashboard', 'nav-patients', 'nav-appointments', 'nav-calendar'],
-            'nav-section-clinical': ['nav-prescriptions'],
+            'nav-section-clinical': ['nav-prescriptions', 'nav-proc-catalog'],
             'nav-section-finance': ['nav-invoices', 'nav-expenses', 'nav-payables', 'nav-reports'],
             'nav-section-system': ['nav-inventory', 'nav-lab', 'nav-doctors', 'nav-reminders', 'nav-settings'],
         };
@@ -800,7 +801,7 @@
 
                 const SECTION_MAP = {
                     'nav-section-main':     ['nav-dashboard','nav-patients','nav-appointments','nav-calendar'],
-                    'nav-section-clinical': ['nav-prescriptions'],
+                    'nav-section-clinical': ['nav-prescriptions', 'nav-proc-catalog'],
                     'nav-section-finance':  ['nav-invoices','nav-expenses','nav-payables','nav-reports'],
                     'nav-section-system':   ['nav-inventory','nav-lab','nav-doctors','nav-reminders','nav-settings'],
                 };
