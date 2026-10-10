@@ -445,6 +445,18 @@ async function recalcTreatmentPaid(treatmentId) {
         }
 
         openModal('sessionPayModal');
+        const spModal = document.getElementById('sessionPayModal');
+        if (spModal) {
+            spModal.scrollTop = 0;
+            spModal.onclick = (e) => { if (e.target === spModal) closeModal('sessionPayModal'); };
+        }
+        setTimeout(() => {
+            const amtEl = document.getElementById('spAmt');
+            if (amtEl) {
+                try { amtEl.focus({ preventScroll: true }); } catch(_) { amtEl.focus(); }
+                amtEl.select?.();
+            }
+        }, 120);
     };
 
     // ─── PREVIEW ─────────────────────────────────────────────────────
@@ -596,23 +608,23 @@ async function recalcTreatmentPaid(treatmentId) {
                 : `<span class="text-[10px] font-bold text-green-600">✓ مسدد</span>`;
 
             const payRows = trPay.map(p => `
-                <div class="flex items-center justify-between bg-green-50 rounded-lg px-2.5 py-1.5 mt-1 text-[10px] group">
-                    <span class="text-green-700 font-semibold">
-                        <i class="fa-solid fa-circle-check text-green-400 mr-1"></i>
+                <div class="flex items-center justify-between gap-2 flex-wrap bg-green-50 rounded-lg px-2.5 py-1.5 mt-1 text-[11px]">
+                    <span class="text-green-700 font-semibold flex items-center gap-1.5 shrink-0">
+                        <i class="fa-solid fa-circle-check text-green-500 text-xs"></i>
                         جلسة ${p.session_num || p.sessionNum} — ${parseFloat(p.amount).toFixed(2)} ${curr}
                         ${(p.notes) ? `<span class="text-gray-400 font-normal ml-1">· ${p.notes}</span>` : ''}
                     </span>
-                    <div class="flex items-center gap-1.5 text-gray-400">
-                        <span>${p.paid_at || p.paidAt || ''}</span>
-                        <button onclick="openEditPayment(${p.id},${tr.id},${patientId},${parseFloat(p.amount)},${p.session_num||p.sessionNum||1},'${(p.notes||'').replace(/'/g,"\\'")}')"
-                            class="hidden group-hover:inline text-blue-300 hover:text-blue-500 transition"
+                    <div class="flex items-center gap-1.5 text-gray-500 shrink-0">
+                        <span class="text-[10px] opacity-75">${p.paid_at || p.paidAt || ''}</span>
+                        <button type="button" onclick="openEditPayment(${p.id},${tr.id},${patientId},${parseFloat(p.amount)},${p.session_num||p.sessionNum||1},'${(p.notes||'').replace(/'/g,"\\'")}')"
+                            class="inline-flex items-center justify-center w-6 h-6 rounded bg-blue-100/70 text-blue-600 hover:bg-blue-200 transition"
                             title="تعديل الدفعة">
-                            <i class="fa-solid fa-pen-to-square"></i>
+                            <i class="fa-solid fa-pen-to-square text-[10px]"></i>
                         </button>
-                        <button onclick="deleteSessionPayment(${p.id},${tr.id},${patientId})"
-                            class="hidden group-hover:inline text-red-300 hover:text-red-500 transition"
+                        <button type="button" onclick="deleteSessionPayment(${p.id},${tr.id},${patientId})"
+                            class="inline-flex items-center justify-center w-6 h-6 rounded bg-red-100/70 text-red-500 hover:bg-red-200 transition"
                             title="حذف الدفعة">
-                            <i class="fa-solid fa-xmark"></i>
+                            <i class="fa-solid fa-trash text-[10px]"></i>
                         </button>
                     </div>
                 </div>`).join('');
@@ -841,7 +853,7 @@ async function recalcTreatmentPaid(treatmentId) {
     function injectEditModal() {
         if (document.getElementById('editPaymentModal')) return;
         document.body.insertAdjacentHTML('beforeend', `
-        <div id="editPaymentModal" class="modal-base">
+        <div id="editPaymentModal" class="modal-base" style="position:fixed !important; inset:0 !important; z-index:9999 !important;">
           <div class="modal-box max-w-sm">
             <div class="flex justify-between items-center mb-4 border-b pb-3">
               <h3 class="font-bold text-gray-800 flex items-center gap-2">
@@ -898,7 +910,10 @@ async function recalcTreatmentPaid(treatmentId) {
     }
 
     window.openEditPayment = function(payId, treatmentId, patientId, amount, sessionNum, notes) {
-        injectEditModal();
+        if (typeof injectEditModal === 'function') injectEditModal();
+        const modalEl = document.getElementById('editPaymentModal');
+        if (!modalEl) return;
+
         document.getElementById('epId').value    = payId;
         document.getElementById('epTrId').value  = treatmentId;
         document.getElementById('epPtId').value  = patientId;
@@ -919,10 +934,32 @@ async function recalcTreatmentPaid(treatmentId) {
             }
         })();
 
-        document.getElementById('epBtn').disabled = false;
-        document.getElementById('epBtn').innerHTML = '<i class="fa-solid fa-floppy-disk mr-1"></i> حفظ التعديل';
+        const btn = document.getElementById('epBtn');
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-floppy-disk mr-1"></i> حفظ التعديل';
+        }
+
         openModal('editPaymentModal');
-        setTimeout(() => document.getElementById('epAmt')?.focus(), 150);
+
+        // Center on screen and handle overlay click
+        modalEl.scrollTop = 0;
+        modalEl.onclick = (e) => {
+            if (e.target === modalEl) closeModal('editPaymentModal');
+        };
+
+        // Prevent mobile viewport from jumping/scrolling away when input focuses
+        setTimeout(() => {
+            const amtEl = document.getElementById('epAmt');
+            if (amtEl) {
+                try {
+                    amtEl.focus({ preventScroll: true });
+                } catch(_) {
+                    amtEl.focus();
+                }
+                amtEl.select?.();
+            }
+        }, 120);
     };
 
     window.saveEditPayment = async function() {

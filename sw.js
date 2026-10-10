@@ -1,4 +1,4 @@
-const CACHE_NAME = 'clinic-app-v28';
+const CACHE_NAME = 'clinic-app-v31';
 
 const LOCAL_FILES = [
     'login.html',

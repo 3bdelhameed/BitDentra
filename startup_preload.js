@@ -346,6 +346,81 @@
             bannerNetPreload.className = `text-2xl lg:text-3xl font-black tracking-tight ${netPreload >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
         }
 
+        // ── أكثر إجراء اليوم (Top Procedure Today) ──
+        const topElPreload = $('dashTopProc');
+        if (topElPreload) {
+            const todayTr = (c.treatments || []).filter(t => {
+                const d = t.date || (t.created_at || t.createdAt || '').split('T')[0];
+                return d === today;
+            });
+            const procCount = {};
+            todayTr.forEach(t => {
+                const p = (t.procedure || t.name || '').trim();
+                if (p) procCount[p] = (procCount[p] || 0) + 1;
+            });
+            const topProc = Object.entries(procCount).sort((a,b) => b[1] - a[1])[0];
+            topElPreload.innerText = topProc ? `${topProc[0]} (${topProc[1]})` : '—';
+        }
+
+        // ── مرضى جدد هذا الشهر (New Patients This Month) ──
+        const newElPreload = $('dashNewPatients');
+        if (newElPreload) {
+            const now = new Date();
+            const thisYear = now.getFullYear();
+            const thisMonth = now.getMonth();
+            const thisYearMonth = `${thisYear}-${String(thisMonth + 1).padStart(2, '0')}`;
+
+            const trByPatient = {};
+            (c.treatments || []).forEach(t => {
+                const pid = t.patient_id || t.patientId;
+                if (pid) {
+                    if (!trByPatient[pid]) trByPatient[pid] = [];
+                    trByPatient[pid].push(t);
+                }
+            });
+            const apByPatient = {};
+            (c.appointments || []).forEach(a => {
+                const pid = a.patient_id || a.patientId;
+                if (pid) {
+                    if (!apByPatient[pid]) apByPatient[pid] = [];
+                    apByPatient[pid].push(a);
+                }
+            });
+
+            const count = (c.patients || []).filter(p => {
+                const raw = p.created_at || p.createdAt || p.date || p.registration_date || p.registrationDate;
+                if (raw) {
+                    const s = String(raw).trim();
+                    if (s.slice(0, 7) === thisYearMonth) return true;
+                    const d = new Date(s);
+                    if (!Number.isNaN(d.getTime())) {
+                        return d.getFullYear() === thisYear && d.getMonth() === thisMonth;
+                    }
+                }
+                const numId = Number(p.id);
+                if (!Number.isNaN(numId) && numId > 1600000000000 && numId < 2500000000000) {
+                    const d = new Date(numId);
+                    if (!Number.isNaN(d.getTime()) && d.getFullYear() === thisYear && d.getMonth() === thisMonth) {
+                        return true;
+                    }
+                }
+                if (!raw) {
+                    const pid = p.id;
+                    const pts = trByPatient[pid] || [];
+                    const aps = apByPatient[pid] || [];
+                    const allDates = [
+                        ...pts.map(t => t.date || (t.created_at || t.createdAt || '').split('T')[0]).filter(Boolean),
+                        ...aps.map(a => a.date || (a.created_at || a.createdAt || '').split('T')[0]).filter(Boolean)
+                    ].sort();
+                    if (allDates.length > 0 && allDates[0].slice(0, 7) === thisYearMonth) {
+                        return true;
+                    }
+                }
+                return false;
+            }).length;
+            newElPreload.innerText = count;
+        }
+
         if ($('dashDate')) {
             $('dashDate').innerText = new Date().toLocaleDateString(
                 lang === 'ar' ? 'ar-EG' : 'en-US',

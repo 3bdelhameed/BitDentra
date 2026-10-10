@@ -210,16 +210,22 @@
             .power-pill-value { margin-top:4px; font-size:15px; font-weight:800; color:#0f172a; }
             .power-callout { border:1px solid #dbeafe; background:#eff6ff; color:#1d4ed8; border-radius:16px; padding:12px 14px; font-size:12px; font-weight:700; margin-bottom:14px; }
             .power-list { max-height:420px; overflow:auto; display:flex; flex-direction:column; gap:10px; }
-            .plan-item { border:1px solid #eef2f7; border-radius:16px; padding:12px 14px; background:#ffffff; }
-            .plan-row { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+            .plan-item { border:1px solid #eef2f7; border-radius:16px; padding:12px 14px; background:#ffffff; max-width:100%; box-sizing:border-box; overflow:hidden; }
+            .plan-row { display:flex; align-items:flex-start; justify-content:space-between; gap:10px; flex-wrap:wrap; }
             .plan-title { font-size:13px; font-weight:800; color:#111827; }
-            .plan-meta { margin-top:4px; font-size:11px; color:#64748b; line-height:1.5; }
+            .plan-meta { margin-top:4px; font-size:11px; color:#64748b; line-height:1.5; word-break:break-word; overflow-wrap:anywhere; }
             .plan-actions { display:flex; align-items:center; gap:8px; margin-top:10px; flex-wrap:wrap; }
-            .plan-chip { border-radius:999px; padding:4px 10px; font-size:11px; font-weight:800; }
+            .plan-chip { border-radius:999px; padding:4px 10px; font-size:11px; font-weight:800; shrink:0; }
             .plan-chip.done { background:#dcfce7; color:#166534; }
             .plan-chip.partial { background:#fef3c7; color:#b45309; }
             .plan-chip.planned { background:#dbeafe; color:#1d4ed8; }
-            .installment-row { display:flex; align-items:center; justify-content:space-between; gap:12px; border-radius:12px; background:#f0fdf4; color:#166534; padding:8px 10px; font-size:11px; margin-top:8px; }
+            .installment-row { display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; border-radius:12px; background:#f0fdf4; color:#166534; padding:8px 12px; font-size:11.5px; margin-top:8px; width:100%; box-sizing:border-box; }
+            .installment-meta { display:inline-flex; align-items:center; gap:8px; flex-wrap:wrap; }
+            .installment-btn { display:inline-flex; align-items:center; justify-content:center; width:26px; height:26px; border-radius:8px; border:none; cursor:pointer; transition:all .15s ease; }
+            .installment-btn-edit { background:rgba(59,130,246,0.18); color:#2563eb; }
+            .installment-btn-edit:hover { background:rgba(59,130,246,0.28); color:#1d4ed8; }
+            .installment-btn-del { background:rgba(239,68,68,0.18); color:#ef4444; }
+            .installment-btn-del:hover { background:rgba(239,68,68,0.28); color:#dc2626; }
             .timeline-toolbar { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:14px; }
             .timeline-toolbar select { border:1px solid #e5e7eb; border-radius:12px; padding:8px 10px; font-size:12px; min-width:120px; }
             .timeline-item { position:relative; padding:0 0 14px 18px; border-left:2px solid #e5e7eb; }
@@ -326,15 +332,18 @@
 
             const paymentRows = payments.map(payment => `
                 <div class="installment-row">
-                    <span>Session ${escapeHtml(payment.session_num ?? payment.sessionNum ?? '')} • ${formatMoney(payment.amount)}</span>
-                    <span>
-                        ${escapeHtml(payment.paid_at || payment.paidAt || '')}
+                    <span class="font-bold flex items-center gap-1.5 shrink-0">
+                        <i class="fa-solid fa-circle-check text-green-500 text-xs"></i>
+                        Session ${escapeHtml(payment.session_num ?? payment.sessionNum ?? '')} • ${formatMoney(payment.amount)}
+                    </span>
+                    <span class="installment-meta">
+                        <span class="opacity-75 text-[10.5px] font-medium">${escapeHtml(payment.paid_at || payment.paidAt || '')}</span>
                         ${typeof window.openEditPayment === 'function'
-                            ? `<button onclick="openEditPayment(${payment.id},${treatment.id},${patientId},${Number(payment.amount || 0)},${Number(payment.session_num || payment.sessionNum || 1)},decodeURIComponent('${encodeURIComponent(String(payment.notes || ''))}'))" class="text-blue-400 hover:text-blue-600 ml-2"><i class="fa-solid fa-pen-to-square"></i></button>`
+                            ? `<button type="button" onclick="openEditPayment(${payment.id},${treatment.id},${patientId},${Number(payment.amount || 0)},${Number(payment.session_num || payment.sessionNum || 1)},decodeURIComponent('${encodeURIComponent(String(payment.notes || ''))}'))" class="installment-btn installment-btn-edit" title="تعديل الدفعة"><i class="fa-solid fa-pen-to-square text-xs"></i></button>`
                             : ''
                         }
                         ${typeof window.deleteSessionPayment === 'function'
-                            ? `<button onclick="deleteSessionPayment(${payment.id},${treatment.id},${patientId})" class="text-red-400 hover:text-red-600 ml-2"><i class="fa-solid fa-trash"></i></button>`
+                            ? `<button type="button" onclick="deleteSessionPayment(${payment.id},${treatment.id},${patientId})" class="installment-btn installment-btn-del" title="حذف الدفعة"><i class="fa-solid fa-trash text-xs"></i></button>`
                             : ''
                         }
                     </span>

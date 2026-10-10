@@ -135,18 +135,29 @@
         }
 
         .modal-base {
-            position: fixed;
-            inset: 0;
-            background: rgba(15, 23, 42, 0.55);
+            position: fixed !important;
+            top: 0 !important;
+            right: 0 !important;
+            bottom: 0 !important;
+            left: 0 !important;
+            width: 100% !important;
+            height: 100% !important;
+            height: 100dvh !important;
+            background: rgba(15, 23, 42, 0.65) !important;
             display: none;
             align-items: center;
             justify-content: center;
-            z-index: 50;
+            z-index: 9999 !important;
             backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            overflow-y: auto !important;
+            -webkit-overflow-scrolling: touch !important;
+            padding: 12px !important;
+            box-sizing: border-box !important;
         }
 
         .modal-base.open {
-            display: flex;
+            display: flex !important;
         }
 
         .modal-box {
@@ -1073,17 +1084,35 @@
 
             /* Mobile Modals */
             .modal-base {
-                padding: 8px !important;
+                position: fixed !important;
+                top: 0 !important;
+                right: 0 !important;
+                bottom: 0 !important;
+                left: 0 !important;
+                width: 100% !important;
+                height: 100% !important;
+                height: 100dvh !important;
+                padding: 12px 8px !important;
+                display: none;
+                align-items: center !important;
+                justify-content: center !important;
+                z-index: 9999 !important;
+            }
+
+            .modal-base.open {
+                display: flex !important;
             }
 
             .modal-box {
                 padding: 18px 14px !important;
                 margin: auto !important;
                 border-radius: 18px !important;
-                max-height: 92vh !important;
+                max-height: 88vh !important;
+                max-height: 88dvh !important;
                 width: calc(100% - 10px) !important;
-                max-width: 100% !important;
+                max-width: 440px !important;
                 overflow-y: auto !important;
+                box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35) !important;
             }
 
             .modal-box .grid-cols-3 {
@@ -1492,7 +1521,7 @@
                     </div>
 
                     <!-- 6. New Patients This Month -->
-                    <div class="stat-card">
+                    <div class="stat-card cursor-pointer" onclick="switchView('patients')">
                         <div>
                             <h3 class="text-2xl font-black text-violet-700 tracking-tight" id="dashNewPatients">0</h3>
                             <p class="text-slate-400 text-xs mt-1 font-semibold truncate"
@@ -1671,7 +1700,7 @@
                         <div id="lowerTeeth" style="overflow-x:auto;"></div>
                     </div>
 
-                    <div class="bg-white rounded-xl border border-gray-100 p-5 flex flex-col">
+                    <div class="bg-white rounded-xl border border-gray-100 p-4 sm:p-5 flex flex-col overflow-hidden max-w-full">
                         <h3 class="font-bold text-gray-800 flex items-center gap-2 mb-3 border-b pb-3"><i
                                 class="fa-solid fa-clipboard-list text-blue-500"></i> <span
                                 data-t="profile.account">Account Statement</span></h3>
@@ -1682,7 +1711,7 @@
                                 <option value="">All</option>
                             </select>
                         </div>
-                        <div class="flex-1 overflow-y-auto max-h-64" id="patientTreatmentsList"></div>
+                        <div class="flex-1 overflow-y-auto overflow-x-hidden max-h-64 max-w-full" id="patientTreatmentsList"></div>
                         <div class="mt-3 pt-3 border-t border-gray-100 space-y-1 text-sm">
                             <div class="flex justify-between font-semibold text-gray-700"><span
                                     data-t="profile.totalDue">Total Due</span><span id="profileTotalCost"
@@ -3454,6 +3483,274 @@
             <div class="mt-4 pt-3 border-t flex justify-between items-center">
                 <span class="text-sm text-gray-500 font-semibold" data-t="common.total">Total</span>
                 <span id="todayExpensesModalTotal" class="text-xl font-black text-red-500">0</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══ SESSION PAYMENTS: MODAL تسجيل دفعة ══ -->
+    <div id="sessionPayModal" class="modal-base" style="position:fixed !important; inset:0 !important; z-index:9999 !important;">
+        <div class="modal-box max-w-sm">
+            <div class="flex justify-between items-center mb-4 border-b pb-3">
+                <h3 class="font-bold text-gray-800 flex items-center gap-2 text-base">
+                    <i class="fa-solid fa-money-bill-wave text-green-500"></i> تسجيل دفعة
+                </h3>
+                <button onclick="closeModal('sessionPayModal')"
+                    class="text-gray-300 hover:text-red-400 text-xl w-8 h-8 flex items-center justify-center rounded-lg hover:bg-red-50 transition">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="bg-blue-50 border border-blue-100 rounded-xl p-3 mb-4 text-sm">
+                <p class="font-semibold text-blue-800 truncate" id="spLabel">—</p>
+                <div class="flex flex-wrap gap-3 text-xs mt-1 font-medium">
+                    <span class="text-gray-500">الإجمالي: <b id="spTotal" class="text-gray-700">—</b></span>
+                    <span class="text-green-600">مدفوع: <b id="spPaid">—</b></span>
+                    <span class="text-red-500">متبقي: <b id="spLeft">—</b></span>
+                </div>
+            </div>
+
+            <input type="hidden" id="spTrId">
+            <input type="hidden" id="spPtId">
+
+            <div class="space-y-3.5">
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="text-xs font-bold text-gray-600 block mb-1">رقم الجلسة</label>
+                        <input type="number" id="spNum" min="1" value="1"
+                            class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-center font-bold focus:outline-none focus:border-blue-500 transition">
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-gray-600 block mb-1">المبلغ *</label>
+                        <input type="number" id="spAmt" min="0.01" step="0.01" inputmode="decimal"
+                            class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm font-bold text-green-600 focus:outline-none focus:border-blue-500 transition"
+                            placeholder="0.00" oninput="spCalcPreview()">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="text-xs font-bold text-gray-600 block mb-1">تاريخ الدفع</label>
+                    <input type="date" id="spDate"
+                        class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-blue-500 transition">
+                </div>
+
+                <div>
+                    <label class="text-xs font-bold text-gray-600 block mb-1">ملاحظة (اختياري)</label>
+                    <input type="text" id="spNote"
+                        class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-blue-500 transition"
+                        placeholder="كاش / تحويل / ...">
+                </div>
+
+                <div id="spPreview" class="hidden bg-green-50 border border-green-100 rounded-xl px-3 py-2 text-xs text-green-700 font-medium">
+                    <i class="fa-solid fa-circle-check mr-1"></i>
+                    بعد الدفع — مدفوع: <b id="spPrvPaid"></b> | متبقي: <b id="spPrvLeft"></b>
+                </div>
+
+                <div id="spErr" class="hidden bg-red-50 border border-red-200 rounded-xl px-3 py-2 text-xs text-red-600 font-semibold"></div>
+
+                <div class="flex gap-2 pt-2">
+                    <button type="button" onclick="closeModal('sessionPayModal')" class="btn btn-outline flex-1 text-xs py-2.5">
+                        إلغاء
+                    </button>
+                    <button id="spBtn" onclick="saveSessionPayment()"
+                        class="btn flex-1 justify-center font-bold text-xs py-2.5 text-white shadow-sm"
+                        style="background:#16a34a;">
+                        <i class="fa-solid fa-save mr-1"></i> حفظ الدفعة
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══ SESSION PAYMENTS: MODAL تعديل الدفعة ══ -->
+    <div id="editPaymentModal" class="modal-base" style="position:fixed !important; inset:0 !important; z-index:9999 !important;">
+        <div class="modal-box max-w-sm">
+            <div class="flex justify-between items-center mb-4 border-b pb-3">
+                <h3 class="font-bold text-gray-800 flex items-center gap-2 text-base">
+                    <i class="fa-solid fa-pen-to-square text-blue-500"></i> تعديل الدفعة
+                </h3>
+                <button onclick="closeModal('editPaymentModal')"
+                    class="text-gray-300 hover:text-red-400 text-xl w-8 h-8 flex items-center justify-center rounded-lg hover:bg-red-50 transition">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <input type="hidden" id="epId">
+            <input type="hidden" id="epTrId">
+            <input type="hidden" id="epPtId">
+
+            <div class="space-y-3.5">
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="text-xs font-bold text-gray-600 block mb-1">رقم الجلسة</label>
+                        <input type="number" id="epNum" min="1"
+                            class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-center font-bold focus:outline-none focus:border-blue-500 transition">
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-gray-600 block mb-1">المبلغ *</label>
+                        <input type="number" id="epAmt" min="0.01" step="0.01" inputmode="decimal"
+                            class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm font-bold text-blue-600 focus:outline-none focus:border-blue-500 transition"
+                            placeholder="0.00">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="text-xs font-bold text-gray-600 block mb-1">تاريخ الدفع</label>
+                    <input type="date" id="epDate"
+                        class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-blue-500 transition">
+                </div>
+
+                <div>
+                    <label class="text-xs font-bold text-gray-600 block mb-1">ملاحظة (اختياري)</label>
+                    <input type="text" id="epNote"
+                        class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-blue-500 transition"
+                        placeholder="كاش / تحويل / ...">
+                </div>
+
+                <div id="epErr" class="hidden bg-red-50 border border-red-200 rounded-xl px-3 py-2 text-xs text-red-600 font-semibold"></div>
+
+                <div class="flex gap-2 pt-2">
+                    <button type="button" onclick="closeModal('editPaymentModal')" class="btn btn-outline flex-1 text-xs py-2.5">
+                        إلغاء
+                    </button>
+                    <button id="epBtn" onclick="saveEditPayment()"
+                        class="btn flex-1 justify-center font-bold text-xs py-2.5 text-white shadow-sm"
+                        style="background:#2563eb;">
+                        <i class="fa-solid fa-floppy-disk mr-1"></i> حفظ التعديل
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ════ MONTHLY REPORT DRILLDOWN MODALS ════ -->
+    <!-- 1. Monthly Revenue Details Modal -->
+    <div id="monthlyRevenueModal" class="modal-base">
+        <div class="modal-box max-w-2xl max-h-[90vh] flex flex-col p-6">
+            <div class="flex justify-between items-center pb-4 border-b border-gray-100">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-lg shadow-sm">
+                        <i class="fa-solid fa-arrow-trend-up"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-base font-bold text-gray-800" id="monthlyRevenueModalTitle">تفاصيل الإيرادات المحصلة</h3>
+                        <p class="text-xs text-gray-400 font-medium" id="monthlyRevenueModalSubtitle">قائمة عمليات التحصيل والمقبوضات</p>
+                    </div>
+                </div>
+                <button onclick="closeModal('monthlyRevenueModal')" class="text-gray-300 hover:text-red-500 text-xl w-8 h-8 rounded-lg flex items-center justify-center transition">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            
+            <div id="monthlyRevenueModalStats" class="py-3"></div>
+
+            <div class="mb-3">
+                <div class="relative">
+                    <i class="fa-solid fa-magnifying-glass absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
+                    <input type="text" id="monthlyRevenueSearch" oninput="filterMonthlyRevenueList()" placeholder="ابحث باسم المريض أو الإجراء أو التاريخ..."
+                        class="w-full pr-9 pl-4 py-2 border border-gray-200 rounded-xl text-xs focus:outline-none focus:border-emerald-500 transition">
+                </div>
+            </div>
+
+            <div id="monthlyRevenueModalBody" class="flex-1 overflow-y-auto space-y-2.5 pr-1">
+                <p class="text-center text-gray-400 py-8">جاري التحميل...</p>
+            </div>
+
+            <div class="mt-4 pt-3 border-t border-gray-100 flex justify-between items-center">
+                <span class="text-xs text-gray-500 font-bold">إجمالي الإيرادات المحصلة</span>
+                <span id="monthlyRevenueModalTotal" class="text-xl font-black text-emerald-600">0</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. Monthly Expenses Details Modal -->
+    <div id="monthlyExpensesModal" class="modal-base">
+        <div class="modal-box max-w-2xl max-h-[90vh] flex flex-col p-6">
+            <div class="flex justify-between items-center pb-4 border-b border-gray-100">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-rose-50 text-rose-500 flex items-center justify-center text-lg shadow-sm">
+                        <i class="fa-solid fa-receipt"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-base font-bold text-gray-800" id="monthlyExpensesModalTitle">تفاصيل المصروفات العامة</h3>
+                        <p class="text-xs text-gray-400 font-medium" id="monthlyExpensesModalSubtitle">قائمة بنود المصروفات وتوزيعاتها</p>
+                    </div>
+                </div>
+                <button onclick="closeModal('monthlyExpensesModal')" class="text-gray-300 hover:text-red-500 text-xl w-8 h-8 rounded-lg flex items-center justify-center transition">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div id="monthlyExpensesModalCats" class="py-3 flex flex-wrap gap-1.5"></div>
+
+            <div class="mb-3">
+                <div class="relative">
+                    <i class="fa-solid fa-magnifying-glass absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
+                    <input type="text" id="monthlyExpensesSearch" oninput="filterMonthlyExpensesList()" placeholder="ابحث في بنود المصروفات أو التصنيفات..."
+                        class="w-full pr-9 pl-4 py-2 border border-gray-200 rounded-xl text-xs focus:outline-none focus:border-rose-500 transition">
+                </div>
+            </div>
+
+            <div id="monthlyExpensesModalBody" class="flex-1 overflow-y-auto space-y-2 pr-1">
+                <p class="text-center text-gray-400 py-8">جاري التحميل...</p>
+            </div>
+
+            <div class="mt-4 pt-3 border-t border-gray-100 flex justify-between items-center">
+                <span class="text-xs text-gray-500 font-bold">إجمالي المصروفات</span>
+                <span id="monthlyExpensesModalTotal" class="text-xl font-black text-rose-600">0</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. Monthly Lab & Implants Details Modal -->
+    <div id="monthlyLabModal" class="modal-base">
+        <div class="modal-box max-w-2xl max-h-[90vh] flex flex-col p-6">
+            <div class="flex justify-between items-center pb-4 border-b border-gray-100">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-lg shadow-sm">
+                        <i class="fa-solid fa-tooth"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-base font-bold text-gray-800" id="monthlyLabModalTitle">تفاصيل طلبات المعامل والزرعات</h3>
+                        <p class="text-xs text-gray-400 font-medium" id="monthlyLabModalSubtitle">قائمة أعمال المعامل وتكاليفها</p>
+                    </div>
+                </div>
+                <button onclick="closeModal('monthlyLabModal')" class="text-gray-300 hover:text-red-500 text-xl w-8 h-8 rounded-lg flex items-center justify-center transition">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div id="monthlyLabModalBody" class="flex-1 overflow-y-auto space-y-2.5 py-4 pr-1">
+                <p class="text-center text-gray-400 py-8">جاري التحميل...</p>
+            </div>
+            <div class="mt-4 pt-3 border-t border-gray-100 flex justify-between items-center">
+                <span class="text-xs text-gray-500 font-bold">إجمالي تكاليف المعامل</span>
+                <span id="monthlyLabModalTotal" class="text-xl font-black text-amber-600">0</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4. Monthly Doctor Commissions Details Modal -->
+    <div id="monthlyDoctorModal" class="modal-base">
+        <div class="modal-box max-w-2xl max-h-[90vh] flex flex-col p-6">
+            <div class="flex justify-between items-center pb-4 border-b border-gray-100">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center text-lg shadow-sm">
+                        <i class="fa-solid fa-user-doctor"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-base font-bold text-gray-800" id="monthlyDoctorModalTitle">تفاصيل عمولات الأطباء</h3>
+                        <p class="text-xs text-gray-400 font-medium" id="monthlyDoctorModalSubtitle">مستحقات الأطباء المعالجين</p>
+                    </div>
+                </div>
+                <button onclick="closeModal('monthlyDoctorModal')" class="text-gray-300 hover:text-red-500 text-xl w-8 h-8 rounded-lg flex items-center justify-center transition">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div id="monthlyDoctorModalBody" class="flex-1 overflow-y-auto space-y-2.5 py-4 pr-1">
+                <p class="text-center text-gray-400 py-8">جاري التحميل...</p>
+            </div>
+            <div class="mt-4 pt-3 border-t border-gray-100 flex justify-between items-center">
+                <span class="text-xs text-gray-500 font-bold">إجمالي عمولات الأطباء</span>
+                <span id="monthlyDoctorModalTotal" class="text-xl font-black text-purple-600">0</span>
             </div>
         </div>
     </div>

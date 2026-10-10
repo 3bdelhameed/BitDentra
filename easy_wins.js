@@ -142,43 +142,117 @@
         //  ٢. Dashboard — كارتين جديدين
         // ════════════════════════════════════════════════════════
 
-        const _origUpdateDashboard = window.updateDashboard || updateDashboard;
-
         async function updateDashboardExtra() {
             try {
-                const treatments = await window.dbGetAll('treatments');
-                const patients   = await window.dbGetAll('patients');
-                const curr       = typeof getCurrency === 'function' ? getCurrency() : 'EGP';
+                const c = window._appCache;
+                const patients = (c && c.loaded && Array.isArray(c.patients))
+                    ? c.patients
+                    : (Array.isArray(window.allPatientsData) && window.allPatientsData.length)
+                        ? window.allPatientsData
+                        : (typeof window.dbGetAll === 'function' ? await window.dbGetAll('patients').catch(() => []) : []);
+
+                const treatments = (c && c.loaded && Array.isArray(c.treatments))
+                    ? c.treatments
+                    : (typeof window.dbGetAll === 'function' ? await window.dbGetAll('treatments').catch(() => []) : []);
+
+                const appointments = (c && c.loaded && Array.isArray(c.appointments))
+                    ? c.appointments
+                    : (typeof window.dbGetAll === 'function' ? await window.dbGetAll('appointments').catch(() => []) : []);
+
+                const now = new Date();
+                const thisYear = now.getFullYear();
+                const thisMonth = now.getMonth();
+                const thisYearMonth = `${thisYear}-${String(thisMonth + 1).padStart(2, '0')}`;
+                const todayStr = typeof today === 'function' ? today() : `${thisYearMonth}-${String(now.getDate()).padStart(2, '0')}`;
 
                 // أكثر إجراء اليوم
-                const todayStr = new Date().toISOString().split('T')[0];
-                const todayTr  = treatments.filter(tr => tr.date === todayStr);
+                const todayTr = treatments.filter(tr => {
+                    const d = tr.date || (tr.created_at || tr.createdAt || '').split('T')[0];
+                    return d === todayStr;
+                });
                 const procCount = {};
                 todayTr.forEach(tr => {
-                    const p = (tr.procedure || '').trim();
+                    const p = (tr.procedure || tr.name || '').trim();
                     if (p) procCount[p] = (procCount[p] || 0) + 1;
                 });
                 const topProc = Object.entries(procCount).sort((a,b) => b[1]-a[1])[0];
 
-                // مرضى جدد الشهر
-                const thisMonth = todayStr.slice(0,7);
-                const newThisMonth = patients.filter(p =>
-                    (p.created_at || p.createdAt || '').startsWith(thisMonth)
-                ).length;
+                // مرضى جدد هذا الشهر
+                const trByPatient = {};
+                treatments.forEach(t => {
+                    const pid = t.patient_id || t.patientId;
+                    if (pid) {
+                        if (!trByPatient[pid]) trByPatient[pid] = [];
+                        trByPatient[pid].push(t);
+                    }
+                });
+                const apByPatient = {};
+                appointments.forEach(a => {
+                    const pid = a.patient_id || a.patientId;
+                    if (pid) {
+                        if (!apByPatient[pid]) apByPatient[pid] = [];
+                        apByPatient[pid].push(a);
+                    }
+                });
+
+                const newThisMonth = patients.filter(p => {
+                    const raw = p.created_at || p.createdAt || p.date || p.registration_date || p.registrationDate;
+                    if (raw) {
+                        const s = String(raw).trim();
+                        if (s.slice(0, 7) === thisYearMonth) return true;
+                        const d = new Date(s);
+                        if (!Number.isNaN(d.getTime())) {
+                            return d.getFullYear() === thisYear && d.getMonth() === thisMonth;
+                        }
+                    }
+                    const numId = Number(p.id);
+                    if (!Number.isNaN(numId) && numId > 1600000000000 && numId < 2500000000000) {
+                        const d = new Date(numId);
+                        if (!Number.isNaN(d.getTime()) && d.getFullYear() === thisYear && d.getMonth() === thisMonth) {
+                            return true;
+                        }
+                    }
+                    if (!raw) {
+                        const pid = p.id;
+                        const pts = trByPatient[pid] || [];
+                        const aps = apByPatient[pid] || [];
+                        const allDates = [
+                            ...pts.map(t => t.date || (t.created_at || t.createdAt || '').split('T')[0]).filter(Boolean),
+                            ...aps.map(a => a.date || (a.created_at || a.createdAt || '').split('T')[0]).filter(Boolean)
+                        ].sort();
+                        if (allDates.length > 0 && allDates[0].slice(0, 7) === thisYearMonth) {
+                            return true;
+                        }
+                    }
+                    return false;
+                }).length;
 
                 // حدّث الكارتين
                 const topEl  = document.getElementById('dashTopProc');
                 const newEl  = document.getElementById('dashNewPatients');
                 if (topEl)  topEl.innerText  = topProc ? `${topProc[0]} (${topProc[1]})` : '—';
                 if (newEl)  newEl.innerText  = newThisMonth;
-            } catch(e) {}
+            } catch(e) {
+                console.warn('[easy_wins] updateDashboardExtra error:', e);
+            }
         }
+        window.updateDashboardExtra = updateDashboardExtra;
 
         // Patch updateDashboard
+        const _origUpdateDashboard = window.updateDashboard || updateDashboard;
         window.updateDashboard = async function() {
             if (typeof _origUpdateDashboard === 'function') await _origUpdateDashboard();
             await updateDashboardExtra();
         };
+
+        // Hook renderDashboardFromCache لو موجود
+        if (typeof window.renderDashboardFromCache === 'function') {
+            const _origRenderCache = window.renderDashboardFromCache;
+            window.renderDashboardFromCache = function() {
+                _origRenderCache();
+                updateDashboardExtra();
+            };
+        }
 
         // أضف الكارتين في الـ DOM بعد التحميل
         function injectDashboardCards() {
@@ -511,6 +585,7 @@
         function init() {
             injectDashboardCards();
             injectInvoiceButton();
+            updateDashboardExtra();
 
             // أعد inject الـ invoice button كل ما بروفايل يتفتح
             const _oPP = window.openPatientProfile;
@@ -527,7 +602,7 @@
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', init);
         } else {
-            setTimeout(init, 500);
+            setTimeout(init, 300);
         }
 
         console.log('[EasyWins] ✓ loaded — WhatsApp + Dashboard Cards + Invoice + Quick Search');

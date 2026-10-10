@@ -3882,7 +3882,7 @@ async function updateDashboard() {
     const todayStr     = today();
     const curr         = getCurrency();
     const esc          = window.escapeHtml || ((value) => String(value ?? ''));
-    const { patients, appointments, expenses, collectionEntries } = await getCleanReportCollections();
+    const { patients, appointments, expenses, collectionEntries, treatments } = await getCleanReportCollections();
 
     document.getElementById('totalPatientsCount').innerText = patients.length;
 
@@ -3896,6 +3896,78 @@ async function updateDashboard() {
     document.getElementById('todayRevenue').innerText  = `${dailyRevenue.toLocaleString()} ${curr}`;
     document.getElementById('todayExpenses').innerText = `${dailyExpense.toLocaleString()} ${curr}`;
     document.getElementById('netProfit').innerText     = `${net.toLocaleString()} ${curr}`;
+
+    // ── أكثر إجراء اليوم (Top Procedure Today) ──
+    const topElApp = document.getElementById('dashTopProc');
+    if (topElApp) {
+        const todayTr = (treatments || []).filter(t => normalizeDateOnly(t.date || t.created_at) === todayStr);
+        const procCount = {};
+        todayTr.forEach(t => {
+            const p = (t.procedure || t.name || '').trim();
+            if (p) procCount[p] = (procCount[p] || 0) + 1;
+        });
+        const topProc = Object.entries(procCount).sort((a,b) => b[1] - a[1])[0];
+        topElApp.innerText = topProc ? `${topProc[0]} (${topProc[1]})` : '—';
+    }
+
+    // ── مرضى جدد هذا الشهر (New Patients This Month) ──
+    const newElApp = document.getElementById('dashNewPatients');
+    if (newElApp) {
+        const now = new Date();
+        const thisYear = now.getFullYear();
+        const thisMonth = now.getMonth();
+        const thisYearMonth = `${thisYear}-${String(thisMonth + 1).padStart(2, '0')}`;
+
+        const trByPatient = {};
+        (treatments || []).forEach(t => {
+            const pid = t.patient_id || t.patientId;
+            if (pid) {
+                if (!trByPatient[pid]) trByPatient[pid] = [];
+                trByPatient[pid].push(t);
+            }
+        });
+        const apByPatient = {};
+        (appointments || []).forEach(a => {
+            const pid = a.patient_id || a.patientId;
+            if (pid) {
+                if (!apByPatient[pid]) apByPatient[pid] = [];
+                apByPatient[pid].push(a);
+            }
+        });
+
+        const count = (patients || []).filter(p => {
+            const raw = p.created_at || p.createdAt || p.date || p.registration_date || p.registrationDate;
+            if (raw) {
+                const s = String(raw).trim();
+                if (s.slice(0, 7) === thisYearMonth) return true;
+                const d = new Date(s);
+                if (!Number.isNaN(d.getTime())) {
+                    return d.getFullYear() === thisYear && d.getMonth() === thisMonth;
+                }
+            }
+            const numId = Number(p.id);
+            if (!Number.isNaN(numId) && numId > 1600000000000 && numId < 2500000000000) {
+                const d = new Date(numId);
+                if (!Number.isNaN(d.getTime()) && d.getFullYear() === thisYear && d.getMonth() === thisMonth) {
+                    return true;
+                }
+            }
+            if (!raw) {
+                const pid = p.id;
+                const pts = trByPatient[pid] || [];
+                const aps = apByPatient[pid] || [];
+                const allDates = [
+                    ...pts.map(t => t.date || (t.created_at || t.createdAt || '').split('T')[0]).filter(Boolean),
+                    ...aps.map(a => a.date || (a.created_at || a.createdAt || '').split('T')[0]).filter(Boolean)
+                ].sort();
+                if (allDates.length > 0 && allDates[0].slice(0, 7) === thisYearMonth) {
+                    return true;
+                }
+            }
+            return false;
+        }).length;
+        newElApp.innerText = count;
+    }
 
     // Update luxury midnight welcome banner
     const bannerNet = document.getElementById('dashBannerNet');
@@ -4266,48 +4338,70 @@ window.renderMonthlyReport = async function() {
                 </div>
             </div>
 
-            <!-- 2. KPI 5 Cards -->
+            <!-- 2. KPI 5 Cards (Clickable for full details) -->
             <div class="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
                 <!-- Revenue -->
-                <div class="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm hover:shadow transition">
+                <div onclick="showMonthlyRevenueModal('${monthKey}')" class="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm hover:shadow-md hover:border-emerald-200 cursor-pointer transition group">
                     <div class="flex items-center justify-between text-gray-400 mb-2">
-                        <span class="text-xs font-bold text-gray-500">${isAr ? 'الإيرادات المحصلة' : 'Collected Revenue'}</span>
-                        <div class="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-sm"><i class="fa-solid fa-arrow-trend-up"></i></div>
+                        <span class="text-xs font-bold text-gray-500 group-hover:text-emerald-700 transition flex items-center gap-1.5">
+                            ${isAr ? 'الإيرادات المحصلة' : 'Collected Revenue'}
+                            <i class="fa-solid fa-up-right-from-square text-[10px] opacity-0 group-hover:opacity-100 text-emerald-500 transition"></i>
+                        </span>
+                        <div class="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-sm group-hover:bg-emerald-600 group-hover:text-white transition shadow-sm"><i class="fa-solid fa-arrow-trend-up"></i></div>
                     </div>
                     <div class="text-xl font-black text-emerald-700">${monthRevenue.toLocaleString()} <small class="text-xs font-normal text-gray-400">${curr}</small></div>
-                    <div class="text-[11px] text-gray-400 mt-1">${monthCollections.length} ${isAr ? 'عملية سداد' : 'Collections'}</div>
+                    <div class="text-[11px] text-gray-400 mt-1 flex items-center justify-between">
+                        <span>${monthCollections.length} ${isAr ? 'عملية سداد' : 'Collections'}</span>
+                        <span class="text-[10px] text-emerald-600 font-semibold opacity-0 group-hover:opacity-100 transition">${isAr ? 'عرض التفاصيل ←' : 'Details →'}</span>
+                    </div>
                 </div>
 
                 <!-- Expenses -->
-                <div class="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm hover:shadow transition">
+                <div onclick="showMonthlyExpensesModal('${monthKey}')" class="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm hover:shadow-md hover:border-rose-200 cursor-pointer transition group">
                     <div class="flex items-center justify-between text-gray-400 mb-2">
-                        <span class="text-xs font-bold text-gray-500">${isAr ? 'المصروفات العامة' : 'Clinic Expenses'}</span>
-                        <div class="w-8 h-8 rounded-xl bg-rose-50 text-rose-500 flex items-center justify-center text-sm"><i class="fa-solid fa-receipt"></i></div>
+                        <span class="text-xs font-bold text-gray-500 group-hover:text-rose-700 transition flex items-center gap-1.5">
+                            ${isAr ? 'المصروفات العامة' : 'Clinic Expenses'}
+                            <i class="fa-solid fa-up-right-from-square text-[10px] opacity-0 group-hover:opacity-100 text-rose-500 transition"></i>
+                        </span>
+                        <div class="w-8 h-8 rounded-xl bg-rose-50 text-rose-500 flex items-center justify-center text-sm group-hover:bg-rose-500 group-hover:text-white transition shadow-sm"><i class="fa-solid fa-receipt"></i></div>
                     </div>
                     <div class="text-xl font-black text-rose-600">${totalExpenses.toLocaleString()} <small class="text-xs font-normal text-gray-400">${curr}</small></div>
-                    <div class="text-[11px] text-gray-400 mt-1">${monthExpenses.length} ${isAr ? 'بند مصروف' : 'Expense items'}</div>
+                    <div class="text-[11px] text-gray-400 mt-1 flex items-center justify-between">
+                        <span>${monthExpenses.length} ${isAr ? 'بند مصروف' : 'Expense items'}</span>
+                        <span class="text-[10px] text-rose-600 font-semibold opacity-0 group-hover:opacity-100 transition">${isAr ? 'عرض التفاصيل ←' : 'Details →'}</span>
+                    </div>
                 </div>
 
                 <!-- Lab & Implants -->
-                <div class="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm hover:shadow transition">
+                <div onclick="showMonthlyLabModal('${monthKey}')" class="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm hover:shadow-md hover:border-amber-200 cursor-pointer transition group">
                     <div class="flex items-center justify-between text-gray-400 mb-2">
-                        <span class="text-xs font-bold text-gray-500">${isAr ? 'المعامل والزرعات' : 'Lab & Implants'}</span>
-                        <div class="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-sm"><i class="fa-solid fa-tooth"></i></div>
+                        <span class="text-xs font-bold text-gray-500 group-hover:text-amber-700 transition flex items-center gap-1.5">
+                            ${isAr ? 'المعامل والزرعات' : 'Lab & Implants'}
+                            <i class="fa-solid fa-up-right-from-square text-[10px] opacity-0 group-hover:opacity-100 text-amber-500 transition"></i>
+                        </span>
+                        <div class="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-sm group-hover:bg-amber-500 group-hover:text-white transition shadow-sm"><i class="fa-solid fa-tooth"></i></div>
                     </div>
                     <div class="text-xl font-black text-amber-700">${totalLabCost.toLocaleString()} <small class="text-xs font-normal text-gray-400">${curr}</small></div>
-                    <div class="text-[11px] text-amber-800 font-semibold mt-1">
-                        ${implantOrders.length > 0 ? `منها ${implantOrders.length} زرعة (${totalImplantLabCost.toLocaleString()} ${curr})` : `${monthLabOrders.length} طلبات معمل`}
+                    <div class="text-[11px] text-amber-800 font-semibold mt-1 flex items-center justify-between">
+                        <span class="truncate">${implantOrders.length > 0 ? `منها ${implantOrders.length} زرعة` : `${monthLabOrders.length} طلبات معمل`}</span>
+                        <span class="text-[10px] text-amber-600 font-semibold opacity-0 group-hover:opacity-100 transition shrink-0">${isAr ? 'تفاصيل ←' : 'Details →'}</span>
                     </div>
                 </div>
 
                 <!-- Doctor Commissions -->
-                <div class="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm hover:shadow transition">
+                <div onclick="showMonthlyDoctorCommissionsModal('${monthKey}')" class="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm hover:shadow-md hover:border-purple-200 cursor-pointer transition group">
                     <div class="flex items-center justify-between text-gray-400 mb-2">
-                        <span class="text-xs font-bold text-gray-500">${isAr ? 'عمولات الأطباء' : 'Doctor Commissions'}</span>
-                        <div class="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center text-sm"><i class="fa-solid fa-user-doctor"></i></div>
+                        <span class="text-xs font-bold text-gray-500 group-hover:text-purple-700 transition flex items-center gap-1.5">
+                            ${isAr ? 'عمولات الأطباء' : 'Doctor Commissions'}
+                            <i class="fa-solid fa-up-right-from-square text-[10px] opacity-0 group-hover:opacity-100 text-purple-500 transition"></i>
+                        </span>
+                        <div class="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center text-sm group-hover:bg-purple-600 group-hover:text-white transition shadow-sm"><i class="fa-solid fa-user-doctor"></i></div>
                     </div>
                     <div class="text-xl font-black text-purple-700">${totalDoctorCommissions.toLocaleString()} <small class="text-xs font-normal text-gray-400">${curr}</small></div>
-                    <div class="text-[11px] text-gray-400 mt-1">${Object.keys(doctorStats).length} ${isAr ? 'أطباء معالجين' : 'Doctors'}</div>
+                    <div class="text-[11px] text-gray-400 mt-1 flex items-center justify-between">
+                        <span>${Object.keys(doctorStats).length} ${isAr ? 'أطباء معالجين' : 'Doctors'}</span>
+                        <span class="text-[10px] text-purple-600 font-semibold opacity-0 group-hover:opacity-100 transition">${isAr ? 'تفاصيل ←' : 'Details →'}</span>
+                    </div>
                 </div>
 
                 <!-- Net Clinic Profit -->
@@ -4616,23 +4710,39 @@ window.renderMonthlyReport = async function() {
     const totalProfitPct = totalRev > 0 ? Math.round((totalNet / totalRev) * 100) : 0;
 
     bodyEl.innerHTML = `
-        <!-- KPI Summary Cards -->
+        <!-- KPI Summary Cards (Clickable for full year details) -->
         <div class="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
-            <div class="bg-gradient-to-br from-green-50 to-emerald-50 border border-green-100 rounded-xl p-3.5 shadow-sm">
-                <span class="text-xs text-green-700 font-semibold block mb-1">${isAr ? 'إجمالي الإيرادات' : 'Total Revenue'}</span>
+            <div onclick="showMonthlyRevenueModal('${selectedYear}')" class="bg-gradient-to-br from-green-50 to-emerald-50 border border-green-100 rounded-xl p-3.5 shadow-sm hover:shadow-md hover:border-green-300 cursor-pointer transition group">
+                <div class="flex items-center justify-between mb-1">
+                    <span class="text-xs text-green-700 font-semibold">${isAr ? 'إجمالي الإيرادات' : 'Total Revenue'}</span>
+                    <i class="fa-solid fa-arrow-trend-up text-xs text-green-600 opacity-60 group-hover:opacity-100 transition"></i>
+                </div>
                 <span class="text-lg font-black text-green-700">${totalRev.toLocaleString()} <small class="text-xs font-normal">${curr}</small></span>
+                <span class="text-[10px] text-green-600 font-medium block mt-1 opacity-0 group-hover:opacity-100 transition">${isAr ? 'عرض التفاصيل ←' : 'Details →'}</span>
             </div>
-            <div class="bg-gradient-to-br from-red-50 to-rose-50 border border-red-100 rounded-xl p-3.5 shadow-sm">
-                <span class="text-xs text-red-700 font-semibold block mb-1">${isAr ? 'المصروفات العامة' : 'Clinic Expenses'}</span>
+            <div onclick="showMonthlyExpensesModal('${selectedYear}')" class="bg-gradient-to-br from-red-50 to-rose-50 border border-red-100 rounded-xl p-3.5 shadow-sm hover:shadow-md hover:border-red-300 cursor-pointer transition group">
+                <div class="flex items-center justify-between mb-1">
+                    <span class="text-xs text-red-700 font-semibold">${isAr ? 'المصروفات العامة' : 'Clinic Expenses'}</span>
+                    <i class="fa-solid fa-receipt text-xs text-red-500 opacity-60 group-hover:opacity-100 transition"></i>
+                </div>
                 <span class="text-lg font-black text-red-600">${totalClinicExp.toLocaleString()} <small class="text-xs font-normal">${curr}</small></span>
+                <span class="text-[10px] text-red-600 font-medium block mt-1 opacity-0 group-hover:opacity-100 transition">${isAr ? 'عرض التفاصيل ←' : 'Details →'}</span>
             </div>
-            <div class="bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-100 rounded-xl p-3.5 shadow-sm">
-                <span class="text-xs text-amber-700 font-semibold block mb-1">${isAr ? 'تكاليف المعامل والزرع' : 'Lab & Implant Costs'}</span>
+            <div onclick="showMonthlyLabModal('${selectedYear}')" class="bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-100 rounded-xl p-3.5 shadow-sm hover:shadow-md hover:border-amber-300 cursor-pointer transition group">
+                <div class="flex items-center justify-between mb-1">
+                    <span class="text-xs text-amber-700 font-semibold">${isAr ? 'تكاليف المعامل والزرع' : 'Lab & Implant Costs'}</span>
+                    <i class="fa-solid fa-tooth text-xs text-amber-600 opacity-60 group-hover:opacity-100 transition"></i>
+                </div>
                 <span class="text-lg font-black text-amber-700">${totalLab.toLocaleString()} <small class="text-xs font-normal">${curr}</small></span>
+                <span class="text-[10px] text-amber-600 font-medium block mt-1 opacity-0 group-hover:opacity-100 transition">${isAr ? 'عرض التفاصيل ←' : 'Details →'}</span>
             </div>
-            <div class="bg-gradient-to-br from-purple-50 to-indigo-50 border border-purple-100 rounded-xl p-3.5 shadow-sm">
-                <span class="text-xs text-purple-700 font-semibold block mb-1">${isAr ? 'عمولات الأطباء' : 'Doctor Commissions'}</span>
+            <div onclick="showMonthlyDoctorCommissionsModal('${selectedYear}')" class="bg-gradient-to-br from-purple-50 to-indigo-50 border border-purple-100 rounded-xl p-3.5 shadow-sm hover:shadow-md hover:border-purple-300 cursor-pointer transition group">
+                <div class="flex items-center justify-between mb-1">
+                    <span class="text-xs text-purple-700 font-semibold">${isAr ? 'عمولات الأطباء' : 'Doctor Commissions'}</span>
+                    <i class="fa-solid fa-user-doctor text-xs text-purple-600 opacity-60 group-hover:opacity-100 transition"></i>
+                </div>
                 <span class="text-lg font-black text-purple-700">${totalDoc.toLocaleString()} <small class="text-xs font-normal">${curr}</small></span>
+                <span class="text-[10px] text-purple-600 font-medium block mt-1 opacity-0 group-hover:opacity-100 transition">${isAr ? 'عرض التفاصيل ←' : 'Details →'}</span>
             </div>
             <div class="col-span-2 lg:col-span-1 bg-gradient-to-br ${totalNet >= 0 ? 'from-blue-50 to-teal-50 border-blue-100 text-blue-700' : 'from-rose-50 to-red-50 border-red-100 text-red-600'} border rounded-xl p-3.5 shadow-sm">
                 <span class="text-xs font-semibold block mb-1">${isAr ? 'صافي أرباح العيادة' : 'Clinic Net Profit'}</span>
@@ -4656,7 +4766,8 @@ window.renderMonthlyReport = async function() {
                     </tr>
                 </thead>
                 <tbody>
-                    ${monthData.map(d => {
+                    ${monthData.map((d, mIdx) => {
+                        const dMonthKey = `${selectedYear}-${String(mIdx + 1).padStart(2, '0')}`;
                         const profitPct = d.revenue > 0 ? Math.round((d.net / d.revenue) * 100) : 0;
                         const barPct = Math.max(0, Math.min(100, Math.abs(profitPct)));
                         const hasActivity = d.revenue > 0 || d.clinicExpenses > 0 || d.labCosts > 0 || d.doctorCommissions > 0;
@@ -4665,10 +4776,10 @@ window.renderMonthlyReport = async function() {
                         return `
                         <tr class="border-b border-gray-50 ${hasActivity ? 'hover:bg-blue-50/60' : 'opacity-40'} transition">
                             <td class="px-4 py-3 font-semibold text-gray-800">${d.month}</td>
-                            <td class="px-4 py-3 text-green-600 font-semibold">${d.revenue > 0 ? d.revenue.toLocaleString() + ' ' + curr : '—'}</td>
-                            <td class="px-4 py-3 text-red-500">${d.clinicExpenses > 0 ? d.clinicExpenses.toLocaleString() + ' ' + curr : '—'}</td>
-                            <td class="px-4 py-3 text-amber-600 font-medium">${d.labCosts > 0 ? d.labCosts.toLocaleString() + ' ' + curr : '—'}</td>
-                            <td class="px-4 py-3 text-purple-600 font-medium">${d.doctorCommissions > 0 ? d.doctorCommissions.toLocaleString() + ' ' + curr : '—'}</td>
+                            <td class="px-4 py-3 text-green-600 font-semibold ${d.revenue > 0 ? 'cursor-pointer hover:underline' : ''}" ${d.revenue > 0 ? `onclick="showMonthlyRevenueModal('${dMonthKey}')"` : ''} title="${isAr ? 'انقر لعرض تفاصيل الإيرادات' : 'Click to view revenue details'}">${d.revenue > 0 ? d.revenue.toLocaleString() + ' ' + curr : '—'}</td>
+                            <td class="px-4 py-3 text-red-500 ${d.clinicExpenses > 0 ? 'cursor-pointer hover:underline' : ''}" ${d.clinicExpenses > 0 ? `onclick="showMonthlyExpensesModal('${dMonthKey}')"` : ''} title="${isAr ? 'انقر لعرض تفاصيل المصروفات' : 'Click to view expenses details'}">${d.clinicExpenses > 0 ? d.clinicExpenses.toLocaleString() + ' ' + curr : '—'}</td>
+                            <td class="px-4 py-3 text-amber-600 font-medium ${d.labCosts > 0 ? 'cursor-pointer hover:underline' : ''}" ${d.labCosts > 0 ? `onclick="showMonthlyLabModal('${dMonthKey}')"` : ''} title="${isAr ? 'انقر لعرض تفاصيل المعامل' : 'Click to view lab details'}">${d.labCosts > 0 ? d.labCosts.toLocaleString() + ' ' + curr : '—'}</td>
+                            <td class="px-4 py-3 text-purple-600 font-medium ${d.doctorCommissions > 0 ? 'cursor-pointer hover:underline' : ''}" ${d.doctorCommissions > 0 ? `onclick="showMonthlyDoctorCommissionsModal('${dMonthKey}')"` : ''} title="${isAr ? 'انقر لعرض عمولات الأطباء' : 'Click to view doctor commissions'}">${d.doctorCommissions > 0 ? d.doctorCommissions.toLocaleString() + ' ' + curr : '—'}</td>
                             <td class="px-4 py-3 font-bold ${d.net >= 0 ? 'text-green-600' : 'text-red-500'}">${hasActivity ? d.net.toLocaleString() + ' ' + curr : '—'}</td>
                             <td class="px-4 py-3">
                                 <div class="flex items-center gap-2">
@@ -4697,6 +4808,510 @@ window.renderMonthlyReport = async function() {
             </table>
         </div>
     `;
+};
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  MONTHLY REPORT DRILL-DOWN MODALS (تفاصيل الإيرادات والمصروفات والمعامل)
+// ══════════════════════════════════════════════════════════════════════════════
+
+let _cachedMonthlyRevenueEntries = [];
+let _cachedMonthlyExpensesEntries = [];
+window._selectedMonthlyExpenseCategory = '';
+
+function getMonthNameAndYear(targetKey, isAr) {
+    if (!targetKey) {
+        const now = new Date();
+        targetKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    }
+    const parts = String(targetKey).split('-');
+    const year = parts[0];
+    const monthNum = parts[1] ? parseInt(parts[1], 10) : null;
+    const MONTH_NAMES = isAr
+        ? ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر']
+        : ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    
+    if (monthNum && monthNum >= 1 && monthNum <= 12) {
+        return `${MONTH_NAMES[monthNum - 1]} ${year}`;
+    }
+    return isAr ? `سنة ${year}` : `Year ${year}`;
+}
+
+window.showMonthlyRevenueModal = async function(monthKey) {
+    const isAr = (localStorage.getItem('clinicLang') || currentLang || 'ar') === 'ar';
+    const curr = typeof getCurrency === 'function' ? getCurrency() : 'EGP';
+    
+    if (!monthKey) {
+        const y = document.getElementById('monthlyReportYear')?.value || new Date().getFullYear();
+        const m = document.getElementById('monthlyReportMonth')?.value || (new Date().getMonth() + 1);
+        monthKey = `${y}-${String(m).padStart(2, '0')}`;
+    }
+
+    const titleEl = document.getElementById('monthlyRevenueModalTitle');
+    const subtitleEl = document.getElementById('monthlyRevenueModalSubtitle');
+    const bodyEl = document.getElementById('monthlyRevenueModalBody');
+    const totalEl = document.getElementById('monthlyRevenueModalTotal');
+    const statsEl = document.getElementById('monthlyRevenueModalStats');
+    const searchInput = document.getElementById('monthlyRevenueSearch');
+    if (searchInput) {
+        searchInput.value = '';
+        searchInput.placeholder = isAr ? 'ابحث باسم المريض أو الإجراء أو التاريخ...' : 'Search by patient, procedure, or date...';
+    }
+
+    const displayMonth = getMonthNameAndYear(monthKey, isAr);
+    if (titleEl) titleEl.innerText = isAr ? `تفاصيل الإيرادات المحصلة (${displayMonth})` : `Collected Revenue Details (${displayMonth})`;
+    if (subtitleEl) subtitleEl.innerText = isAr ? 'جاري تحميل وتدقيق سجلات السداد...' : 'Loading collection records...';
+    if (bodyEl) bodyEl.innerHTML = `<div class="text-center py-12 text-gray-400"><i class="fa-solid fa-spinner fa-spin text-2xl mb-2 text-emerald-500"></i><p class="text-xs">${isAr ? 'جاري جلب البيانات...' : 'Loading data...'}</p></div>`;
+
+    document.getElementById('monthlyRevenueModal')?.classList.add('open');
+
+    const { collectionEntries } = await getCleanReportCollections();
+    const monthEntries = collectionEntries.filter(entry => normalizeDateOnly(entry.date).startsWith(monthKey) && toMoneyNumber(entry.amount) > 0);
+    
+    // رتب من الأحدث للأقدم
+    monthEntries.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+    _cachedMonthlyRevenueEntries = monthEntries;
+
+    const totalRev = monthEntries.reduce((s, e) => s + toMoneyNumber(e.amount), 0);
+    const uniquePatients = new Set(monthEntries.map(e => String(e.patientId || e.patientName))).size;
+
+    if (totalEl) totalEl.innerText = `${totalRev.toLocaleString()} ${curr}`;
+    if (subtitleEl) subtitleEl.innerText = isAr 
+        ? `${monthEntries.length} عملية تحصيل من ${uniquePatients} مريض` 
+        : `${monthEntries.length} collections from ${uniquePatients} patients`;
+
+    if (statsEl) {
+        statsEl.innerHTML = `
+            <div class="grid grid-cols-3 gap-2">
+                <div class="bg-emerald-50/70 border border-emerald-100 rounded-xl p-2.5 text-center">
+                    <span class="text-[10px] text-emerald-700 font-semibold block">${isAr ? 'إجمالي المحصل' : 'Total Revenue'}</span>
+                    <span class="text-sm font-black text-emerald-700">${totalRev.toLocaleString()} ${curr}</span>
+                </div>
+                <div class="bg-blue-50/70 border border-blue-100 rounded-xl p-2.5 text-center">
+                    <span class="text-[10px] text-blue-700 font-semibold block">${isAr ? 'عدد العمليات' : 'Collections'}</span>
+                    <span class="text-sm font-black text-blue-700">${monthEntries.length}</span>
+                </div>
+                <div class="bg-purple-50/70 border border-purple-100 rounded-xl p-2.5 text-center">
+                    <span class="text-[10px] text-purple-700 font-semibold block">${isAr ? 'المرضى المستفيدين' : 'Unique Patients'}</span>
+                    <span class="text-sm font-black text-purple-700">${uniquePatients}</span>
+                </div>
+            </div>
+        `;
+    }
+
+    renderMonthlyRevenueItems(monthEntries, isAr, curr);
+};
+
+function renderMonthlyRevenueItems(entries, isAr, curr) {
+    const bodyEl = document.getElementById('monthlyRevenueModalBody');
+    if (!bodyEl) return;
+
+    if (!entries.length) {
+        bodyEl.innerHTML = `
+            <div class="text-center py-12 text-gray-300">
+                <i class="fa-solid fa-receipt text-5xl mb-3 block opacity-30"></i>
+                <p class="text-sm font-semibold text-gray-500">${isAr ? 'لا توجد إيرادات مسجلة مطابقة' : 'No revenue records found'}</p>
+            </div>
+        `;
+        return;
+    }
+
+    // تجميع حسب المريض لتسهيل القراءة والتحليل
+    const byPatient = {};
+    entries.forEach(entry => {
+        const key = String(entry.patientId ?? `missing:${entry.patientName}`);
+        if (!byPatient[key]) {
+            byPatient[key] = {
+                id: entry.patientId,
+                name: entry.patientName || (isAr ? 'مريض غير مسجل' : 'Unknown Patient'),
+                orphan: !!entry.orphanPatient,
+                total: 0,
+                items: []
+            };
+        }
+        byPatient[key].total += toMoneyNumber(entry.amount);
+        byPatient[key].items.push(entry);
+    });
+
+    bodyEl.innerHTML = Object.values(byPatient).map(group => {
+        const canOpen = group.id != null && !group.orphan && !Number.isNaN(Number(group.id));
+        return `
+            <div class="bg-white rounded-xl border border-gray-100 overflow-hidden shadow-xs hover:border-emerald-200 transition">
+                <div class="flex items-center justify-between px-3.5 py-2.5 bg-emerald-50/50 border-b border-emerald-100/60 ${canOpen ? 'cursor-pointer hover:bg-emerald-100/50 transition' : ''}"
+                    ${canOpen ? `onclick="openPatientProfile(${Number(group.id)}); closeModal('monthlyRevenueModal');"` : ''}>
+                    <div class="flex items-center gap-2.5 min-w-0">
+                        <div class="w-7 h-7 rounded-lg bg-emerald-200 text-emerald-800 flex items-center justify-center text-xs font-bold shrink-0">
+                            ${(group.name || '?').charAt(0)}
+                        </div>
+                        <div class="min-w-0">
+                            <span class="font-bold text-sm text-gray-800 truncate block hover:text-emerald-700 transition">${group.name}</span>
+                        </div>
+                        ${canOpen ? `<i class="fa-solid fa-arrow-up-right-from-square text-[10px] text-emerald-600 opacity-60"></i>` : ''}
+                    </div>
+                    <div class="text-right shrink-0">
+                        <span class="text-xs font-black text-emerald-700">${group.total.toLocaleString()} ${curr}</span>
+                        <span class="text-[10px] text-gray-400 block">${group.items.length} ${isAr ? 'سداد' : 'entries'}</span>
+                    </div>
+                </div>
+                <div class="divide-y divide-gray-50 bg-white">
+                    ${group.items.map(item => {
+                        const proc = item.procedure || (isAr ? 'دفعة علاجية' : 'Treatment Payment');
+                        const tooth = item.toothNumber ? `<span class="bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded text-[10px] font-semibold">#${item.toothNumber}</span>` : '';
+                        const session = item.sessionNum ? `<span class="text-gray-400 text-[10px]">(${isAr ? 'جلسة' : 'Session'} ${item.sessionNum})</span>` : '';
+                        const notes = item.notes ? `<p class="text-[10px] text-gray-400 mt-0.5">${item.notes}</p>` : '';
+                        return `
+                            <div class="flex items-center justify-between px-3.5 py-2 text-xs hover:bg-slate-50/70 transition">
+                                <div class="min-w-0 pr-2">
+                                    <div class="flex items-center gap-1.5 flex-wrap">
+                                        <i class="fa-solid fa-tooth text-emerald-400 text-[11px]"></i>
+                                        <span class="font-semibold text-gray-700">${proc}</span>
+                                        ${tooth}
+                                        ${session}
+                                    </div>
+                                    <div class="flex items-center gap-2 mt-0.5 text-[10px] text-gray-400">
+                                        <span><i class="fa-regular fa-calendar-check text-[10px] mr-0.5"></i> ${item.date}</span>
+                                        ${item.source === 'session_payment' ? `<span class="text-emerald-600 font-medium">· سداد جلسة</span>` : ''}
+                                    </div>
+                                    ${notes}
+                                </div>
+                                <span class="font-bold text-emerald-600 shrink-0 text-xs">${toMoneyNumber(item.amount).toLocaleString()} ${curr}</span>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+window.filterMonthlyRevenueList = function() {
+    const q = (document.getElementById('monthlyRevenueSearch')?.value || '').trim().toLowerCase();
+    const isAr = (localStorage.getItem('clinicLang') || currentLang || 'ar') === 'ar';
+    const curr = typeof getCurrency === 'function' ? getCurrency() : 'EGP';
+    if (!q) {
+        renderMonthlyRevenueItems(_cachedMonthlyRevenueEntries, isAr, curr);
+        return;
+    }
+    const filtered = _cachedMonthlyRevenueEntries.filter(e => {
+        const name = (e.patientName || '').toLowerCase();
+        const proc = (e.procedure || '').toLowerCase();
+        const date = (e.date || '').toLowerCase();
+        const notes = (e.notes || '').toLowerCase();
+        return name.includes(q) || proc.includes(q) || date.includes(q) || notes.includes(q);
+    });
+    renderMonthlyRevenueItems(filtered, isAr, curr);
+};
+
+window.showMonthlyExpensesModal = async function(monthKey) {
+    const isAr = (localStorage.getItem('clinicLang') || currentLang || 'ar') === 'ar';
+    const curr = typeof getCurrency === 'function' ? getCurrency() : 'EGP';
+
+    if (!monthKey) {
+        const y = document.getElementById('monthlyReportYear')?.value || new Date().getFullYear();
+        const m = document.getElementById('monthlyReportMonth')?.value || (new Date().getMonth() + 1);
+        monthKey = `${y}-${String(m).padStart(2, '0')}`;
+    }
+
+    const titleEl = document.getElementById('monthlyExpensesModalTitle');
+    const subtitleEl = document.getElementById('monthlyExpensesModalSubtitle');
+    const bodyEl = document.getElementById('monthlyExpensesModalBody');
+    const totalEl = document.getElementById('monthlyExpensesModalTotal');
+    const catsEl = document.getElementById('monthlyExpensesModalCats');
+    const searchInput = document.getElementById('monthlyExpensesSearch');
+    if (searchInput) {
+        searchInput.value = '';
+        searchInput.placeholder = isAr ? 'ابحث في بنود المصروفات أو التصنيفات...' : 'Search expense items or categories...';
+    }
+    window._selectedMonthlyExpenseCategory = '';
+
+    const displayMonth = getMonthNameAndYear(monthKey, isAr);
+    if (titleEl) titleEl.innerText = isAr ? `تفاصيل المصروفات العامة (${displayMonth})` : `Clinic Expenses Details (${displayMonth})`;
+    if (subtitleEl) subtitleEl.innerText = isAr ? 'جاري جلب بنود المصروفات...' : 'Loading expense items...';
+    if (bodyEl) bodyEl.innerHTML = `<div class="text-center py-12 text-gray-400"><i class="fa-solid fa-spinner fa-spin text-2xl mb-2 text-rose-500"></i><p class="text-xs">${isAr ? 'جاري جلب البيانات...' : 'Loading data...'}</p></div>`;
+
+    document.getElementById('monthlyExpensesModal')?.classList.add('open');
+
+    const { expenses } = await getCleanReportCollections();
+    const monthExpenses = expenses.filter(e => normalizeDateOnly(e.date).startsWith(monthKey));
+    monthExpenses.sort((a, b) => normalizeDateOnly(b.date).localeCompare(normalizeDateOnly(a.date)));
+    _cachedMonthlyExpensesEntries = monthExpenses;
+
+    const totalExp = monthExpenses.reduce((s, e) => s + toMoneyNumber(e.amount), 0);
+    if (totalEl) totalEl.innerText = `${totalExp.toLocaleString()} ${curr}`;
+    if (subtitleEl) subtitleEl.innerText = isAr
+        ? `${monthExpenses.length} بنود مصروفات بإجمالي ${totalExp.toLocaleString()} ${curr}`
+        : `${monthExpenses.length} expense items totaling ${totalExp.toLocaleString()} ${curr}`;
+
+    // حساب تصنيفات المصروفات
+    const catMap = {};
+    monthExpenses.forEach(e => {
+        const cat = e.category || 'Other';
+        catMap[cat] = (catMap[cat] || 0) + toMoneyNumber(e.amount);
+    });
+
+    const catLabels = {
+        Supplies: isAr ? 'مستلزمات' : 'Supplies',
+        Rent: isAr ? 'إيجار' : 'Rent',
+        Salaries: isAr ? 'رواتب' : 'Salaries',
+        Utilities: isAr ? 'فواتير وخدمات' : 'Utilities',
+        Equipment: isAr ? 'أجهزة' : 'Equipment',
+        Maintenance: isAr ? 'صيانة' : 'Maintenance',
+        lab: isAr ? 'معمل' : 'Lab',
+        Other: isAr ? 'أخرى' : 'Other'
+    };
+
+    const catBadges = {
+        Supplies: 'bg-blue-50 text-blue-700 border-blue-200',
+        Rent: 'bg-purple-50 text-purple-700 border-purple-200',
+        Salaries: 'bg-amber-50 text-amber-700 border-amber-200',
+        Utilities: 'bg-cyan-50 text-cyan-700 border-cyan-200',
+        Equipment: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+        Maintenance: 'bg-orange-50 text-orange-700 border-orange-200',
+        lab: 'bg-teal-50 text-teal-700 border-teal-200',
+        Other: 'bg-gray-100 text-gray-700 border-gray-200'
+    };
+
+    if (catsEl) {
+        catsEl.innerHTML = `
+            <button onclick="filterMonthlyExpensesCategory('', this)" class="btn-cat-filter text-xs font-semibold px-2.5 py-1 rounded-lg border border-gray-200 bg-gray-800 text-white transition">
+                ${isAr ? 'الكل' : 'All'} (${monthExpenses.length})
+            </button>
+            ${Object.entries(catMap).map(([cat, sum]) => {
+                const label = catLabels[cat] || cat;
+                const cls = catBadges[cat] || 'bg-gray-50 text-gray-700 border-gray-200';
+                return `
+                    <button onclick="filterMonthlyExpensesCategory('${cat}', this)" class="btn-cat-filter text-xs font-semibold px-2.5 py-1 rounded-lg border ${cls} hover:opacity-80 transition flex items-center gap-1.5">
+                        <span>${label}</span>
+                        <span class="font-bold opacity-80">${sum.toLocaleString()}</span>
+                    </button>
+                `;
+            }).join('')}
+        `;
+    }
+
+    renderMonthlyExpensesItems(monthExpenses, isAr, curr, catLabels, catBadges);
+};
+
+window.filterMonthlyExpensesCategory = function(cat, btnEl) {
+    window._selectedMonthlyExpenseCategory = cat;
+    document.querySelectorAll('.btn-cat-filter').forEach(btn => {
+        btn.classList.remove('bg-gray-800', 'text-white');
+    });
+    if (btnEl) {
+        btnEl.classList.add('bg-gray-800', 'text-white');
+    }
+    filterMonthlyExpensesList();
+};
+
+function renderMonthlyExpensesItems(entries, isAr, curr, catLabels, catBadges) {
+    const bodyEl = document.getElementById('monthlyExpensesModalBody');
+    if (!bodyEl) return;
+
+    if (!entries.length) {
+        bodyEl.innerHTML = `
+            <div class="text-center py-12 text-gray-300">
+                <i class="fa-solid fa-file-invoice-dollar text-5xl mb-3 block opacity-30"></i>
+                <p class="text-sm font-semibold text-gray-500">${isAr ? 'لا توجد مصروفات مسجلة' : 'No expense records found'}</p>
+            </div>
+        `;
+        return;
+    }
+
+    const defaultLabels = {
+        Supplies: isAr ? 'مستلزمات' : 'Supplies',
+        Rent: isAr ? 'إيجار' : 'Rent',
+        Salaries: isAr ? 'رواتب' : 'Salaries',
+        Utilities: isAr ? 'فواتير وخدمات' : 'Utilities',
+        Equipment: isAr ? 'أجهزة' : 'Equipment',
+        Maintenance: isAr ? 'صيانة' : 'Maintenance',
+        lab: isAr ? 'معمل' : 'Lab',
+        Other: isAr ? 'أخرى' : 'Other'
+    };
+    const defaultBadges = {
+        Supplies: 'bg-blue-50 text-blue-700 border-blue-200',
+        Rent: 'bg-purple-50 text-purple-700 border-purple-200',
+        Salaries: 'bg-amber-50 text-amber-700 border-amber-200',
+        Utilities: 'bg-cyan-50 text-cyan-700 border-cyan-200',
+        Equipment: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+        Maintenance: 'bg-orange-50 text-orange-700 border-orange-200',
+        lab: 'bg-teal-50 text-teal-700 border-teal-200',
+        Other: 'bg-gray-100 text-gray-700 border-gray-200'
+    };
+    const labels = catLabels || defaultLabels;
+    const badges = catBadges || defaultBadges;
+
+    bodyEl.innerHTML = entries.map(e => {
+        const cat = e.category || 'Other';
+        const label = labels[cat] || cat;
+        const cls = badges[cat] || 'bg-gray-50 text-gray-700 border-gray-200';
+        const date = normalizeDateOnly(e.date);
+        const notes = e.notes ? `<p class="text-[10px] text-gray-400 mt-0.5">${e.notes}</p>` : '';
+        return `
+            <div class="flex items-center justify-between p-3 rounded-xl border border-gray-100 bg-white hover:bg-rose-50/40 hover:border-rose-100 transition">
+                <div class="min-w-0 pr-2">
+                    <div class="flex items-center gap-2">
+                        <span class="text-[10px] font-bold px-2 py-0.5 rounded-md border ${cls} shrink-0">${label}</span>
+                        <span class="text-sm font-bold text-gray-800 truncate">${e.item}</span>
+                    </div>
+                    <div class="flex items-center gap-2 mt-1 text-[10px] text-gray-400">
+                        <span><i class="fa-regular fa-calendar-check mr-0.5"></i> ${date}</span>
+                    </div>
+                    ${notes}
+                </div>
+                <span class="text-sm font-black text-rose-600 shrink-0">${toMoneyNumber(e.amount).toLocaleString()} ${curr}</span>
+            </div>
+        `;
+    }).join('');
+}
+
+window.filterMonthlyExpensesList = function() {
+    const q = (document.getElementById('monthlyExpensesSearch')?.value || '').trim().toLowerCase();
+    const catFilter = window._selectedMonthlyExpenseCategory || '';
+    const isAr = (localStorage.getItem('clinicLang') || currentLang || 'ar') === 'ar';
+    const curr = typeof getCurrency === 'function' ? getCurrency() : 'EGP';
+
+    let filtered = _cachedMonthlyExpensesEntries;
+    if (catFilter) {
+        filtered = filtered.filter(e => (e.category || 'Other') === catFilter);
+    }
+    if (q) {
+        filtered = filtered.filter(e => {
+            const item = (e.item || '').toLowerCase();
+            const cat = (e.category || '').toLowerCase();
+            const date = normalizeDateOnly(e.date).toLowerCase();
+            const notes = (e.notes || '').toLowerCase();
+            return item.includes(q) || cat.includes(q) || date.includes(q) || notes.includes(q);
+        });
+    }
+    renderMonthlyExpensesItems(filtered, isAr, curr);
+};
+
+window.showMonthlyLabModal = async function(monthKey) {
+    const isAr = (localStorage.getItem('clinicLang') || currentLang || 'ar') === 'ar';
+    const curr = typeof getCurrency === 'function' ? getCurrency() : 'EGP';
+    if (!monthKey) {
+        const y = document.getElementById('monthlyReportYear')?.value || new Date().getFullYear();
+        const m = document.getElementById('monthlyReportMonth')?.value || (new Date().getMonth() + 1);
+        monthKey = `${y}-${String(m).padStart(2, '0')}`;
+    }
+    const displayMonth = getMonthNameAndYear(monthKey, isAr);
+    const titleEl = document.getElementById('monthlyLabModalTitle');
+    const subtitleEl = document.getElementById('monthlyLabModalSubtitle');
+    const bodyEl = document.getElementById('monthlyLabModalBody');
+    const totalEl = document.getElementById('monthlyLabModalTotal');
+    if (titleEl) titleEl.innerText = isAr ? `طلبات المعامل والزرعات (${displayMonth})` : `Lab & Implants Details (${displayMonth})`;
+    document.getElementById('monthlyLabModal')?.classList.add('open');
+
+    const labOrders = await (window.dbGetAll ? window.dbGetAll('lab_orders') : Promise.resolve([])).catch(() => []);
+    const monthOrders = labOrders.filter(o => normalizeDateOnly(o.created_at || o.date).startsWith(monthKey));
+    monthOrders.sort((a,b) => normalizeDateOnly(b.created_at || b.date).localeCompare(normalizeDateOnly(a.created_at || a.date)));
+
+    const totalCost = monthOrders.reduce((s, o) => s + toMoneyNumber(o.cost || o.amount || 0), 0);
+    if (totalEl) totalEl.innerText = `${totalCost.toLocaleString()} ${curr}`;
+    if (subtitleEl) subtitleEl.innerText = isAr ? `${monthOrders.length} طلبات معمل` : `${monthOrders.length} lab orders`;
+
+    if (!monthOrders.length) {
+        bodyEl.innerHTML = `<div class="text-center py-12 text-gray-300"><i class="fa-solid fa-tooth text-5xl mb-3 block opacity-30"></i><p class="text-sm">${isAr ? 'لا توجد طلبات معمل هذا الشهر' : 'No lab orders recorded this month'}</p></div>`;
+        return;
+    }
+
+    bodyEl.innerHTML = monthOrders.map(o => {
+        const isImplant = (o.work_type || '').toLowerCase().includes('implant') || (o.work_type || '').includes('زرع') || (o.work_type || '').includes('زراعة');
+        const pName = o.patient_name || (isAr ? 'مريض غير محدد' : 'Unknown Patient');
+        const labName = o.lab_name || (isAr ? 'معمل غير محدد' : 'Unspecified Lab');
+        const cost = toMoneyNumber(o.cost || o.amount || 0);
+        const status = o.status || 'Pending';
+        const date = normalizeDateOnly(o.created_at || o.date);
+        return `
+            <div class="flex items-center justify-between p-3 rounded-xl border border-gray-100 bg-white hover:border-amber-200 transition">
+                <div class="min-w-0 pr-2">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <span class="font-bold text-sm text-gray-800">${pName}</span>
+                        <span class="text-xs text-gray-500 font-medium">· ${labName}</span>
+                        ${isImplant ? `<span class="bg-amber-100 text-amber-800 text-[10px] font-bold px-1.5 py-0.5 rounded">🦷 ${isAr ? 'زرعة' : 'Implant'}</span>` : ''}
+                    </div>
+                    <div class="flex items-center gap-2 mt-1 text-[11px] text-gray-400">
+                        <span><i class="fa-solid fa-flask text-amber-500 mr-0.5"></i> ${o.work_type || '—'}</span>
+                        ${o.teeth ? `<span>· أسنان: ${o.teeth}</span>` : ''}
+                        <span>· ${date}</span>
+                    </div>
+                </div>
+                <div class="text-right shrink-0">
+                    <span class="text-sm font-black text-amber-700">${cost.toLocaleString()} ${curr}</span>
+                    <span class="badge text-[10px] block mt-0.5 ${status === 'Delivered' ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-700'}">${status}</span>
+                </div>
+            </div>
+        `;
+    }).join('');
+};
+
+window.showMonthlyDoctorCommissionsModal = async function(monthKey) {
+    const isAr = (localStorage.getItem('clinicLang') || currentLang || 'ar') === 'ar';
+    const curr = typeof getCurrency === 'function' ? getCurrency() : 'EGP';
+    if (!monthKey) {
+        const y = document.getElementById('monthlyReportYear')?.value || new Date().getFullYear();
+        const m = document.getElementById('monthlyReportMonth')?.value || (new Date().getMonth() + 1);
+        monthKey = `${y}-${String(m).padStart(2, '0')}`;
+    }
+    const displayMonth = getMonthNameAndYear(monthKey, isAr);
+    const titleEl = document.getElementById('monthlyDoctorModalTitle');
+    const subtitleEl = document.getElementById('monthlyDoctorModalSubtitle');
+    const bodyEl = document.getElementById('monthlyDoctorModalBody');
+    const totalEl = document.getElementById('monthlyDoctorModalTotal');
+    if (titleEl) titleEl.innerText = isAr ? `عمولات الأطباء (${displayMonth})` : `Doctor Commissions (${displayMonth})`;
+    document.getElementById('monthlyDoctorModal')?.classList.add('open');
+
+    const { treatments } = await getCleanReportCollections();
+    const monthTreatments = treatments.filter(t => normalizeDateOnly(t.date || t.created_at).startsWith(monthKey));
+
+    const doctorStats = {};
+    monthTreatments.forEach(tr => {
+        const docId = tr.doctor_id || tr.doctorId || 'none';
+        const docName = tr.doctor_name || tr.doctorName || (isAr ? 'طبيب عام / العيادة' : 'General / Clinic');
+        if (!doctorStats[docId]) {
+            doctorStats[docId] = {
+                name: docName,
+                sessions: 0,
+                totalBilled: 0,
+                totalPaid: 0,
+                commRate: tr.doctor_commission_pct || tr.doctorCommissionPct || 0,
+                totalComm: 0
+            };
+        }
+        doctorStats[docId].sessions += 1;
+        doctorStats[docId].totalBilled += toMoneyNumber(tr.total_cost || tr.totalCost || 0);
+        doctorStats[docId].totalPaid += toMoneyNumber(tr.paid || 0);
+        doctorStats[docId].totalComm += toMoneyNumber(tr.doctor_commission_amt || 0);
+    });
+
+    const totalComms = Object.values(doctorStats).reduce((s, d) => s + d.totalComm, 0);
+    if (totalEl) totalEl.innerText = `${totalComms.toLocaleString()} ${curr}`;
+    if (subtitleEl) subtitleEl.innerText = isAr ? `${Object.keys(doctorStats).length} أطباء معالجين` : `${Object.keys(doctorStats).length} treating doctors`;
+
+    const docList = Object.values(doctorStats);
+    if (!docList.length) {
+        bodyEl.innerHTML = `<div class="text-center py-12 text-gray-300"><i class="fa-solid fa-user-doctor text-5xl mb-3 block opacity-30"></i><p class="text-sm">${isAr ? 'لا توجد جلسات أو عمولات مسجلة هذا الشهر' : 'No doctor commissions recorded'}</p></div>`;
+        return;
+    }
+
+    bodyEl.innerHTML = docList.map(doc => {
+        return `
+            <div class="flex items-center justify-between p-3.5 rounded-xl border border-gray-100 bg-white hover:border-purple-200 transition">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold text-sm">
+                        <i class="fa-solid fa-user-doctor"></i>
+                    </div>
+                    <div>
+                        <span class="font-bold text-sm text-gray-800 block">${doc.name}</span>
+                        <span class="text-xs text-gray-400 font-medium">${doc.sessions} ${isAr ? 'جلسات علاجية' : 'sessions'} · ${isAr ? 'إجمالي فواتير' : 'billed'}: ${doc.totalBilled.toLocaleString()} ${curr}</span>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <span class="text-sm font-black text-purple-700 block">${doc.totalComm.toLocaleString()} ${curr}</span>
+                    <span class="text-[10px] text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded font-semibold">${isAr ? 'العمولة' : 'Comm'}</span>
+                </div>
+            </div>
+        `;
+    }).join('');
 };
 
 // ── PRINT OFFICIAL MONTHLY REPORT ──
