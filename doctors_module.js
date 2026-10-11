@@ -637,7 +637,11 @@ async function calcDoctorSalary(docId, monthFilter) {
         let pct  = parseFloat(t.doctor_commission_pct ?? t.doctorCommissionPct) || 0;
         if (!pct && defaultDocPct > 0) pct = defaultDocPct;
 
-        const implantLab = parseFloat(t.implant_lab_cost ?? t.implantLabCost ?? 0) || 0;
+        let implantLab = parseFloat(t.implant_lab_cost ?? t.implantLabCost ?? 0) || 0;
+        if (!implantLab && t.notes) {
+            const m = String(t.notes).match(/\[زرعة:[^\]]*تكلفة\s*([\d.]+)\]/);
+            if (m) implantLab = parseFloat(m[1]) || 0;
+        }
         const netPaid = Math.max(0, paid - implantLab);
         const c = pct > 0
             ? parseFloat((netPaid * pct / 100).toFixed(2))
@@ -669,7 +673,11 @@ async function calcDoctorSalary(docId, monthFilter) {
             let pct  = parseFloat(t.doctor_commission_pct ?? t.doctorCommissionPct) || 0;
             if (!pct && defaultDocPct > 0) pct = defaultDocPct;
 
-            const implantLab = parseFloat(t.implant_lab_cost ?? t.implantLabCost ?? 0) || 0;
+            let implantLab = parseFloat(t.implant_lab_cost ?? t.implantLabCost ?? 0) || 0;
+            if (!implantLab && t.notes) {
+                const m = String(t.notes).match(/\[زرعة:[^\]]*تكلفة\s*([\d.]+)\]/);
+                if (m) implantLab = parseFloat(m[1]) || 0;
+            }
             const netPaid = Math.max(0, paid - implantLab);
             const c = pct > 0
                 ? parseFloat((netPaid * pct / 100).toFixed(2))

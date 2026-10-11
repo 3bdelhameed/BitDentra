@@ -1948,6 +1948,49 @@ function normalizeSessionPaymentsForReports(payments = []) {
     }, []);
 }
 
+function getImplantLabCost(tr) {
+    let cost = parseFloat(tr?.implant_lab_cost ?? tr?.implantLabCost ?? 0);
+    if (!cost && tr?.notes) {
+        const m = String(tr.notes).match(/\[زرعة:[^\]]*تكلفة\s*([\d.]+)\]/);
+        if (m) cost = parseFloat(m[1]) || 0;
+    }
+    return cost;
+}
+
+function summarizeLabOrders(orders = []) {
+    let totalCost = 0;
+    let totalPaid = 0;
+    let totalRemaining = 0;
+    let implantCount = 0;
+    let implantCost = 0;
+    let implantPaid = 0;
+
+    orders.forEach(o => {
+        const c = toMoneyNumber(o.cost || o.amount || 0);
+        const p = toMoneyNumber(o.paid_to_lab ?? o.paidToLab ?? 0);
+        totalCost += c;
+        totalPaid += p;
+        totalRemaining += Math.max(0, c - p);
+
+        const w = (o.work_type || o.workType || '').toLowerCase();
+        const isImplant = w.includes('implant') || w.includes('زرع') || w.includes('زراعة');
+        if (isImplant) {
+            implantCount++;
+            implantCost += c;
+            implantPaid += p;
+        }
+    });
+
+    return {
+        totalCost,
+        totalPaid,
+        totalRemaining,
+        implantCount,
+        implantCost,
+        implantPaid
+    };
+}
+
 function hydrateTreatmentsForReports(treatments = [], sessionPayments = []) {
     const paymentsByTreatment = new Map();
     sessionPayments.forEach(payment => {
@@ -1964,9 +2007,12 @@ function hydrateTreatmentsForReports(treatments = [], sessionPayments = []) {
         const paid = linkedPayments.length
             ? linkedPayments.reduce((sum, payment) => sum + toMoneyNumber(payment?.amount), 0)
             : toMoneyNumber(tr?.paid);
+        const implantLabCost = getImplantLabCost(tr);
         return {
             ...tr,
-            paid
+            paid,
+            implant_lab_cost: implantLabCost,
+            implantLabCost: implantLabCost
         };
     });
 
@@ -1991,6 +2037,7 @@ function buildReportCollectionEntries(treatments = [], sessionPayments = [], pay
         const treatment = treatmentMap.get(treatmentKey) || null;
         const patientId = treatment?.patient_id ?? treatment?.patientId ?? payment?.patient_id ?? payment?.patientId ?? null;
         const patientName = treatment?.patient_name ?? treatment?.patientName ?? buildMissingPatientLabel(payment?.patient_name ?? payment?.patientName);
+        const implantLabCost = treatment ? getImplantLabCost(treatment) : 0;
 
         entries.push({
             id: payment?.id != null ? `sp:${payment.id}` : `sp:${treatmentKey}:${date}:${entries.length}`,
@@ -2004,7 +2051,8 @@ function buildReportCollectionEntries(treatments = [], sessionPayments = [], pay
             notes: payment?.notes ?? payment?.note ?? null,
             sessionNum: payment?.session_num ?? payment?.sessionNum ?? null,
             source: 'session_payment',
-            orphanPatient: !!treatment?._reportOrphan
+            orphanPatient: !!treatment?._reportOrphan,
+            implantLabCost
         });
     });
 
@@ -2015,6 +2063,7 @@ function buildReportCollectionEntries(treatments = [], sessionPayments = [], pay
         const date = normalizeDateOnly(tr?.date);
         if (!paid || linkedPayments.length || !date) return;
 
+        const implantLabCost = getImplantLabCost(tr);
         entries.push({
             id: tr?.id != null ? `legacy:${tr.id}` : `legacy:${date}:${entries.length}`,
             date,
@@ -2027,7 +2076,8 @@ function buildReportCollectionEntries(treatments = [], sessionPayments = [], pay
             notes: tr?.notes ?? null,
             sessionNum: null,
             source: 'legacy_treatment_paid',
-            orphanPatient: !!tr?._reportOrphan
+            orphanPatient: !!tr?._reportOrphan,
+            implantLabCost
         });
     });
 
@@ -2076,13 +2126,14 @@ function sanitizeTreatmentsForReports(treatments, patients) {
 }
 
 async function getCleanReportCollections() {
-    const [patients, rawTreatments, expenses, appointments, rawSessionPayments, rawPayables] = await Promise.all([
+    const [patients, rawTreatments, rawExpenses, appointments, rawSessionPayments, rawPayables, rawLabOrders] = await Promise.all([
         dbGetAll('patients'),
         dbGetAll('treatments'),
         dbGetAll('expenses'),
         dbGetAll('appointments'),
         dbGetAll('session_payments').catch(() => []),
-        dbGetAll('payables').catch(() => [])
+        dbGetAll('payables').catch(() => []),
+        dbGetAll('lab_orders').catch(() => [])
     ]);
     const treatmentAudit = sanitizeTreatmentsForReports(rawTreatments, patients);
     const sessionPayments = normalizeSessionPaymentsForReports(rawSessionPayments);
@@ -2094,13 +2145,27 @@ async function getCleanReportCollections() {
         sessionPayments,
         hydratedTreatments.paymentsByTreatment
     );
+    const labOrders = (rawLabOrders || []).map(o => ({
+        ...o,
+        cost: toMoneyNumber(o.cost || o.amount || 0),
+        paid_to_lab: toMoneyNumber(o.paid_to_lab ?? o.paidToLab ?? 0)
+    }));
+    const labStats = summarizeLabOrders(labOrders);
+
+    // Filter out lab expenses from general expenses to prevent double counting with lab_orders
+    const generalExpenses = (rawExpenses || []).filter(e => {
+        const cat = (e.category || '').toLowerCase();
+        return cat !== 'lab' && !cat.includes('معامل') && !cat.includes('معمل');
+    });
+
     const reportAudit = {
         rawTreatments: rawTreatments.length,
         validTreatments: hydratedTreatments.treatments.length,
         orphanTreatments: treatmentAudit.orphanCount,
         rawSessionPayments: rawSessionPayments.length,
         collectionEntries: collectionEntries.length,
-        rawPayables: rawPayables.length
+        rawPayables: rawPayables.length,
+        rawLabOrders: labOrders.length
     };
     window._reportsAudit = reportAudit;
     if (reportAudit.orphanTreatments > 0) {
@@ -2109,12 +2174,15 @@ async function getCleanReportCollections() {
     return {
         patients,
         treatments: hydratedTreatments.treatments,
-        expenses,
+        expenses: generalExpenses,
+        allExpenses: rawExpenses,
         appointments,
         sessionPayments,
         collectionEntries,
         payables,
         payableStats,
+        labOrders,
+        labStats,
         reportAudit
     };
 }
@@ -2264,135 +2332,145 @@ document.getElementById('newAppointmentForm').addEventListener('submit', async e
 // New Treatment
 document.getElementById('newTreatmentForm').addEventListener('submit', async e => {
     e.preventDefault();
-    const treatmentModal = document.getElementById('addTreatmentModal');
-    const toothNumber = document.getElementById('treatmentToothNumber').value;
-    let patientId, patientName;
+    if (e.target._submitting) return;
+    e.target._submitting = true;
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    if (submitBtn) submitBtn.disabled = true;
 
-    const lockedPatientId = parseInt(treatmentModal?.dataset.patientContextId || '', 10);
-    const lockedPatientName = treatmentModal?.dataset.patientContextName || '';
+    try {
+        const treatmentModal = document.getElementById('addTreatmentModal');
+        const toothNumber = document.getElementById('treatmentToothNumber').value;
+        let patientId, patientName;
 
-    if (Number.isFinite(lockedPatientId) && lockedPatientId > 0) {
-        patientId = lockedPatientId;
-        patientName = lockedPatientName || document.getElementById('profileName')?.innerText?.trim() || '';
-    } else {
-        const sel = document.getElementById('treatmentPatientId');
-        const searchEl = document.getElementById('treatmentPatientSearch');
-        patientId = parseInt(sel?.value || '', 10);
-        if (sel && sel.value) {
-            const p = (window.cachedPatients || []).find(x => x.id === patientId);
-            patientName = p ? p.name : (searchEl?.value.trim() || '');
-        }
-    }
+        const lockedPatientId = parseInt(treatmentModal?.dataset.patientContextId || '', 10);
+        const lockedPatientName = treatmentModal?.dataset.patientContextName || '';
 
-    if (!Number.isFinite(patientId) || patientId <= 0 || !patientName) {
-        showToast(currentLang === 'ar' ? 'اختر المريض أولاً من القائمة' : 'Please select a patient first', 'error');
-        return;
-    }
-
-    const cost = parseFloat(document.getElementById('treatmentTotalCost').value) || 0;
-    const paid = parseFloat(document.getElementById('treatmentPaid').value) || 0;
-    let cond = document.getElementById('treatmentToothCondition').value;
-    // normalize legacy/alias values
-    if (cond === 'crown') cond = 'crown_work';
-    if (cond === 'root')  cond = 'root_canal';
-
-    // Doctor Commission Details
-    const doctorSel = document.getElementById('treatmentDoctorId');
-    let docId = null, docName = null, docPct = 0, docComm = 0;
-    if (doctorSel && doctorSel.value) {
-        const opt = doctorSel.selectedOptions[0];
-        docId = parseInt(doctorSel.value, 10);
-        docPct = parseFloat(opt?.getAttribute('data-pct')) || 0;
-        docName = opt?.getAttribute('data-name') || opt?.textContent?.split('(')[0]?.trim() || '';
-    }
-
-    // Implant Lab Details
-    const procText = document.getElementById('treatmentProcedure').value.trim();
-    const implantLabCost = parseFloat(document.getElementById('treatmentImplantLabCost')?.value) || 0;
-    const implantLabName = (document.getElementById('treatmentImplantLabName')?.value || '').trim();
-
-    // Doctor commission on net (deducting implant lab cost)
-    const netBase = Math.max(0, paid - implantLabCost);
-    if (docPct > 0) {
-        docComm = parseFloat((netBase * docPct / 100).toFixed(2));
-    }
-
-    const trData = {
-        patient_id:            patientId,
-        patient_name:          patientName,
-        tooth_number:          toothNumber || null,
-        tooth_condition:       cond || null,
-        procedure:             procText,
-        total_cost:            cost,
-        paid:                  paid,
-        doctor_id:             docId,
-        doctor_name:           docName,
-        doctor_commission_pct: docPct,
-        doctor_commission_amt: docComm,
-        notes:                 document.getElementById('treatmentNotes').value.trim() || null,
-        date:                  today()
-    };
-    if (implantLabCost > 0) {
-        trData.implant_lab_cost = implantLabCost;
-        if (implantLabName) trData.implant_lab_name = implantLabName;
-    }
-
-    await dbInsert('treatments', trData);
-
-    // Auto-create Lab Order & Expense for Implant if lab cost is entered
-    if (implantLabCost > 0) {
-        const deductTreasury = document.getElementById('treatmentImplantLabDeductTreasury')?.checked ?? true;
-        try {
-            // 1. Add order to Lab Orders section
-            await dbInsert('lab_orders', {
-                patient_id:   patientId,
-                patient_name: patientName,
-                lab_name:     implantLabName || 'معمل زراعة الأسنان',
-                work_type:    'زراعة أسنان (Implant)',
-                teeth:        toothNumber || '—',
-                cost:         implantLabCost,
-                paid_to_lab:  deductTreasury ? implantLabCost : 0,
-                status:       'pending',
-                priority:     'normal',
-                notes:        `طلب تلقائي لزرعة معملية - سن ${toothNumber || '—'}${deductTreasury ? ' (صُرف من الخزينة)' : ''}`,
-                created_at:   today()
-            });
-
-            // 2. If immediate treasury deduction is enabled, record as an expense cash-out
-            if (deductTreasury) {
-                await dbInsert('expenses', {
-                    item:     `تكلفة زرعة معمل (${implantLabName || 'معمل'}) - مريض: ${patientName}`,
-                    category: 'معامل / Lab',
-                    amount:   implantLabCost,
-                    date:     today(),
-                    notes:    `سداد فوري لخروج تكلفة الزرعة من الخزينة لحساب المعمل`
-                });
+        if (Number.isFinite(lockedPatientId) && lockedPatientId > 0) {
+            patientId = lockedPatientId;
+            patientName = lockedPatientName || document.getElementById('profileName')?.innerText?.trim() || '';
+        } else {
+            const sel = document.getElementById('treatmentPatientId');
+            const searchEl = document.getElementById('treatmentPatientSearch');
+            patientId = parseInt(sel?.value || '', 10);
+            if (sel && sel.value) {
+                const p = (window.cachedPatients || []).find(x => x.id === patientId);
+                patientName = p ? p.name : (searchEl?.value.trim() || '');
             }
-
-            showToast(deductTreasury ? '✓ تم تسجيل طلب المعمل وخصم تكلفة الزرعة من الخزينة' : '✓ تمت إضافة طلب الزرعة لقسم المعامل', 'info');
-        } catch (labErr) {
-            console.warn('[ImplantLab] Auto create lab order/expense failed:', labErr);
         }
+
+        if (!Number.isFinite(patientId) || patientId <= 0 || !patientName) {
+            showToast(currentLang === 'ar' ? 'اختر المريض أولاً من القائمة' : 'Please select a patient first', 'error');
+            return;
+        }
+
+        const cost = parseFloat(document.getElementById('treatmentTotalCost').value) || 0;
+        const paid = parseFloat(document.getElementById('treatmentPaid').value) || 0;
+        let cond = document.getElementById('treatmentToothCondition').value;
+        // normalize legacy/alias values
+        if (cond === 'crown') cond = 'crown_work';
+        if (cond === 'root')  cond = 'root_canal';
+
+        // Doctor Commission Details
+        const doctorSel = document.getElementById('treatmentDoctorId');
+        let docId = null, docName = null, docPct = 0, docComm = 0;
+        if (doctorSel && doctorSel.value) {
+            const opt = doctorSel.selectedOptions[0];
+            docId = parseInt(doctorSel.value, 10);
+            docPct = parseFloat(opt?.getAttribute('data-pct')) || 0;
+            docName = opt?.getAttribute('data-name') || opt?.textContent?.split('(')[0]?.trim() || '';
+        }
+
+        // Implant Lab Details
+        const procText = document.getElementById('treatmentProcedure').value.trim();
+        const implantLabCost = parseFloat(document.getElementById('treatmentImplantLabCost')?.value) || 0;
+        const implantLabName = (document.getElementById('treatmentImplantLabName')?.value || '').trim();
+
+        // Doctor commission on net (deducting implant lab cost)
+        const netBase = Math.max(0, paid - implantLabCost);
+        if (docPct > 0) {
+            docComm = parseFloat((netBase * docPct / 100).toFixed(2));
+        }
+
+        const rawNotes = (document.getElementById('treatmentNotes').value || '').trim();
+        let finalNotes = rawNotes;
+        if (implantLabCost > 0) {
+            const labTag = `[زرعة: معمل ${implantLabName || 'معمل'} - تكلفة ${implantLabCost}]`;
+            if (!finalNotes) finalNotes = labTag;
+            else if (!finalNotes.includes('زرعة:')) finalNotes = `${finalNotes} ${labTag}`.trim();
+        }
+
+        const trData = {
+            patient_id:            patientId,
+            patient_name:          patientName,
+            tooth_number:          toothNumber || null,
+            tooth_condition:       cond || null,
+            procedure:             procText,
+            total_cost:            cost,
+            paid:                  paid,
+            doctor_id:             docId,
+            doctor_name:           docName,
+            doctor_commission_pct: docPct,
+            doctor_commission_amt: docComm,
+            notes:                 finalNotes || null,
+            date:                  today()
+        };
+        if (implantLabCost > 0) {
+            trData.implant_lab_cost = implantLabCost;
+            if (implantLabName) trData.implant_lab_name = implantLabName;
+        }
+
+        await dbInsert('treatments', trData);
+
+        // Auto-create Lab Order for Implant if lab cost is entered
+        if (implantLabCost > 0) {
+            const deductTreasury = document.getElementById('treatmentImplantLabDeductTreasury')?.checked ?? true;
+            try {
+                // Add order to Lab Orders section with paid_to_lab if deducted from treasury
+                await dbInsert('lab_orders', {
+                    patient_id:   patientId,
+                    patient_name: patientName,
+                    lab_name:     implantLabName || 'معمل زراعة الأسنان',
+                    work_type:    'زراعة أسنان (Implant)',
+                    teeth:        toothNumber || '—',
+                    cost:         implantLabCost,
+                    paid_to_lab:  deductTreasury ? implantLabCost : 0,
+                    status:       'pending',
+                    priority:     'normal',
+                    notes:        `طلب تلقائي لزرعة معملية - سن ${toothNumber || '—'}${deductTreasury ? ' (صُرف من الخزينة)' : ''}`,
+                    created_at:   today()
+                });
+
+                showToast(deductTreasury ? '✓ تم تسجيل طلب المعمل وخصم تكلفة الزرعة من الخزينة' : '✓ تمت إضافة طلب الزرعة لقسم المعامل', 'info');
+            } catch (labErr) {
+                console.warn('[ImplantLab] Auto create lab order failed:', labErr);
+            }
+        }
+
+        // Save tooth state
+        if (toothNumber && cond) {
+            await dbUpsert('tooth_states', {
+                patient_id:   patientId,
+                tooth_number: toothNumber,
+                condition:    cond
+            }, 'patient_id,tooth_number');
+        }
+
+        e.target.reset();
+        document.getElementById('implantLabSection')?.classList.add('hidden');
+        document.getElementById('implantTreasuryBreakdown')?.classList.add('hidden');
+        closeModal('addTreatmentModal');
+        await updateDashboard();
+        if (typeof window.isViewActive === 'function' && window.isViewActive('reportsView') && typeof window.loadReports === 'function') {
+            loadReports();
+        }
+        showToast('Treatment recorded');
+
+        if (!document.getElementById('profileView').classList.contains('active')) return;
+        openPatientProfile(patientId);
+    } finally {
+        e.target._submitting = false;
+        if (submitBtn) submitBtn.disabled = false;
     }
-
-    // Save tooth state
-    if (toothNumber && cond) {
-        await dbUpsert('tooth_states', {
-            patient_id:   patientId,
-            tooth_number: toothNumber,
-            condition:    cond
-        }, 'patient_id,tooth_number');
-    }
-
-    e.target.reset();
-    document.getElementById('implantLabSection')?.classList.add('hidden');
-    document.getElementById('implantTreasuryBreakdown')?.classList.add('hidden');
-    closeModal('addTreatmentModal');
-    updateDashboard();
-    showToast('Treatment recorded');
-
-    if (!document.getElementById('profileView').classList.contains('active')) return;
-    openPatientProfile(patientId);
 });
 
 window.updateImplantBreakdown = function() {
@@ -3514,6 +3592,7 @@ async function renderDailyProfitCard(treatments = null, collectionEntries = null
         ? collectionEntries
         : cleanData.collectionEntries;
     const sourceExpenses = cleanData.expenses || [];
+    const sourceLabOrders = cleanData.labOrders || [];
     const curr   = getCurrency();
     const ratios = getProfitRatios();
     const todayStr = today();
@@ -3526,14 +3605,21 @@ async function renderDailyProfitCard(treatments = null, collectionEntries = null
         .filter(entry => entry.date >= from && entry.date <= to)
         .reduce((sum, entry) => sum + toMoneyNumber(entry.amount), 0);
 
+    const dailyLabPaid = sourceLabOrders
+        .filter(o => normalizeDateOnly(o.created_at || o.order_date || o.date) === todayStr)
+        .reduce((sum, o) => sum + toMoneyNumber(o.paid_to_lab ?? o.paidToLab), 0);
+    const monthlyLabPaid = sourceLabOrders
+        .filter(o => { const d = normalizeDateOnly(o.created_at || o.order_date || o.date); return d >= from && d <= to; })
+        .reduce((sum, o) => sum + toMoneyNumber(o.paid_to_lab ?? o.paidToLab), 0);
+
     const dailyActualExp = sourceExpenses
         .filter(e => normalizeDateOnly(e.date) === todayStr)
-        .reduce((sum, e) => sum + toMoneyNumber(e.amount), 0);
+        .reduce((sum, e) => sum + toMoneyNumber(e.amount), 0) + dailyLabPaid;
     const monthlyActualExp = sourceExpenses
         .filter(e => { const d = normalizeDateOnly(e.date); return d >= from && d <= to; })
-        .reduce((sum, e) => sum + toMoneyNumber(e.amount), 0);
+        .reduce((sum, e) => sum + toMoneyNumber(e.amount), 0) + monthlyLabPaid;
 
-    // النسب تُحسب على الصافي (بعد خصم المصاريف الفعلية)
+    // النسب تُحسب على الصافي (بعد خصم المصاريف الفعلية والمعامل)
     const dailyRev   = Math.max(0, dailyGross   - dailyActualExp);
     const monthlyRev = Math.max(0, monthlyGross - monthlyActualExp);
 
@@ -3645,8 +3731,9 @@ window.applyProfitRatios = async function() {
 
 async function loadReports() {
     const curr = getCurrency();
-    const { treatments, expenses, patients, appointments, collectionEntries, payables, payableStats } = await getCleanReportCollections();
-    renderReportKpis(treatments, expenses, patients, appointments, collectionEntries, payables);
+    const isAr = currentLang === 'ar';
+    const { treatments, expenses, patients, appointments, collectionEntries, payables, payableStats, labOrders, labStats } = await getCleanReportCollections();
+    renderReportKpis(treatments, expenses, patients, appointments, collectionEntries, payables, labStats);
     renderCharts(treatments, collectionEntries);
 
     // inject placeholder if missing then render profit card
@@ -3665,22 +3752,30 @@ async function loadReports() {
     });
     const totalRevenueLast6Months = sumTreatmentRevenueInRange(treatments, last6Months.from, last6Months.to);
     const totalPaid = sumCollectionAmounts(collectionEntries);
-    totalDebt = totalRevenue - totalPaid;
+    totalDebt = Math.max(0, totalRevenue - totalPaid);
     expenses.forEach(e => { totalExpenses += toMoneyNumber(e.amount); });
-    const cashOut = totalExpenses + payableStats.totalPaid;
+
+    const totalLabPaid = labStats ? toMoneyNumber(labStats.totalPaid) : 0;
+    const totalLabRemaining = labStats ? toMoneyNumber(labStats.totalRemaining) : 0;
+    const netCollectionsAfterLab = totalPaid - totalLabPaid;
+
+    const cashOut = totalExpenses + payableStats.totalPaid + totalLabPaid;
     const netCash = totalPaid - cashOut;
-    const netAfterPayables = netCash - payableStats.totalRemaining;
-    const totalRevenueLabel = currentLang === 'ar' ? 'إجمالي الإيراد آخر 6 شهور' : 'Total Revenue (Last 6 Months)';
+    const netAfterPayables = netCash - payableStats.totalRemaining - totalLabRemaining;
+    const totalRevenueLabel = isAr ? 'إجمالي الإيراد آخر 6 شهور' : 'Total Revenue (Last 6 Months)';
 
     document.getElementById('financialReport').innerHTML = `
         <div class="flex justify-between text-sm border-b pb-2"><span class="text-gray-500">${totalRevenueLabel}</span><span class="font-bold text-gray-800">${totalRevenueLast6Months.toLocaleString()} ${curr}</span></div>
-        <div class="flex justify-between text-sm border-b pb-2"><span class="text-gray-500">${t('rep.collected')}</span><span class="font-bold text-green-600">${totalPaid} ${curr}</span></div>
-        <div class="flex justify-between text-sm border-b pb-2"><span class="text-gray-500">${t('rep.patientDebt')}</span><span class="font-bold text-red-500">${totalDebt} ${curr}</span></div>
-        <div class="flex justify-between text-sm border-b pb-2"><span class="text-gray-500">${t('rep.totalExp')}</span><span class="font-bold text-orange-500">${totalExpenses} ${curr}</span></div>
-        <div class="flex justify-between text-sm border-b pb-2"><span class="text-gray-500">${t('rep.payablesPaid')}</span><span class="font-bold text-amber-600">${payableStats.totalPaid} ${curr}</span></div>
-        <div class="flex justify-between text-sm border-b pb-2"><span class="text-gray-500">${t('rep.payablesDue')}</span><span class="font-bold text-rose-500">${payableStats.totalRemaining} ${curr}</span></div>
-        <div class="flex justify-between text-sm border-b pb-2"><span class="text-gray-500">${t('rep.netCash')}</span><span class="font-bold ${netCash>=0?'text-green-600':'text-red-500'}">${netCash} ${curr}</span></div>
-        <div class="flex justify-between text-sm font-bold text-base mt-1"><span>${t('rep.netAfterPayables')}</span><span class="${netAfterPayables>=0?'text-green-600':'text-red-500'}">${netAfterPayables} ${curr}</span></div>
+        <div class="flex justify-between text-sm border-b pb-2"><span class="text-gray-500">${t('rep.collected')}</span><span class="font-bold text-green-600">${totalPaid.toLocaleString()} ${curr}</span></div>
+        <div class="flex justify-between text-sm border-b pb-2 text-rose-600 font-medium"><span><i class="fa-solid fa-flask text-rose-400"></i> ${isAr ? 'مصروفات المعامل والزرعات (المسددة)' : 'Lab & Implant Expenses (Paid)'}</span><span class="font-bold">-${totalLabPaid.toLocaleString()} ${curr}</span></div>
+        <div class="flex justify-between text-sm border-b pb-2 bg-blue-50/50 px-1.5 py-1 rounded"><span>${isAr ? 'صافي التحصيل بعد خصم المعامل' : 'Net Collections After Lab'}</span><span class="font-bold text-blue-700">${netCollectionsAfterLab.toLocaleString()} ${curr}</span></div>
+        <div class="flex justify-between text-sm border-b pb-2"><span class="text-gray-500">${t('rep.patientDebt')}</span><span class="font-bold text-red-500">${totalDebt.toLocaleString()} ${curr}</span></div>
+        <div class="flex justify-between text-sm border-b pb-2"><span class="text-gray-500">${t('rep.totalExp')}</span><span class="font-bold text-orange-500">${totalExpenses.toLocaleString()} ${curr}</span></div>
+        <div class="flex justify-between text-sm border-b pb-2"><span class="text-gray-500">${t('rep.payablesPaid')}</span><span class="font-bold text-amber-600">${payableStats.totalPaid.toLocaleString()} ${curr}</span></div>
+        <div class="flex justify-between text-sm border-b pb-2"><span class="text-gray-500">${t('rep.payablesDue')}</span><span class="font-bold text-rose-500">${payableStats.totalRemaining.toLocaleString()} ${curr}</span></div>
+        <div class="flex justify-between text-sm border-b pb-2 text-rose-500"><span>${isAr ? 'مستحقات المعامل المتبقية' : 'Outstanding Lab Payables'}</span><span class="font-bold">${totalLabRemaining.toLocaleString()} ${curr}</span></div>
+        <div class="flex justify-between text-sm border-b pb-2 bg-emerald-50/40 px-1.5 py-1 rounded"><span class="text-gray-700 font-semibold">${t('rep.netCash')} (${isAr ? 'الخزينة الفعلية' : 'Actual Cash'})</span><span class="font-bold ${netCash>=0?'text-green-600':'text-red-500'}">${netCash.toLocaleString()} ${curr}</span></div>
+        <div class="flex justify-between text-sm font-bold text-base mt-1"><span>${t('rep.netAfterPayables')}</span><span class="${netAfterPayables>=0?'text-green-600':'text-red-500'}">${netAfterPayables.toLocaleString()} ${curr}</span></div>
     `;
 
     const examined = appointments.filter(a => a.status === 'Examined').length;
@@ -3883,7 +3978,7 @@ async function updateDashboard() {
     const todayStr     = today();
     const curr         = getCurrency();
     const esc          = window.escapeHtml || ((value) => String(value ?? ''));
-    const { patients, appointments, expenses, collectionEntries, treatments } = await getCleanReportCollections();
+    const { patients, appointments, expenses, collectionEntries, treatments, labOrders, payables } = await getCleanReportCollections();
 
     document.getElementById('totalPatientsCount').innerText = patients.length;
 
@@ -3892,6 +3987,21 @@ async function updateDashboard() {
         .filter(entry => entry.date === todayStr)
         .reduce((sum, entry) => sum + toMoneyNumber(entry.amount), 0);
     expenses.forEach(e => { if (normalizeDateOnly(e.date) === todayStr) dailyExpense += toMoneyNumber(e.amount); });
+
+    // Deduct lab orders paid today (including implant lab orders)
+    (labOrders || []).forEach(o => {
+        if (normalizeDateOnly(o.created_at || o.order_date || o.date) === todayStr) {
+            dailyExpense += toMoneyNumber(o.paid_to_lab ?? o.paidToLab ?? 0);
+        }
+    });
+
+    // Deduct supplier payables paid today
+    (payables || []).forEach(p => {
+        if (normalizeDateOnly(p.date || p.payment_date || p.created_at) === todayStr) {
+            dailyExpense += toMoneyNumber(p.paid_amount ?? p.paidAmount ?? 0);
+        }
+    });
+
     const net = dailyRevenue - dailyExpense;
 
     document.getElementById('todayRevenue').innerText  = `${dailyRevenue.toLocaleString()} ${curr}`;
@@ -6277,41 +6387,8 @@ async function renderCharts(treatments = null, collectionEntries = null) {
     }
 }
 
-function renderReportKpis(treatments, expenses, patients, appointments, collectionEntries = null, payables = []) {
-    const curr = getCurrency();
-    const last6Months = lastMonthsRange(6);
-    const totalRevenue = sumTreatmentRevenueInRange(treatments, last6Months.from, last6Months.to);
-    const totalPaid    = Array.isArray(collectionEntries)
-        ? sumCollectionAmounts(collectionEntries)
-        : treatments.reduce((s,tr)=>s+(parseFloat(tr.paid)||0),0);
-    const totalExp     = expenses.reduce((s,e)=>s+(parseFloat(e.amount)||0),0);
-    const payableStats = summarizePayables(payables);
-    const totalCashOut = totalExp + payableStats.totalPaid;
-    const netAfterPayables = totalPaid - totalCashOut - payableStats.totalRemaining;
-    const kpis = [
-        { label: currentLang === 'ar' ? 'إجمالي الإيراد' : 'Total Revenue', value:`${totalRevenue} ${curr}`, icon:'fa-coins', color:'blue' },
-        { label: currentLang === 'ar' ? 'إجمالي المحصل' : 'Collected', value:`${totalPaid} ${curr}`, icon:'fa-circle-check', color:'green' },
-        { label: t('rep.cashOut'), value:`${totalCashOut} ${curr}`, icon:'fa-receipt', color:'orange' },
-        { label: t('rep.kpiPayables'), value:`${payableStats.totalRemaining} ${curr}`, icon:'fa-hand-holding-dollar', color:'amber' },
-        { label: t('rep.netAfterPayables'), value:`${netAfterPayables} ${curr}`, icon:'fa-chart-line', color: netAfterPayables>=0?'emerald':'red' },
-    ];
-    const colors = {
-        blue:'bg-blue-50 text-blue-600',
-        green:'bg-green-50 text-green-600',
-        orange:'bg-orange-50 text-orange-500',
-        amber:'bg-amber-50 text-amber-600',
-        emerald:'bg-emerald-50 text-emerald-600',
-        red:'bg-red-50 text-red-600'
-    };
-    document.getElementById('reportKpis').innerHTML = kpis.map(k=>`
-        <div class="bg-white rounded-xl border border-gray-100 p-4 flex items-center gap-3 stat-card">
-            <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${colors[k.color]}"><i class="fa-solid ${k.icon}"></i></div>
-            <div><p class="text-xs text-gray-400 font-medium">${k.label}</p><p class="font-bold text-gray-800 text-base">${k.value}</p></div>
-        </div>`).join('');
-}
-
-// ── 23. INIT ─────────────────────────────
-function renderReportKpis(treatments, expenses, patients, appointments, collectionEntries = null, payables = []) {
+// ── 23. REPORT KPIS ─────────────────────
+function renderReportKpis(treatments, expenses, patients, appointments, collectionEntries = null, payables = [], labStats = null) {
     const curr = getCurrency();
     const last6Months = lastMonthsRange(6);
     const totalRevenue = sumTreatmentRevenueInRange(treatments, last6Months.from, last6Months.to);
@@ -6320,16 +6397,23 @@ function renderReportKpis(treatments, expenses, patients, appointments, collecti
         : treatments.reduce((s, tr) => s + (parseFloat(tr.paid) || 0), 0);
     const totalExp = expenses.reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
     const payableStats = summarizePayables(payables);
-    const totalCashOut = totalExp + payableStats.totalPaid;
-    const netAfterPayables = totalPaid - totalCashOut - payableStats.totalRemaining;
-    const revenueLabel = currentLang === 'ar' ? 'إجمالي الإيراد آخر 6 شهور' : 'Total Revenue (Last 6 Months)';
-    const collectedLabel = currentLang === 'ar' ? 'إجمالي المحصل' : 'Collected';
+    const totalLabPaid = labStats ? toMoneyNumber(labStats.totalPaid) : 0;
+    const totalLabRemaining = labStats ? toMoneyNumber(labStats.totalRemaining) : 0;
+    const totalCashOut = totalExp + payableStats.totalPaid + totalLabPaid;
+    const totalObligations = payableStats.totalRemaining + totalLabRemaining;
+    const netAfterPayables = totalPaid - totalCashOut - totalObligations;
+    const isAr = currentLang === 'ar';
+    const revenueLabel = isAr ? 'إجمالي الإيراد آخر 6 شهور' : 'Total Revenue (Last 6 Months)';
+    const collectedLabel = isAr ? 'إجمالي المحصل' : 'Collected';
+    const cashOutLabel = isAr ? 'إجمالي المصروفات والمدفوعات' : t('rep.cashOut');
+    const obligationsLabel = isAr ? 'الديون والمستحقات المتبقية' : t('rep.kpiPayables');
+    const netLabel = isAr ? 'صافي النقدية المتاح' : t('rep.netAfterPayables');
     const kpis = [
         { label: revenueLabel, value: `${totalRevenue.toLocaleString()} ${curr}`, icon: 'fa-coins', color: 'blue' },
         { label: collectedLabel, value: `${totalPaid.toLocaleString()} ${curr}`, icon: 'fa-circle-check', color: 'green' },
-        { label: t('rep.cashOut'), value: `${totalCashOut.toLocaleString()} ${curr}`, icon: 'fa-receipt', color: 'orange' },
-        { label: t('rep.kpiPayables'), value: `${payableStats.totalRemaining.toLocaleString()} ${curr}`, icon: 'fa-hand-holding-dollar', color: 'amber' },
-        { label: t('rep.netAfterPayables'), value: `${netAfterPayables.toLocaleString()} ${curr}`, icon: 'fa-chart-line', color: netAfterPayables >= 0 ? 'emerald' : 'red' },
+        { label: cashOutLabel, value: `${totalCashOut.toLocaleString()} ${curr}`, icon: 'fa-receipt', color: 'orange' },
+        { label: obligationsLabel, value: `${totalObligations.toLocaleString()} ${curr}`, icon: 'fa-hand-holding-dollar', color: 'amber' },
+        { label: netLabel, value: `${netAfterPayables.toLocaleString()} ${curr}`, icon: 'fa-chart-line', color: netAfterPayables >= 0 ? 'emerald' : 'red' },
     ];
     const colors = {
         blue: 'bg-blue-50 text-blue-600',
@@ -6339,11 +6423,14 @@ function renderReportKpis(treatments, expenses, patients, appointments, collecti
         emerald: 'bg-emerald-50 text-emerald-600',
         red: 'bg-red-50 text-red-600'
     };
-    document.getElementById('reportKpis').innerHTML = kpis.map(k => `
-        <div class="bg-white rounded-xl border border-gray-100 p-4 flex items-center gap-3 stat-card">
-            <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${colors[k.color]}"><i class="fa-solid ${k.icon}"></i></div>
-            <div><p class="text-xs text-gray-400 font-medium">${k.label}</p><p class="font-bold text-gray-800 text-base">${k.value}</p></div>
-        </div>`).join('');
+    const container = document.getElementById('reportKpis');
+    if (container) {
+        container.innerHTML = kpis.map(k => `
+            <div class="bg-white rounded-xl border border-gray-100 p-4 flex items-center gap-3 stat-card">
+                <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${colors[k.color]}"><i class="fa-solid ${k.icon}"></i></div>
+                <div><p class="text-xs text-gray-400 font-medium">${k.label}</p><p class="font-bold text-gray-800 text-base">${k.value}</p></div>
+            </div>`).join('');
+    }
 }
 
 function buildProfitTable(revenue, ratios, curr) {
@@ -6989,12 +7076,14 @@ window.submitLabPayment = async function() {
     closeModal('labPayModal');
     showToast(`Payment of ${amount.toLocaleString()} ${getCurrency()} recorded ✓`, 'success');
     loadLabOrders();
+    if (typeof updateDashboard === 'function') updateDashboard();
 };
 
 window.deleteLabOrder = async function(id) {
     if (!confirm('Delete this lab order?')) return;
     await dbDelete('lab_orders', id);
     loadLabOrders();
+    if (typeof updateDashboard === 'function') updateDashboard();
     showToast('Lab order deleted');
 };
 

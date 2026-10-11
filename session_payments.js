@@ -287,7 +287,11 @@ async function recalcTreatmentPaid(treatmentId) {
             } catch (_) {}
         }
         if (pct > 0) {
-            const implantLab = parseFloat(tr.implant_lab_cost ?? tr.implantLabCost ?? 0);
+            let implantLab = parseFloat(tr.implant_lab_cost ?? tr.implantLabCost ?? 0);
+            if (!implantLab && tr.notes) {
+                const m = String(tr.notes).match(/\[زرعة:[^\]]*تكلفة\s*([\d.]+)\]/);
+                if (m) implantLab = parseFloat(m[1]) || 0;
+            }
             const netBase = Math.max(0, total - implantLab);
             updates.doctor_commission_amt = parseFloat((netBase * pct / 100).toFixed(2));
             if (!tr.doctor_commission_pct) updates.doctor_commission_pct = pct;
