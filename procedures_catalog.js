@@ -788,7 +788,14 @@
         // 3. Smart Tooth Condition auto-selection
         if (condEl) {
             const val = proc.name.toLowerCase();
-            if (val.includes('crown') || val.includes('طربوش') || val.includes('كراون')) {
+            if (val.includes('crown') || val.includes('طربوش') || val.includes('كراون') ||
+                val.includes('تركيب') || val.includes('تركيبه') || val.includes('تركيبة') ||
+                val.includes('bridge') || val.includes('جسر') || val.includes('كبري') ||
+                val.includes('denture') || val.includes('طقم') ||
+                val.includes('veneer') || val.includes('فينير') ||
+                val.includes('zircon') || val.includes('زركون') ||
+                val.includes('emax') || val.includes('إيماكس') || val.includes('ايماكس') ||
+                val.includes('inlay') || val.includes('onlay')) {
                 condEl.value = 'crown_work';
             } else if (val.includes('root') || val.includes('عصب') || val.includes('جذور')) {
                 condEl.value = 'root_canal';

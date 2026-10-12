@@ -1949,10 +1949,35 @@ function normalizeSessionPaymentsForReports(payments = []) {
 }
 
 function getImplantLabCost(tr) {
+    const proc = String(tr?.procedure || '').toLowerCase();
+    const cond = String(tr?.tooth_condition || '').toLowerCase();
+    const labCheck = (typeof window.isLabProcedure === 'function')
+        ? window.isLabProcedure(proc, cond)
+        : (function() {
+            const isImp = proc.includes('implant') || proc.includes('زرع') || proc.includes('زراعة') || proc.includes('زراعه') || cond === 'implant';
+            const isCrw = cond === 'crown_work' || cond === 'crown' || cond === 'bridge' ||
+                proc.includes('crown') || proc.includes('كراون') || proc.includes('طربوش') ||
+                proc.includes('تركيب') || proc.includes('تركيبه') || proc.includes('تركيبة') ||
+                proc.includes('bridge') || proc.includes('جسر') || proc.includes('كبري') ||
+                proc.includes('denture') || proc.includes('طقم') ||
+                proc.includes('veneer') || proc.includes('فينير') ||
+                proc.includes('zircon') || proc.includes('زركون') ||
+                proc.includes('porcelain') || proc.includes('بورسل') ||
+                proc.includes('e-max') || proc.includes('emax') || proc.includes('إيماكس') || proc.includes('ايماكس') ||
+                proc.includes('inlay') || proc.includes('onlay') || proc.includes('إنلاي') || proc.includes('اونلاي') ||
+                proc.includes('prostho');
+            return { isLab: isImp || isCrw, isImplant: isImp, isCrown: isCrw };
+        })();
+    if (!labCheck.isLab) return 0;
+
     let cost = parseFloat(tr?.implant_lab_cost ?? tr?.implantLabCost ?? 0);
     if (!cost && tr?.notes) {
-        const m = String(tr.notes).match(/\[زرعة:[^\]]*تكلفة\s*([\d.]+)\]/);
+        const m = String(tr.notes).match(/\[(?:زرعة|تركيبة|معمل):[^\]]*تكلفة\s*([\d.]+)\]/i);
         if (m) cost = parseFloat(m[1]) || 0;
+        else {
+            const m2 = String(tr.notes).match(/(?:معمل\s*الزرع(?:ة)?|معمل\s*التركيب(?:ة)?|تكلفة\s*المعمل|معمل)\s*[:=-]?\s*([\d.]+)/i);
+            if (m2) cost = parseFloat(m2[1]) || 0;
+        }
     }
     return cost;
 }
@@ -1973,7 +1998,7 @@ function summarizeLabOrders(orders = []) {
         totalRemaining += Math.max(0, c - p);
 
         const w = (o.work_type || o.workType || '').toLowerCase();
-        const isImplant = w.includes('implant') || w.includes('زرع') || w.includes('زراعة');
+        const isImplant = w.includes('implant') || w.includes('زرع') || w.includes('زراعة') || w.includes('زراعه');
         if (isImplant) {
             implantCount++;
             implantCost += c;
@@ -2008,11 +2033,34 @@ function hydrateTreatmentsForReports(treatments = [], sessionPayments = []) {
             ? linkedPayments.reduce((sum, payment) => sum + toMoneyNumber(payment?.amount), 0)
             : toMoneyNumber(tr?.paid);
         const implantLabCost = getImplantLabCost(tr);
+        const proc = String(tr?.procedure || '').toLowerCase();
+        const cond = String(tr?.tooth_condition || '').toLowerCase();
+        const labCheck = (typeof window.isLabProcedure === 'function')
+            ? window.isLabProcedure(proc, cond)
+            : null;
+        const isLab = labCheck ? labCheck.isLab : (
+            proc.includes('implant') || proc.includes('زرع') || proc.includes('زراعة') || proc.includes('زراعه') ||
+            cond === 'implant' || cond === 'crown_work' || cond === 'crown' ||
+            proc.includes('crown') || proc.includes('كراون') || proc.includes('طربوش') ||
+            proc.includes('تركيب') || proc.includes('bridge') || proc.includes('denture') ||
+            proc.includes('veneer') || proc.includes('zircon') || proc.includes('emax')
+        );
+        const effectiveLab = isLab ? implantLabCost : 0;
+
+        let doctorCommAmt = toMoneyNumber(tr?.doctor_commission_amt ?? tr?.doctorCommissionAmt ?? 0);
+        const docPct = toMoneyNumber(tr?.doctor_commission_pct ?? tr?.doctorCommissionPct ?? 0);
+        if (docPct > 0) {
+            const netBase = Math.max(0, paid - effectiveLab);
+            doctorCommAmt = parseFloat((netBase * docPct / 100).toFixed(2));
+        }
+
         return {
             ...tr,
             paid,
-            implant_lab_cost: implantLabCost,
-            implantLabCost: implantLabCost
+            implant_lab_cost: effectiveLab,
+            implantLabCost: effectiveLab,
+            doctor_commission_amt: doctorCommAmt,
+            doctorCommissionAmt: doctorCommAmt
         };
     });
 
@@ -2380,23 +2428,45 @@ document.getElementById('newTreatmentForm').addEventListener('submit', async e =
             docName = opt?.getAttribute('data-name') || opt?.textContent?.split('(')[0]?.trim() || '';
         }
 
-        // Implant Lab Details
+        // Lab Details (Implant or Prosthetics/Crowns)
         const procText = document.getElementById('treatmentProcedure').value.trim();
-        const implantLabCost = parseFloat(document.getElementById('treatmentImplantLabCost')?.value) || 0;
-        const implantLabName = (document.getElementById('treatmentImplantLabName')?.value || '').trim();
+        const labCheck = (typeof window.isLabProcedure === 'function')
+            ? window.isLabProcedure(procText, cond)
+            : (function() {
+                const p = procText.toLowerCase();
+                const c = String(cond || '').toLowerCase();
+                const isImp = p.includes('implant') || p.includes('زرع') || p.includes('زراعة') || p.includes('زراعه') || c === 'implant';
+                const isCrw = c === 'crown_work' || c === 'crown' || c === 'bridge' ||
+                    p.includes('crown') || p.includes('كراون') || p.includes('طربوش') ||
+                    p.includes('تركيب') || p.includes('تركيبه') || p.includes('تركيبة') ||
+                    p.includes('bridge') || p.includes('جسر') || p.includes('كبري') ||
+                    p.includes('denture') || p.includes('طقم') ||
+                    p.includes('veneer') || p.includes('فينير') ||
+                    p.includes('zircon') || p.includes('زركون') ||
+                    p.includes('porcelain') || p.includes('بورسل') ||
+                    p.includes('e-max') || p.includes('emax') || p.includes('إيماكس') || p.includes('ايماكس') ||
+                    p.includes('inlay') || p.includes('onlay') || p.includes('إنلاي') || p.includes('اونلاي') ||
+                    p.includes('prostho');
+                return { isLab: isImp || isCrw, isImplant: isImp, isCrown: isCrw, typeLabel: isImp ? 'الزرعة' : (isCrw ? 'التركيبة' : 'المعمل') };
+            })();
 
-        // Doctor commission on net (deducting implant lab cost)
-        const netBase = Math.max(0, paid - implantLabCost);
+        const isLab = labCheck.isLab;
+        const labCost = isLab ? (parseFloat(document.getElementById('treatmentImplantLabCost')?.value) || 0) : 0;
+        const labName = isLab ? ((document.getElementById('treatmentImplantLabName')?.value || '').trim()) : '';
+
+        // Doctor commission on net (deducting lab cost when procedure is implant or crown/prosthetic)
+        const netBase = isLab ? Math.max(0, paid - labCost) : paid;
         if (docPct > 0) {
             docComm = parseFloat((netBase * docPct / 100).toFixed(2));
         }
 
         const rawNotes = (document.getElementById('treatmentNotes').value || '').trim();
         let finalNotes = rawNotes;
-        if (implantLabCost > 0) {
-            const labTag = `[زرعة: معمل ${implantLabName || 'معمل'} - تكلفة ${implantLabCost}]`;
+        if (isLab && labCost > 0) {
+            const tagPrefix = labCheck.isImplant ? 'زرعة' : (labCheck.isCrown ? 'تركيبة' : 'معمل');
+            const labTag = `[${tagPrefix}: معمل ${labName || 'معمل'} - تكلفة ${labCost}]`;
             if (!finalNotes) finalNotes = labTag;
-            else if (!finalNotes.includes('زرعة:')) finalNotes = `${finalNotes} ${labTag}`.trim();
+            else if (!finalNotes.includes(tagPrefix + ':')) finalNotes = `${finalNotes} ${labTag}`.trim();
         }
 
         const trData = {
@@ -2414,35 +2484,38 @@ document.getElementById('newTreatmentForm').addEventListener('submit', async e =
             notes:                 finalNotes || null,
             date:                  today()
         };
-        if (implantLabCost > 0) {
-            trData.implant_lab_cost = implantLabCost;
-            if (implantLabName) trData.implant_lab_name = implantLabName;
+        if (isLab && labCost > 0) {
+            trData.implant_lab_cost = labCost;
+            if (labName) trData.implant_lab_name = labName;
         }
 
         await dbInsert('treatments', trData);
 
-        // Auto-create Lab Order for Implant if lab cost is entered
-        if (implantLabCost > 0) {
+        // Auto-create Lab Order if lab cost is entered
+        if (labCost > 0) {
             const deductTreasury = document.getElementById('treatmentImplantLabDeductTreasury')?.checked ?? true;
             try {
-                // Add order to Lab Orders section with paid_to_lab if deducted from treasury
+                const orderWorkType = labCheck.isImplant
+                    ? 'زراعة أسنان (Implant)'
+                    : (labCheck.isCrown ? 'تركيبات أسنان (Crown/Bridge)' : `معمل (${procText})`);
+                const itemTypeName = labCheck.typeLabel || 'الطلب';
                 await dbInsert('lab_orders', {
                     patient_id:   patientId,
                     patient_name: patientName,
-                    lab_name:     implantLabName || 'معمل زراعة الأسنان',
-                    work_type:    'زراعة أسنان (Implant)',
+                    lab_name:     labName || `معمل ${itemTypeName}`,
+                    work_type:    orderWorkType,
                     teeth:        toothNumber || '—',
-                    cost:         implantLabCost,
-                    paid_to_lab:  deductTreasury ? implantLabCost : 0,
+                    cost:         labCost,
+                    paid_to_lab:  deductTreasury ? labCost : 0,
                     status:       'pending',
                     priority:     'normal',
-                    notes:        `طلب تلقائي لزرعة معملية - سن ${toothNumber || '—'}${deductTreasury ? ' (صُرف من الخزينة)' : ''}`,
+                    notes:        `طلب تلقائي لـ ${itemTypeName} - سن ${toothNumber || '—'}${deductTreasury ? ' (صُرف من الخزينة)' : ''}`,
                     created_at:   today()
                 });
 
-                showToast(deductTreasury ? '✓ تم تسجيل طلب المعمل وخصم تكلفة الزرعة من الخزينة' : '✓ تمت إضافة طلب الزرعة لقسم المعامل', 'info');
+                showToast(deductTreasury ? `✓ تم تسجيل طلب المعمل وخصم تكلفة ${itemTypeName} من الخزينة` : `✓ تمت إضافة طلب ${itemTypeName} لقسم المعامل`, 'info');
             } catch (labErr) {
-                console.warn('[ImplantLab] Auto create lab order failed:', labErr);
+                console.warn('[LabOrder] Auto create lab order failed:', labErr);
             }
         }
 
@@ -2498,11 +2571,33 @@ window.updateImplantBreakdown = function() {
 
 window.checkImplantProcedure = async function() {
     const proc = (document.getElementById('treatmentProcedure')?.value || '').toLowerCase().trim();
-    const isImplant = proc.includes('implant') || proc.includes('زرع') || proc.includes('زراعة');
+    const cond = (document.getElementById('treatmentToothCondition')?.value || '').toLowerCase().trim();
+    const labCheck = (typeof window.isLabProcedure === 'function')
+        ? window.isLabProcedure(proc, cond)
+        : (function() {
+            const isImp = proc.includes('implant') || proc.includes('زرع') || proc.includes('زراعة') || proc.includes('زراعه') || cond === 'implant';
+            const isCrw = cond === 'crown_work' || cond === 'crown' || cond === 'bridge' ||
+                proc.includes('crown') || proc.includes('كراون') || proc.includes('طربوش') ||
+                proc.includes('تركيب') || proc.includes('تركيبه') || proc.includes('تركيبة') ||
+                proc.includes('bridge') || proc.includes('جسر') || proc.includes('كبري') ||
+                proc.includes('denture') || proc.includes('طقم') ||
+                proc.includes('veneer') || proc.includes('فينير') ||
+                proc.includes('zircon') || proc.includes('زركون') ||
+                proc.includes('porcelain') || proc.includes('بورسل') ||
+                proc.includes('e-max') || proc.includes('emax') || proc.includes('إيماكس') || proc.includes('ايماكس') ||
+                proc.includes('inlay') || proc.includes('onlay') || proc.includes('إنلاي') || proc.includes('اونلاي') ||
+                proc.includes('prostho');
+            return { isLab: isImp || isCrw, isImplant: isImp, isCrown: isCrw, typeLabel: isImp ? 'الزرعة' : (isCrw ? 'التركيبة' : 'المعمل') };
+        })();
+
     const sec = document.getElementById('implantLabSection');
+    const headerTitle = document.getElementById('implantLabSectionHeaderTitle');
+    if (headerTitle) {
+        headerTitle.textContent = `تكلفة المعمل (${labCheck.typeLabel || 'زرعة / تركيبة'})`;
+    }
     if (sec) {
-        sec.classList.toggle('hidden', !isImplant);
-        if (isImplant) {
+        sec.classList.toggle('hidden', !labCheck.isLab);
+        if (labCheck.isLab) {
             try {
                 const labOrders = await (window.dbGetAll ? window.dbGetAll('lab_orders') : []);
                 const labs = [...new Set(labOrders.map(o => (o.lab_name || o.labName || '').trim()).filter(Boolean))];

@@ -287,12 +287,51 @@ async function recalcTreatmentPaid(treatmentId) {
             } catch (_) {}
         }
         if (pct > 0) {
-            let implantLab = parseFloat(tr.implant_lab_cost ?? tr.implantLabCost ?? 0);
-            if (!implantLab && tr.notes) {
-                const m = String(tr.notes).match(/\[زرعة:[^\]]*تكلفة\s*([\d.]+)\]/);
-                if (m) implantLab = parseFloat(m[1]) || 0;
+            const proc = String(tr.procedure || '').toLowerCase();
+            const cond = String(tr.tooth_condition || '').toLowerCase();
+            const labCheck = (typeof window.isLabProcedure === 'function')
+                ? window.isLabProcedure(proc, cond)
+                : (function() {
+                    const isImp = proc.includes('implant') || proc.includes('زرع') || proc.includes('زراعة') || proc.includes('زراعه') || cond === 'implant';
+                    const isCrw = cond === 'crown_work' || cond === 'crown' || cond === 'bridge' ||
+                        proc.includes('crown') || proc.includes('كراون') || proc.includes('طربوش') ||
+                        proc.includes('تركيب') || proc.includes('تركيبه') || proc.includes('تركيبة') ||
+                        proc.includes('bridge') || proc.includes('جسر') || proc.includes('كبري') ||
+                        proc.includes('denture') || proc.includes('طقم') ||
+                        proc.includes('veneer') || proc.includes('فينير') ||
+                        proc.includes('zircon') || proc.includes('زركون') ||
+                        proc.includes('porcelain') || proc.includes('بورسل') ||
+                        proc.includes('e-max') || proc.includes('emax') || proc.includes('إيماكس') || proc.includes('ايماكس') ||
+                        proc.includes('inlay') || proc.includes('onlay') || proc.includes('إنلاي') || proc.includes('اونلاي') ||
+                        proc.includes('prostho');
+                    return { isLab: isImp || isCrw, isImplant: isImp, isCrown: isCrw };
+                })();
+
+            let labCost = 0;
+            if (labCheck.isLab) {
+                labCost = parseFloat(tr.implant_lab_cost ?? tr.implantLabCost ?? 0);
+                if (!labCost && tr.notes) {
+                    const m = String(tr.notes).match(/\[(?:زرعة|تركيبة|معمل):[^\]]*تكلفة\s*([\d.]+)\]/i);
+                    if (m) labCost = parseFloat(m[1]) || 0;
+                    else {
+                        const m2 = String(tr.notes).match(/(?:معمل\s*الزرع(?:ة)?|معمل\s*التركيب(?:ة)?|تكلفة\s*المعمل|معمل)\s*[:=-]?\s*([\d.]+)/i);
+                        if (m2) labCost = parseFloat(m2[1]) || 0;
+                    }
+                }
+                if (!labCost && (tr.patient_id || tr.patientId)) {
+                    try {
+                        const labOrders = await (window.dbGetAll ? window.dbGetAll('lab_orders') : []);
+                        const pid = String(tr.patient_id ?? tr.patientId);
+                        const matchOrder = labOrders.find(o => String(o.patient_id ?? o.patientId) === pid && (
+                            labCheck.isImplant
+                                ? ((o.work_type || o.workType || '').toLowerCase().includes('زرع') || (o.work_type || o.workType || '').toLowerCase().includes('implant'))
+                                : ((o.work_type || o.workType || '').toLowerCase().includes('تركيب') || (o.work_type || o.workType || '').toLowerCase().includes('crown') || (o.work_type || o.workType || '').toLowerCase().includes('طربوش'))
+                        ));
+                        if (matchOrder) labCost = parseFloat(matchOrder.cost || matchOrder.amount || 0);
+                    } catch (_) {}
+                }
             }
-            const netBase = Math.max(0, total - implantLab);
+            const netBase = labCheck.isLab ? Math.max(0, total - labCost) : total;
             updates.doctor_commission_amt = parseFloat((netBase * pct / 100).toFixed(2));
             if (!tr.doctor_commission_pct) updates.doctor_commission_pct = pct;
         }

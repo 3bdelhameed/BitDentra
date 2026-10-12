@@ -894,10 +894,17 @@
             const labCost = parseFloat(clean.implant_lab_cost ?? clean.implantLabCost ?? 0);
             const labName = (clean.implant_lab_name ?? clean.implantLabName ?? '').toString().trim();
             if (labCost > 0) {
-                const labTag = `[زرعة: معمل ${labName || 'معمل'} - تكلفة ${labCost}]`;
+                const proc = String(clean.procedure || '').toLowerCase();
+                const cond = String(clean.tooth_condition || '').toLowerCase();
+                const isCrw = cond === 'crown_work' || cond === 'crown' || cond === 'bridge' ||
+                    proc.includes('crown') || proc.includes('كراون') || proc.includes('طربوش') ||
+                    proc.includes('تركيب') || proc.includes('bridge') || proc.includes('denture') ||
+                    proc.includes('veneer') || proc.includes('zircon') || proc.includes('emax');
+                const tagPrefix = isCrw ? 'تركيبة' : 'زرعة';
+                const labTag = `[${tagPrefix}: معمل ${labName || 'معمل'} - تكلفة ${labCost}]`;
                 if (!clean.notes) {
                     clean.notes = labTag;
-                } else if (!clean.notes.includes('زرعة:')) {
+                } else if (!clean.notes.includes('زرعة:') && !clean.notes.includes('تركيبة:') && !clean.notes.includes('معمل:')) {
                     clean.notes = `${clean.notes} ${labTag}`.trim();
                 }
             }

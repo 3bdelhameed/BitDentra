@@ -3389,17 +3389,15 @@
                     class="hidden p-3.5 bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-300 rounded-xl space-y-2.5 shadow-sm">
                     <div class="flex items-center justify-between">
                         <span class="text-xs font-bold text-amber-900 flex items-center gap-1.5">
-                            <i class="fa-solid fa-tooth text-amber-600"></i>
-                            <span>تكلفة زرعة المعمل (تخرج للمعمل)</span>
+                            <i class="fa-solid fa-flask text-amber-600"></i>
+                            <span id="implantLabSectionHeaderTitle">تكلفة المعمل (زرعة / تركيبة)</span>
                         </span>
-                        <span class="text-[10px] bg-amber-200 text-amber-900 px-2 py-0.5 rounded-full font-bold">مصروف
-                            معمل</span>
+                        <span class="text-[10px] bg-amber-200 text-amber-900 px-2 py-0.5 rounded-full font-bold">مصروف معمل</span>
                     </div>
                     <div class="grid grid-cols-2 gap-2">
                         <div>
-                            <label class="text-[11px] font-semibold text-gray-700 block mb-1">تكلفة المعمل للزرعة
-                                *</label>
-                            <input type="number" id="treatmentImplantLabCost" min="0" placeholder="مثال: 3000"
+                            <label class="text-[11px] font-semibold text-gray-700 block mb-1" id="treatmentLabCostLabel">تكلفة المعمل *</label>
+                            <input type="number" id="treatmentImplantLabCost" min="0" placeholder="مثال: 1500"
                                 class="w-full border border-amber-300 rounded-lg px-2.5 py-2 text-xs bg-white font-bold text-amber-900"
                                 oninput="if(typeof updateImplantBreakdown==='function') updateImplantBreakdown(); if(typeof onTreatmentDoctorChange === 'function') onTreatmentDoctorChange();">
                         </div>
@@ -3416,10 +3414,10 @@
                         <input type="checkbox" id="treatmentImplantLabDeductTreasury" checked
                             class="rounded text-amber-600 focus:ring-amber-500 w-4 h-4 cursor-pointer"
                             onchange="if(typeof updateImplantBreakdown==='function') updateImplantBreakdown();">
-                        <span>خروج تكلفة الزرعة من الخزينة لحساب المعمل فوراً</span>
+                        <span id="treatmentLabDeductTreasuryLabel">خروج تكلفة المعمل من الخزينة فوراً</span>
                     </label>
 
-                    <!-- كشف حساب عملية الزراعة لحظياً -->
+                    <!-- كشف حساب العملية لحظياً -->
                     <div id="implantTreasuryBreakdown"
                         class="hidden p-2.5 bg-white/95 border border-amber-200 rounded-lg text-xs space-y-1.5 font-medium shadow-inner">
                         <div class="flex justify-between text-gray-700">
@@ -3455,7 +3453,8 @@
                 <div><label class="text-xs font-semibold text-gray-500 block mb-1" data-t="modal.toothCondition">Tooth
                         Condition</label>
                     <select id="treatmentToothCondition"
-                        class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm">
+                        class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm"
+                        onchange="if(typeof checkImplantProcedure==='function') checkImplantProcedure();">
                         <option value="treated">Treated (Red)</option>
                         <option value="crown_work">Crown (Yellow)</option>
                         <option value="missing">Missing/Extracted (Gray)</option>

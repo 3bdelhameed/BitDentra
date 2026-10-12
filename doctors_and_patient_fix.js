@@ -12,9 +12,52 @@
     'use strict';
 
     // ══════════════════════════════════════════════════════════════════
-    //  إصلاح 1: DOCTORS — inject doctor fields في كل insert على treatments
-    //  حتى لو dbInsert اتلف مرتين أو أكتر
     // ══════════════════════════════════════════════════════════════════
+    //  إصلاح 1: DOCTORS — inject doctor fields في كل insert على treatments
+    //  مع خصم تكلفة المعمل من نسبة الطبيب إذا كان الإجراء زراعة أو تركيبات
+    // ══════════════════════════════════════════════════════════════════
+    function isLabProcedure(procName, cond) {
+        const p = String(procName || '').toLowerCase().trim();
+        const c = String(cond || '').toLowerCase().trim();
+
+        const isImplant = p.includes('implant') || p.includes('زرع') || p.includes('زراعة') || p.includes('زراعه') || c === 'implant';
+
+        const isCrown = c === 'crown_work' || c === 'crown' || c === 'bridge' ||
+            p.includes('crown') || p.includes('كراون') || p.includes('طربوش') ||
+            p.includes('تركيب') || p.includes('تركيبه') || p.includes('تركيبة') ||
+            p.includes('bridge') || p.includes('جسر') || p.includes('كبري') ||
+            p.includes('denture') || p.includes('طقم') ||
+            p.includes('veneer') || p.includes('فينير') || p.includes('عدس') ||
+            p.includes('zircon') || p.includes('زركون') ||
+            p.includes('porcelain') || p.includes('بورسل') ||
+            p.includes('e-max') || p.includes('emax') || p.includes('إيماكس') || p.includes('ايماكس') ||
+            p.includes('inlay') || p.includes('onlay') || p.includes('إنلاي') || p.includes('اونلاي') ||
+            p.includes('prostho');
+
+        const isLab = isImplant || isCrown;
+        const typeLabel = isImplant ? 'الزرعة' : (isCrown ? 'التركيبة' : 'المعمل');
+
+        return { isLab, isImplant, isCrown, typeLabel };
+    }
+    window.isLabProcedure = isLabProcedure;
+
+    function extractTreatmentLabCost(data) {
+        let lab = parseFloat(data.implant_lab_cost ?? data.implantLabCost ?? 0) || 0;
+        if (!lab) {
+            const el = document.getElementById('treatmentImplantLabCost');
+            if (el && el.value) lab = parseFloat(el.value) || 0;
+        }
+        if (!lab && data.notes) {
+            const m = String(data.notes).match(/\[(?:زرعة|تركيبة|معمل):[^\]]*تكلفة\s*([\d.]+)\]/i);
+            if (m) lab = parseFloat(m[1]) || 0;
+            else {
+                const m2 = String(data.notes).match(/(?:معمل\s*الزرع(?:ة)?|معمل\s*التركيب(?:ة)?|تكلفة\s*المعمل|معمل)\s*[:=-]?\s*([\d.]+)/i);
+                if (m2) lab = parseFloat(m2[1]) || 0;
+            }
+        }
+        return lab;
+    }
+
     function fixDoctorInjection() {
         // مسح الـ flag القديم عشان نعيد wrap صح
         window._dbInsertDocPatched = false;
@@ -25,13 +68,27 @@
         window.dbInsert = async function (table, data) {
             if (table === 'treatments') {
                 const sel = document.getElementById('treatmentDoctorId');
+                let docId = null, name = '', pct = 0;
                 if (sel && sel.value) {
                     const opt   = sel.selectedOptions[0];
-                    const docId = parseInt(sel.value);
-                    const pct   = parseFloat(opt?.getAttribute('data-pct')) || 0;
-                    const name  = opt?.getAttribute('data-name') || opt?.textContent?.split('(')[0]?.trim() || '';
-                    const paid  = parseFloat(data.paid ?? 0) || 0;
-                    const comm  = parseFloat((paid * pct / 100).toFixed(2));
+                    docId = parseInt(sel.value);
+                    pct   = parseFloat(opt?.getAttribute('data-pct')) || 0;
+                    name  = opt?.getAttribute('data-name') || opt?.textContent?.split('(')[0]?.trim() || '';
+                } else if (data.doctor_id || data.doctorId) {
+                    docId = parseInt(data.doctor_id ?? data.doctorId);
+                    name  = data.doctor_name || data.doctorName || '';
+                    pct   = parseFloat(data.doctor_commission_pct ?? data.doctorCommissionPct) || 0;
+                }
+
+                if (docId) {
+                    const paid    = parseFloat(data.paid ?? data.totalPaid ?? 0) || 0;
+                    const proc    = data.procedure || document.getElementById('treatmentProcedure')?.value || '';
+                    const cond    = data.tooth_condition || document.getElementById('treatmentToothCondition')?.value || '';
+                    const labInfo = isLabProcedure(proc, cond);
+                    const labCost = labInfo.isLab ? extractTreatmentLabCost(data) : 0;
+                    const netBase = labInfo.isLab ? Math.max(0, paid - labCost) : paid;
+                    const comm    = pct > 0 ? parseFloat((netBase * pct / 100).toFixed(2)) : 0;
+
                     data = {
                         ...data,
                         doctor_id:             docId,
@@ -39,6 +96,14 @@
                         doctor_commission_pct: pct,
                         doctor_commission_amt: comm,
                     };
+                    if (labInfo.isLab && labCost > 0) {
+                        data.implant_lab_cost = labCost;
+                        const labName = (data.implant_lab_name || document.getElementById('treatmentImplantLabName')?.value || '').trim();
+                        if (labName) data.implant_lab_name = labName;
+                        const labTag = `[${labInfo.isImplant ? 'زرعة' : 'تركيبة'}: معمل ${labName || 'معمل'} - تكلفة ${labCost}]`;
+                        if (!data.notes) data.notes = labTag;
+                        else if (!data.notes.includes('معمل')) data.notes = `${data.notes} ${labTag}`.trim();
+                    }
                 }
             }
             return await origInsert(table, data);
@@ -52,7 +117,62 @@
         });
 
         window._dbInsertDocPatched = true;
-        console.log('[DoctorFix] ✓ dbInsert doctor injection fixed');
+        console.log('[DoctorFix] ✓ dbInsert doctor injection fixed (with implant & crown lab deduction)');
+    }
+
+    // ── تصحيح العمولات السابقة لعمليات الزراعة والتركيبات ───────────
+    async function repairImplantDoctorCommissions() {
+        try {
+            if (!window.db || !window.db.treatments) return;
+            const treatments = await window.db.treatments.toArray();
+            let allDocs = [];
+            try { allDocs = await (window.dbGetAll ? window.dbGetAll('doctors') : []); } catch (_) {}
+            let labOrders = [];
+            try { labOrders = await (window.dbGetAll ? window.dbGetAll('lab_orders') : []); } catch (_) {}
+
+            for (const tr of treatments) {
+                const labInfo = isLabProcedure(tr.procedure, tr.tooth_condition);
+                if (!labInfo.isLab) continue;
+                let pct = parseFloat(tr.doctor_commission_pct ?? tr.doctorCommissionPct) || 0;
+                const docId = tr.doctor_id ?? tr.doctorId;
+                if (!pct && docId && allDocs.length) {
+                    const doc = allDocs.find(d => String(d.id) === String(docId));
+                    if (doc) pct = parseFloat(doc.commission_pct ?? doc.commissionPct ?? 0);
+                }
+                if (!pct) continue;
+
+                let labCost = extractTreatmentLabCost(tr);
+                if (!labCost && labOrders.length && (tr.patient_id || tr.patientId)) {
+                    const pid = String(tr.patient_id ?? tr.patientId);
+                    const matchOrder = labOrders.find(o => String(o.patient_id ?? o.patientId) === pid && (
+                        (o.work_type || o.workType || '').toLowerCase().includes(labInfo.isImplant ? 'زرع' : 'تركيب') ||
+                        (o.work_type || o.workType || '').toLowerCase().includes('implant') ||
+                        (o.work_type || o.workType || '').toLowerCase().includes('crown') ||
+                        (o.work_type || o.workType || '').toLowerCase().includes('bridge')
+                    ));
+                    if (matchOrder) labCost = parseFloat(matchOrder.cost || matchOrder.amount || 0);
+                }
+                if (labCost <= 0) continue;
+
+                const paid = parseFloat(tr.paid) || 0;
+                const expectedComm = parseFloat((Math.max(0, paid - labCost) * pct / 100).toFixed(2));
+                const currentComm = parseFloat(tr.doctor_commission_amt ?? tr.doctorCommissionAmt ?? -1);
+
+                if (currentComm > expectedComm + 0.05) {
+                    console.log(`[DoctorFix] Repairing ${labInfo.typeLabel} commission for #${tr.id}: ${currentComm} -> ${expectedComm} (after deducting lab ${labCost})`);
+                    const patch = {
+                        doctor_commission_amt: expectedComm,
+                        implant_lab_cost: labCost
+                    };
+                    await window.db.treatments.update(tr.id, patch);
+                    if (navigator.onLine && typeof window.dbUpdate === 'function') {
+                        await window.dbUpdate('treatments', tr.id, patch).catch(() => {});
+                    }
+                }
+            }
+        } catch (e) {
+            console.warn('[DoctorFix] repairImplantDoctorCommissions err:', e);
+        }
     }
 
     // ══════════════════════════════════════════════════════════════════
@@ -427,6 +547,10 @@
         if (window.currentProfilePatientId) {
             setTimeout(() => addEditBtnToProfile(window.currentProfilePatientId), 500);
         }
+
+        // 7. تصحيح العمولات المحسوبة سابقاً لعمليات الزراعة بعد فتح قاعدة البيانات
+        setTimeout(repairImplantDoctorCommissions, 1500);
+        window.repairImplantDoctorCommissions = repairImplantDoctorCommissions;
 
         console.log('[DoctorAndPatientFix] ✅ All fixes applied');
     }

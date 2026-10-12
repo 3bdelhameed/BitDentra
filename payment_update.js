@@ -296,6 +296,63 @@ window.submitEditTreatment = async function () {
             notes:      notes,
         };
 
+        // Recalculate doctor commission if doctor exists
+        try {
+            let trRec = null;
+            if (window.db && window.db.treatments) {
+                trRec = await window.db.treatments.get(treatmentId);
+            }
+            if (!trRec) {
+                const trs = await dbGetAll('treatments', { patient_id: patientId });
+                trRec = trs.find(t => t.id == treatmentId);
+            }
+            if (trRec) {
+                let pct = parseFloat(trRec.doctor_commission_pct ?? trRec.doctorCommissionPct) || 0;
+                const docId = trRec.doctor_id ?? trRec.doctorId;
+                if (!pct && docId) {
+                    const docs = await (window.dbGetAll ? window.dbGetAll('doctors') : []);
+                    const doc = docs.find(d => String(d.id) === String(docId));
+                    if (doc) pct = parseFloat(doc.commission_pct ?? doc.commissionPct ?? 0);
+                }
+                if (pct > 0) {
+                    const proc = String(procedure || trRec.procedure || '').toLowerCase();
+                    const cond = String(trRec.tooth_condition || '').toLowerCase();
+                    const labCheck = (typeof window.isLabProcedure === 'function')
+                        ? window.isLabProcedure(proc, cond)
+                        : (function() {
+                            const isImp = proc.includes('implant') || proc.includes('زرع') || proc.includes('زراعة') || proc.includes('زراعه') || cond === 'implant';
+                            const isCrw = cond === 'crown_work' || cond === 'crown' || cond === 'bridge' ||
+                                proc.includes('crown') || proc.includes('كراون') || proc.includes('طربوش') ||
+                                proc.includes('تركيب') || proc.includes('تركيبه') || proc.includes('تركيبة') ||
+                                proc.includes('bridge') || proc.includes('جسر') || proc.includes('كبري') ||
+                                proc.includes('denture') || proc.includes('طقم') ||
+                                proc.includes('veneer') || proc.includes('فينير') ||
+                                proc.includes('zircon') || proc.includes('زركون') ||
+                                proc.includes('porcelain') || proc.includes('بورسل') ||
+                                proc.includes('e-max') || proc.includes('emax') || proc.includes('إيماكس') || proc.includes('ايماكس') ||
+                                proc.includes('inlay') || proc.includes('onlay') || proc.includes('إنلاي') || proc.includes('اونلاي') ||
+                                proc.includes('prostho');
+                            return { isLab: isImp || isCrw, isImplant: isImp, isCrown: isCrw };
+                        })();
+
+                    let labCost = 0;
+                    if (labCheck.isLab) {
+                        labCost = parseFloat(trRec.implant_lab_cost ?? trRec.implantLabCost ?? 0);
+                        if (!labCost && notes) {
+                            const m = String(notes).match(/\[(?:زرعة|تركيبة|معمل):[^\]]*تكلفة\s*([\d.]+)\]/i);
+                            if (m) labCost = parseFloat(m[1]) || 0;
+                            else {
+                                const m2 = String(notes).match(/(?:معمل\s*الزرع(?:ة)?|معمل\s*التركيب(?:ة)?|تكلفة\s*المعمل|معمل)\s*[:=-]?\s*([\d.]+)/i);
+                                if (m2) labCost = parseFloat(m2[1]) || 0;
+                            }
+                        }
+                    }
+                    const netBase = labCheck.isLab ? Math.max(0, paid - labCost) : paid;
+                    updateData.doctor_commission_amt = parseFloat((netBase * pct / 100).toFixed(2));
+                }
+            }
+        } catch (_) {}
+
         await dbUpdate('treatments', treatmentId, updateData);
 
         closeModal('editTreatmentModal');

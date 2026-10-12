@@ -546,20 +546,33 @@ window.refreshDoctorDropdowns = window.refreshAllDoctorDropdowns;
 window.onTreatmentDoctorChange = function () {
     const sel       = document.getElementById('treatmentDoctorId');
     const paidEl    = document.getElementById('treatmentPaid');
+    const procEl    = document.getElementById('treatmentProcedure');
+    const condEl    = document.getElementById('treatmentToothCondition');
     const labCostEl = document.getElementById('treatmentImplantLabCost');
     const preview   = document.getElementById('treatmentCommissionPreview');
     const amtEl     = document.getElementById('treatmentCommAmt');
     if (!sel?.value) { preview?.classList.add('hidden'); return; }
 
+    const procText  = (procEl?.value || '').trim();
+    const condText  = (condEl?.value || '').trim();
+    const labInfo   = (typeof window.isLabProcedure === 'function') 
+        ? window.isLabProcedure(procText, condText) 
+        : (function(p, c) {
+            const str = (p + ' ' + c).toLowerCase();
+            const isImp = str.includes('implant') || str.includes('زرع') || str.includes('زراعة') || str.includes('زراعه');
+            const isCrn = c.includes('crown') || str.includes('crown') || str.includes('كراون') || str.includes('طربوش') || str.includes('تركيب') || str.includes('bridge') || str.includes('جسر') || str.includes('veneer') || str.includes('فينير');
+            return { isLab: isImp || isCrn, isImplant: isImp, isCrown: isCrn, typeLabel: isImp ? 'الزرعة' : 'التركيبة' };
+        })(procText, condText);
+
     const pct     = parseFloat(sel.selectedOptions[0]?.getAttribute('data-pct')) || 0;
     const paid    = parseFloat(paidEl?.value) || 0;
-    const labCost = parseFloat(labCostEl?.value) || 0;
-    const netBase = Math.max(0, paid - labCost);
+    const labCost = labInfo.isLab ? (parseFloat(labCostEl?.value) || 0) : 0;
+    const netBase = labInfo.isLab ? Math.max(0, paid - labCost) : paid;
 
     if (pct > 0) {
         let msg = `${(netBase * pct / 100).toFixed(2)} ${getCurr()}`;
-        if (labCost > 0) {
-            msg += ` (صافي بعد خصم معمل الزرعة ${labCost} ${getCurr()})`;
+        if (labInfo.isLab && labCost > 0) {
+            msg += ` (صافي بعد خصم معمل ${labInfo.typeLabel} ${labCost.toLocaleString()} ${getCurr()})`;
         }
         if (amtEl) amtEl.textContent = msg;
         preview?.classList.remove('hidden');
@@ -614,6 +627,9 @@ async function calcDoctorSalary(docId, monthFilter) {
     const defaultDocPct = doc ? (parseFloat(doc.commission_pct ?? doc.commissionPct) || 0) : 0;
     const docMainName = doc ? (doc.name || doc.name_ar || doc.name_en || '').trim() : '';
 
+    let allLabOrders = [];
+    try { allLabOrders = await (window.dbGetAll ? window.dbGetAll('lab_orders') : []); } catch (_) {}
+
     let rows = [];
     try { rows = await getAllTreatmentsFromDB(); }
     catch (e) {
@@ -637,12 +653,41 @@ async function calcDoctorSalary(docId, monthFilter) {
         let pct  = parseFloat(t.doctor_commission_pct ?? t.doctorCommissionPct) || 0;
         if (!pct && defaultDocPct > 0) pct = defaultDocPct;
 
-        let implantLab = parseFloat(t.implant_lab_cost ?? t.implantLabCost ?? 0) || 0;
-        if (!implantLab && t.notes) {
-            const m = String(t.notes).match(/\[زرعة:[^\]]*تكلفة\s*([\d.]+)\]/);
-            if (m) implantLab = parseFloat(m[1]) || 0;
+        const proc = String(t.procedure || '').toLowerCase();
+        const cond = String(t.tooth_condition ?? t.toothCondition ?? '').toLowerCase();
+        const labInfo = (typeof window.isLabProcedure === 'function')
+            ? window.isLabProcedure(proc, cond)
+            : (function(p, c) {
+                const str = (p + ' ' + c).toLowerCase();
+                const isImp = str.includes('implant') || str.includes('زرع') || str.includes('زراعة') || str.includes('زراعه');
+                const isCrn = c.includes('crown') || str.includes('crown') || str.includes('كراون') || str.includes('طربوش') || str.includes('تركيب') || str.includes('bridge') || str.includes('جسر') || str.includes('veneer') || str.includes('فينير');
+                return { isLab: isImp || isCrn, isImplant: isImp, isCrown: isCrn, typeLabel: isImp ? 'الزرعة' : 'التركيبة' };
+            })(proc, cond);
+
+        let labCost = 0;
+        if (labInfo.isLab) {
+            labCost = parseFloat(t.implant_lab_cost ?? t.implantLabCost ?? 0) || 0;
+            if (!labCost && t.notes) {
+                const m = String(t.notes).match(/\[(?:زرعة|تركيبة|معمل):[^\]]*تكلفة\s*([\d.]+)\]/i);
+                if (m) labCost = parseFloat(m[1]) || 0;
+                else {
+                    const m2 = String(t.notes).match(/(?:معمل\s*الزرع(?:ة)?|معمل\s*التركيب(?:ة)?|تكلفة\s*المعمل|معمل)\s*[:=-]?\s*([\d.]+)/i);
+                    if (m2) labCost = parseFloat(m2[1]) || 0;
+                }
+            }
+            if (!labCost && allLabOrders.length && (t.patient_id || t.patientId)) {
+                const pid = String(t.patient_id ?? t.patientId);
+                const matchOrder = allLabOrders.find(o => String(o.patient_id ?? o.patientId) === pid && (
+                    (o.work_type || o.workType || '').toLowerCase().includes(labInfo.isImplant ? 'زرع' : 'تركيب') ||
+                    (o.work_type || o.workType || '').toLowerCase().includes('implant') ||
+                    (o.work_type || o.workType || '').toLowerCase().includes('crown') ||
+                    (o.work_type || o.workType || '').toLowerCase().includes('bridge')
+                ));
+                if (matchOrder) labCost = parseFloat(matchOrder.cost || matchOrder.amount || 0);
+            }
         }
-        const netPaid = Math.max(0, paid - implantLab);
+
+        const netPaid = labInfo.isLab ? Math.max(0, paid - labCost) : paid;
         const c = pct > 0
             ? parseFloat((netPaid * pct / 100).toFixed(2))
             : (parseFloat(t.doctor_commission_amt ?? t.doctorCommissionAmt) || 0);
@@ -673,18 +718,47 @@ async function calcDoctorSalary(docId, monthFilter) {
             let pct  = parseFloat(t.doctor_commission_pct ?? t.doctorCommissionPct) || 0;
             if (!pct && defaultDocPct > 0) pct = defaultDocPct;
 
-            let implantLab = parseFloat(t.implant_lab_cost ?? t.implantLabCost ?? 0) || 0;
-            if (!implantLab && t.notes) {
-                const m = String(t.notes).match(/\[زرعة:[^\]]*تكلفة\s*([\d.]+)\]/);
-                if (m) implantLab = parseFloat(m[1]) || 0;
+            const proc = String(t.procedure || '').toLowerCase();
+            const cond = String(t.tooth_condition ?? t.toothCondition ?? '').toLowerCase();
+            const labInfo = (typeof window.isLabProcedure === 'function')
+                ? window.isLabProcedure(proc, cond)
+                : (function(p, c) {
+                    const str = (p + ' ' + c).toLowerCase();
+                    const isImp = str.includes('implant') || str.includes('زرع') || str.includes('زراعة') || str.includes('زراعه');
+                    const isCrn = c.includes('crown') || str.includes('crown') || str.includes('كراون') || str.includes('طربوش') || str.includes('تركيب') || str.includes('bridge') || str.includes('جسر') || str.includes('veneer') || str.includes('فينير');
+                    return { isLab: isImp || isCrn, isImplant: isImp, isCrown: isCrn, typeLabel: isImp ? 'الزرعة' : 'التركيبة' };
+                })(proc, cond);
+
+            let labCost = 0;
+            if (labInfo.isLab) {
+                labCost = parseFloat(t.implant_lab_cost ?? t.implantLabCost ?? 0) || 0;
+                if (!labCost && t.notes) {
+                    const m = String(t.notes).match(/\[(?:زرعة|تركيبة|معمل):[^\]]*تكلفة\s*([\d.]+)\]/i);
+                    if (m) labCost = parseFloat(m[1]) || 0;
+                    else {
+                        const m2 = String(t.notes).match(/(?:معمل\s*الزرع(?:ة)?|معمل\s*التركيب(?:ة)?|تكلفة\s*المعمل|معمل)\s*[:=-]?\s*([\d.]+)/i);
+                        if (m2) labCost = parseFloat(m2[1]) || 0;
+                    }
+                }
+                if (!labCost && allLabOrders.length && (t.patient_id || t.patientId)) {
+                    const pid = String(t.patient_id ?? t.patientId);
+                    const matchOrder = allLabOrders.find(o => String(o.patient_id ?? o.patientId) === pid && (
+                        (o.work_type || o.workType || '').toLowerCase().includes(labInfo.isImplant ? 'زرع' : 'تركيب') ||
+                        (o.work_type || o.workType || '').toLowerCase().includes('implant') ||
+                        (o.work_type || o.workType || '').toLowerCase().includes('crown') ||
+                        (o.work_type || o.workType || '').toLowerCase().includes('bridge')
+                    ));
+                    if (matchOrder) labCost = parseFloat(matchOrder.cost || matchOrder.amount || 0);
+                }
             }
-            const netPaid = Math.max(0, paid - implantLab);
+
+            const netPaid = labInfo.isLab ? Math.max(0, paid - labCost) : paid;
             const c = pct > 0
                 ? parseFloat((netPaid * pct / 100).toFixed(2))
                 : (parseFloat(t.doctor_commission_amt ?? t.doctorCommissionAmt) || 0);
 
-            const labBadge = implantLab > 0
-                ? `<div class="text-[10px] text-amber-600 font-semibold mt-0.5">خصم معمل الزرعة: -${implantLab.toLocaleString()} ${curr}</div>`
+            const labBadge = (labInfo.isLab && labCost > 0)
+                ? `<div class="text-[10px] text-amber-600 font-semibold mt-0.5"><i class="fa-solid fa-flask text-amber-500 mr-0.5"></i>خصم معمل ${labInfo.typeLabel}: -${labCost.toLocaleString()} ${curr} (الصافي المحسوب: ${netPaid.toLocaleString()} ${curr})</div>`
                 : '';
 
             return `<tr class="border-b border-gray-50 hover:bg-slate-50 text-xs">
@@ -745,8 +819,30 @@ async function calcDoctorSalary(docId, monthFilter) {
                 const pct   = parseFloat(opt?.getAttribute('data-pct')) || 0;
                 const name  = opt?.getAttribute('data-name') || '';
                 const paid  = parseFloat(data.paid ?? data.totalPaid ?? 0) || 0;
-                const implantLab = parseFloat(data.implant_lab_cost ?? data.implantLabCost ?? document.getElementById('treatmentImplantLabCost')?.value) || 0;
-                const netPaid = Math.max(0, paid - implantLab);
+                const proc  = data.procedure || document.getElementById('treatmentProcedure')?.value || '';
+                const cond  = data.tooth_condition || document.getElementById('treatmentToothCondition')?.value || '';
+                const labInfo = (typeof window.isLabProcedure === 'function')
+                    ? window.isLabProcedure(proc, cond)
+                    : (function(p, c) {
+                        const str = (p + ' ' + c).toLowerCase();
+                        const isImp = str.includes('implant') || str.includes('زرع') || str.includes('زراعة') || str.includes('زراعه');
+                        const isCrn = c.includes('crown') || str.includes('crown') || str.includes('كراون') || str.includes('طربوش') || str.includes('تركيب') || str.includes('bridge') || str.includes('جسر') || str.includes('veneer') || str.includes('فينير');
+                        return { isLab: isImp || isCrn, isImplant: isImp, isCrown: isCrn, typeLabel: isImp ? 'الزرعة' : 'التركيبة' };
+                    })(proc, cond);
+
+                let labCost = 0;
+                if (labInfo.isLab) {
+                    labCost = parseFloat(data.implant_lab_cost ?? data.implantLabCost ?? document.getElementById('treatmentImplantLabCost')?.value) || 0;
+                    if (!labCost && data.notes) {
+                        const m = String(data.notes).match(/\[(?:زرعة|تركيبة|معمل):[^\]]*تكلفة\s*([\d.]+)\]/i);
+                        if (m) labCost = parseFloat(m[1]) || 0;
+                        else {
+                            const m2 = String(data.notes).match(/(?:معمل\s*الزرع(?:ة)?|معمل\s*التركيب(?:ة)?|تكلفة\s*المعمل|معمل)\s*[:=-]?\s*([\d.]+)/i);
+                            if (m2) labCost = parseFloat(m2[1]) || 0;
+                        }
+                    }
+                }
+                const netPaid = labInfo.isLab ? Math.max(0, paid - labCost) : paid;
                 const comm  = parseFloat((netPaid * pct / 100).toFixed(2));
                 data = {
                     ...data,
@@ -755,8 +851,8 @@ async function calcDoctorSalary(docId, monthFilter) {
                     doctor_commission_pct: pct,
                     doctor_commission_amt: comm,
                 };
-                if (implantLab > 0) {
-                    data.implant_lab_cost = implantLab;
+                if (labInfo.isLab && labCost > 0) {
+                    data.implant_lab_cost = labCost;
                 } else {
                     delete data.implant_lab_cost;
                     delete data.implant_lab_name;
